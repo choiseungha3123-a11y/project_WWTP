@@ -3,6 +3,9 @@ DB Schema : aiproject
 User : aiproject
 Password : projectwwtp
 
+http://10.125.121.176:8080/api/test?message=테스트
+http://10.125.121.176:8080/api/data
+
 
 
 
@@ -12,6 +15,8 @@ Password : projectwwtp
 	기상 데이터(강수량, 기온, 습도)를 DB로 저장
 	 - 24년부터 가져오되... 1일 단위로 
 	 - 현재 기준이 되면 30분(혹은 1시간) 단위로 변경
+	서버상에 파이썬 세팅
+	로그인 토큰 처리 추가
 
 
 
