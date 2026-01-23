@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8">
+	<title>임시페이지</title>
+	<link rel="stylesheet" href="../css/login.css">
+</head>
+<body>
+	<div>
+		<h1>main</h1>
+		<div>
+			<p>사용자 정보: <span th:text="${session.user}">정보 없음</span></p>
+			<p>로그인 정보: <span th:text="${session.user.provider}">정보 없음</span></p>
+		</div>
+ 	</div>
+	<div th:if="${session.user != null and session.user.provider == 'google'}">
+		<a href="http://localhost:8080/system/logout" class="google-login">구글 로그아웃</a>
+	</div>
+	<div th:if="${session.user != null and session.user.provider == 'naver'}">
+		<a href="http://localhost:8080/system/logout" class="google-login">네이버 로그아웃</a>
+	</div>
+	<div th:if="${session.user != null and session.user.provider == 'kakao'}">
+		<a href="http://localhost:8080/system/logout" class="google-login">카카오 로그아웃</a>
+	</div>
+</body>
+</html>

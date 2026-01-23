@@ -9,21 +9,23 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import kr.kro.prjectwwtp.persistence.MemberRepository;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
+
 	private final AuthenticationConfiguration authenticationConfiguration;
-	private final AuthenticationSuccessHandler oauth2SuccessHandler;
+	private final MemberRepository memberRepo;
 	
 	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http.cors(cors->cors.configurationSource(corsSource()));
 		// CSRF 보호 비활성화 (CsrfFilter 제거)
 		http.csrf(csrf->csrf.disable());
@@ -37,7 +39,12 @@ public class SecurityConfig {
 	
 		http.sessionManagement(sm ->sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 		http.addFilter(new JWTAuthenticationFilter(authenticationConfiguration.getAuthenticationManager()));
-		//http.addFilterBefore(new JWTAuthorizationFilter(memberRepo), AuthorizationFilter.class);
+		http.addFilterBefore(new JWTAuthorizationFilter(memberRepo), AuthorizationFilter.class);
+		http.formLogin(form -> form.loginPage("/system/login")
+									.defaultSuccessUrl("/main", true)
+									.successHandler((request, response, authentication) -> {
+										response.sendRedirect("/dashboard");
+									}));
 		
 		//http.formLogin(form->form.loginPage("/system/login").defaultSuccessUrl("/member/main", true));
 		http.exceptionHandling(ex->ex.accessDeniedPage("/system/accessDenied"));

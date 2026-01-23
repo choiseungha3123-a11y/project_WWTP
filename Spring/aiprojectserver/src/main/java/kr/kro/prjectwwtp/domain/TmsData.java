@@ -30,6 +30,7 @@ public class TmsData {
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(updatable = false)
 	LocalDateTime time;
+	int stn;
 	double toc_vu;
 	double ph_vu;
 	double ss_vu;

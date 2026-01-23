@@ -20,7 +20,6 @@ public class JWTUtil {
 	public static final String prefix = "Bearer ";
 	public static final String usernoClaim = "Userno";
 	public static final String useridClaim = "Userid";
-	public static final String usernameClaim = "Username";
 	public static final String roleClaim = "Role";
 	
 	private static String getJWTSource(String token) {
