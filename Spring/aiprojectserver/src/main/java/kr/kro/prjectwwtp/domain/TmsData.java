@@ -26,17 +26,12 @@ import lombok.ToString;
 public class TmsData {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	long data_no;
+	@Column(name = "data_no") // DB 컬럼명은 그대로 유지
+	private long dataNo; // 필드명을 CamelCase로 변경
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(updatable = false)
 	LocalDateTime time;
 	int stn;
-	double toc_vu;
-	double ph_vu;
-	double ss_vu;
-	double flux_vu;
-	double tn_vu;
-	double tp_vu;
 	
 	double wd1;
 	double wd2;
