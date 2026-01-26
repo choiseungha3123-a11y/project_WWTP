@@ -36,7 +36,7 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 		SecurityUser user = null;
 		Member member = null;
 		if (userid != null) {
-			Optional<Member> opt = memberRepo.findByUserid(userid);
+			Optional<Member> opt = memberRepo.findByUserId(userid);
 			if(!opt.isPresent()) {
 				//System.out.println("[JWTAuthorizationFilter]not found user!");
 				filterChain.doFilter(request, response);

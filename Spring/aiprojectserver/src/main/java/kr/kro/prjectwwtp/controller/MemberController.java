@@ -101,7 +101,7 @@ public class MemberController {
 				.errorMsg(null)
 				.build();
 		//System.out.println("req : " + req);
-		Optional<Member> opt =  memberRepo.findByUserid(req.getUserid());
+		Optional<Member> opt =  memberRepo.findByUserId(req.getUserid());
 		if(opt.isEmpty()) {
 			res.setSuccess(false);
 			res.setErrorMsg("회원 정보가 존재하지 않습니다. ID와 비밀번호를 확인해주세요.");
@@ -196,7 +196,7 @@ public class MemberController {
 			res.setErrorMsg("권한이 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		if(memberRepo.findByUserid(req.userid).isPresent()) {
+		if(memberRepo.findByUserId(req.userid).isPresent()) {
 			res.setSuccess(false);
 			res.setErrorMsg("이미 사용중인 ID 입니다.");
 			return ResponseEntity.ok().body(res);

@@ -20,7 +20,7 @@ public class InitialData implements ApplicationRunner {
 		// TODO Auto-generated method stub
 		//System.out.println("InitalData");
 		String adminUserid = "admin";
-		if(memberRepo.findByUserid(adminUserid).isEmpty()) {
+		if(memberRepo.findByUserId(adminUserid).isEmpty()) {
 			memberRepo.save(Member.builder()
 					.userId(adminUserid)
 					.password(encoder.encode("admin1234"))
