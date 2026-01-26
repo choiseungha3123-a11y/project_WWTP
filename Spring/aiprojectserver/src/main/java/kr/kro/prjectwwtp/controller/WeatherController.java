@@ -21,7 +21,7 @@ public class WeatherController {
 	@ExceptionHandler(MissingServletRequestParameterException.class)
 	public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex) {
 		responseDTO res = responseDTO.builder()
-				.bSuccess(false)
+				.success(false)
 				.errorMsg(ex.getParameterName() + " 파라메터가 누락되었습니다.")
 				.build();
 		return ResponseEntity.ok().body(res);
@@ -30,7 +30,7 @@ public class WeatherController {
 	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
 	public ResponseEntity<Object> handleMismatchParams(MethodArgumentTypeMismatchException ex) {
 		responseDTO res = responseDTO.builder()
-				.bSuccess(false)
+				.success(false)
 				.errorMsg(ex.getName() + " 파라메터의 형식이 올바르지 않습니다.")
 				.build();
 		return ResponseEntity.ok().body(res);
@@ -39,7 +39,7 @@ public class WeatherController {
 	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
 	public ResponseEntity<Object> handleMethodNotSupported(HttpRequestMethodNotSupportedException ext) {
 		responseDTO res = responseDTO.builder()
-				.bSuccess(false)
+				.success(false)
 				.errorMsg(" 허용되지 않는 Method 입니다.")
 				.build();
 		return ResponseEntity.ok().body(res);
@@ -48,7 +48,7 @@ public class WeatherController {
 	@GetMapping("/api/test")
 	public ResponseEntity<Object> getTest(@RequestParam String message) {
 		responseDTO res = responseDTO.builder()
-				.bSuccess(true)
+				.success(true)
 				.errorMsg(null)
 				.build();
 		res.addData(message);

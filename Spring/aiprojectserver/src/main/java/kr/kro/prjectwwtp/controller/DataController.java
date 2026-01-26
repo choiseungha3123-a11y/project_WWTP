@@ -17,6 +17,10 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.kro.prjectwwtp.domain.TmsData;
 import kr.kro.prjectwwtp.domain.responseDTO;
@@ -33,7 +37,7 @@ public class DataController {
 	@ExceptionHandler(MissingServletRequestParameterException.class)
 	public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex) {
 		responseDTO res = responseDTO.builder()
-				.bSuccess(false)
+				.success(false)
 				.errorMsg(ex.getParameterName() + " 파라메터가 누락되었습니다.")
 				.build();
 		return ResponseEntity.ok().body(res);
@@ -42,7 +46,7 @@ public class DataController {
 	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
 	public ResponseEntity<Object> handleMismatchParams(MethodArgumentTypeMismatchException ex) {
 		responseDTO res = responseDTO.builder()
-				.bSuccess(false)
+				.success(false)
 				.errorMsg(ex.getName() + " 파라메터의 형식이 올바르지 않습니다.")
 				.build();
 		return ResponseEntity.ok().body(res);
@@ -51,7 +55,7 @@ public class DataController {
 	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
 	public ResponseEntity<Object> handleMethodNotSupported(HttpRequestMethodNotSupportedException ext) {
 		responseDTO res = responseDTO.builder()
-				.bSuccess(false)
+				.success(false)
 				.errorMsg(" 허용되지 않는 Method 입니다.")
 				.build();
 		return ResponseEntity.ok().body(res);
@@ -63,11 +67,12 @@ public class DataController {
 		@Parameter(name = "tm1", description= "조회시작날짜(yyyyMMddHHmm)", example = "202401010000"),
 		@Parameter(name = "tm2", description= "조회종료날짜(yyyyMMddHHmm)", example = "202401012359")
 	})
+	@ApiResponse(description = "success : 성공/실패<br>dataSize : dataList에 들어 있는 값들의 개수<br>dataList : 결과값배열<br>errorMsg : success가 false 일때의 오류원인 ", content = @Content(schema = @Schema(implementation = TmsData.class)))
 	public ResponseEntity<Object> getTest(
 			@RequestParam String tm1,
 			@RequestParam String tm2) {
 		responseDTO res = responseDTO.builder()
-				.bSuccess(true)
+				.success(true)
 				.errorMsg(null)
 				.build();
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmm");

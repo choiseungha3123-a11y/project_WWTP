@@ -17,7 +17,7 @@ import lombok.ToString;
 @NoArgsConstructor
 @Builder
 public class responseDTO {
-	private boolean bSuccess;
+	private boolean success;
 	private int dataSize;
 	private List<Object> dataList;
 	private String errorMsg;

@@ -18,7 +18,7 @@ public class InitialData implements ApplicationRunner {
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
 		// TODO Auto-generated method stub
-		System.out.println("InitalData");
+		//System.out.println("InitalData");
 		String adminUserid = "admin";
 		if(memberRepo.findByUserid(adminUserid).isEmpty()) {
 			memberRepo.save(Member.builder()

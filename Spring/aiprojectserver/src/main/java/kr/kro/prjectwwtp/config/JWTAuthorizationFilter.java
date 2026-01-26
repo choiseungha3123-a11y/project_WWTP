@@ -26,9 +26,6 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {
 		// TODO Auto-generated method stub
-		// api-docs에 대한 처리 추가
-		System.out.println("request : " + request);
-		System.out.println("filterChain : " + filterChain);
 		String jwtToken = request.getHeader(HttpHeaders.AUTHORIZATION);
 		if(jwtToken == null ||!jwtToken.startsWith(JWTUtil.useridClaim)) {
 			filterChain.doFilter(request, response);

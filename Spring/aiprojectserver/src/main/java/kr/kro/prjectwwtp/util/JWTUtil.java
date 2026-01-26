@@ -10,6 +10,7 @@ import com.auth0.jwt.interfaces.Claim;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
+import kr.kro.prjectwwtp.persistence.MemberRepository;
 
 public class JWTUtil {
 	//private static final long ACCESS_TOKEN_MSEC = 24 * 60 * (60 * 1000);	// 1일
@@ -80,27 +81,27 @@ public class JWTUtil {
 		return false;
 	}
 	
-//	public static Member parseToken(HttpServletRequest request, MemberRepository memberRepo) {
-//		try {
-//		String token = request.getHeader("Authorization");
-//		if(isExpired(token))
-//			return null;
-//		Long userno = Long.parseLong(JWTUtil.getClaim(token, JWTUtil.usernoClaim));
-//		String userid = JWTUtil.getClaim(token, JWTUtil.useridClaim);
-//		Optional<Member> opt = memberRepo.findById(userno);
-//		if(opt.isEmpty())
-//			return null;
-//		Member member = opt.get();
-//		if(!member.getUserid().equals(userid))
-//			return null;
-//		return member;
-//		}
-//		catch(Exception e)
-//		{
-//			//e.printStackTrace();
-//			System.out.println("쿠키 오류");
-//			return null;
-//		}
-//	}
+	public static Member parseToken(HttpServletRequest request, MemberRepository memberRepo) {
+		try {
+		String token = request.getHeader("Authorization");
+		if(isExpired(token))
+			return null;
+		Long userno = Long.parseLong(JWTUtil.getClaim(token, JWTUtil.usernoClaim));
+		String userid = JWTUtil.getClaim(token, JWTUtil.useridClaim);
+		Optional<Member> opt = memberRepo.findById(userno);
+		if(opt.isEmpty())
+			return null;
+		Member member = opt.get();
+		if(!member.getUserid().equals(userid))
+			return null;
+		return member;
+		}
+		catch(Exception e)
+		{
+			//e.printStackTrace();
+			System.out.println("쿠키 오류");
+			return null;
+		}
+	}
 
 }
