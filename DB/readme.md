@@ -14,7 +14,9 @@ http://10.125.121.176:8081/swagger-ui/index.html
 	 - 24년부터 가져오되... 1일 단위로 
 	 - 현재 기준이 되면 30분(혹은 1시간) 단위로 변경
 	서버상에 파이썬 세팅
+	amazone linux 2023 let's encrypt
 	vscode 안티그라비티
+	메모 추가
 	
 
 

@@ -32,8 +32,8 @@ import lombok.Value;
 public class Member {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private long user_no;
-	private String userid;
+	private long userNo;
+	private String userId;
 	@JsonProperty(access = Access.WRITE_ONLY)
 	private String password;
 	@Enumerated(EnumType.STRING)

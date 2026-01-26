@@ -42,7 +42,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 			return null;														// member가 null이면 null 리턴 -> unsuccessfulAuthentication 호출
 		
 		// Security에게 자격 증명 요청에 필요한 객체 생성
-		Authentication authToken = new UsernamePasswordAuthenticationToken(member.getUserid(), member.getPassword());
+		Authentication authToken = new UsernamePasswordAuthenticationToken(member.getUserId(), member.getPassword());
 		
 		// 인증 메서드 호출 -> UserDetailsService의 loadUserByUsername에서 DB로부터 사용자 정보를 읽어온 뒤 사용자 입력 정보(member)와 비교 검증
 		// 자격 증명에 성공하면 Authentication객체를 만들어서 리턴하면 successfulAuthenticatin 호출, 실패하면 unsuccessfulAuthentication 호출

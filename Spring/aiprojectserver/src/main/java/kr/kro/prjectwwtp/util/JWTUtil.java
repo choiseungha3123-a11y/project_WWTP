@@ -40,7 +40,7 @@ public class JWTUtil {
 	}
 	public static String getJWT(Member member)
 	{
-		return getJWT(member.getUser_no(), member.getUserid(), member.getRole());
+		return getJWT(member.getUserNo(), member.getUserId(), member.getRole());
 	}
 	
 	// JWT에서 Claim 추출할 때 호출
@@ -92,7 +92,7 @@ public class JWTUtil {
 		if(opt.isEmpty())
 			return null;
 		Member member = opt.get();
-		if(!member.getUserid().equals(userid))
+		if(!member.getUserId().equals(userid))
 			return null;
 		return member;
 		}

@@ -22,7 +22,7 @@ public class InitialData implements ApplicationRunner {
 		String adminUserid = "admin";
 		if(memberRepo.findByUserid(adminUserid).isEmpty()) {
 			memberRepo.save(Member.builder()
-					.userid(adminUserid)
+					.userId(adminUserid)
 					.password(encoder.encode("admin1234"))
 					.role(Role.ROLE_ADMIN)
 					.build());

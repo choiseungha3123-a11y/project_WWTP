@@ -203,7 +203,7 @@ public class MemberController {
 		}
 		
 		memberRepo.save(Member.builder()
-							.userid(req.userid)
+							.userId(req.userid)
 							.password(encoder.encode(req.password))
 							.role(Role.ROLE_MEMBER)
 							.build());
@@ -252,13 +252,13 @@ public class MemberController {
 			res.setErrorMsg("존재하지 않는 회원정보입니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		if(member.getRole() != Role.ROLE_ADMIN && member.getUser_no() != req.user_no) {
+		if(member.getRole() != Role.ROLE_ADMIN && member.getUserNo() != req.user_no) {
 			res.setSuccess(false);
 			res.setErrorMsg("권한이 없습니다.");
 			return ResponseEntity.ok().body(res);
 		}
 		Member modifyMember = opt.get();
-		modifyMember.setUserid(req.userid);
+		modifyMember.setUserId(req.userid);
 		modifyMember.setPassword(req.password);
 		modifyMember.setRole(req.role);
 		memberRepo.save(modifyMember);
@@ -305,7 +305,7 @@ public class MemberController {
 			res.setErrorMsg("존재하지 않는 회원정보입니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		if(member.getRole() != Role.ROLE_ADMIN && member.getUser_no() != req.user_no) {
+		if(member.getRole() != Role.ROLE_ADMIN && member.getUserNo() != req.user_no) {
 			res.setSuccess(false);
 			res.setErrorMsg("권한이 없습니다.");
 			return ResponseEntity.ok().body(res);
