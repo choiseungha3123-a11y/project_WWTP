@@ -11,4 +11,5 @@ public interface DataRepository extends JpaRepository<TmsData, Long> {
 	TmsData findFirstByStnOrderByDataNoDesc(int stn);
 	//TmsData findFirstByOrderByDataNoDesc(); 
 	List<TmsData> findByTimeAndStn(LocalDateTime time, int stn);
+	List<TmsData> findByTimeBetweenOrderByDataNoDesc(LocalDateTime start, LocalDateTime end);
 }

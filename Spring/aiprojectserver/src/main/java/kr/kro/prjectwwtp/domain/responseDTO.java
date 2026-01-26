@@ -18,12 +18,16 @@ import lombok.ToString;
 @Builder
 public class responseDTO {
 	private boolean bSuccess;
+	private int dataSize;
 	private List<Object> dataList;
 	private String errorMsg;
 
 	public void addData(Object obj) {
-		if(dataList == null)
+		if(dataList == null) {
+			dataSize = 0;
 			dataList = new ArrayList<Object>();
+		}
 		dataList.add(obj);
+		++dataSize;
 	}
 }

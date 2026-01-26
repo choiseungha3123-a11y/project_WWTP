@@ -30,26 +30,32 @@ public class DataGether implements ApplicationRunner {
 	private final DataRepository dataRepo;
 	private RestTemplate restTemplate = new RestTemplate();
 	
-	private int term = 30 * 60 * 1000;
+	@Value("${scheduler.delay_term}")
+	private int delayTerm;
 	private int delayCount = 0;
 	private int fetchListCount = -1;
 	@Value("${scheduler.delay}")
 	private int delaytime; 
+	@Value("${scheduler.enable}")
+	private boolean enable;
 
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
 		// TODO Auto-generated method stub
 //		int fetchCount = fetchTmsData();
 //		while(fetchCount > 0)
-//			fetchCount = fetchTmsData();		
+//			fetchCount = fetchTmsData();	
+//		System.out.println("delayTerm : " + delayTerm);
+//		System.out.println("enable : " + enable);
 	}
 	
 	@Scheduled(fixedDelayString  = "${scheduler.delay}") 
 	public void fetchTmsData() {
+		if(!enable) return;
 		if(fetchListCount == 0)
 		{
 			++delayCount;
-			if(delayCount == term / delaytime)
+			if(delayCount == delayTerm / delaytime)
 			{
 				fetchListCount = -1;
 				System.out.println("30 minute delayed");
