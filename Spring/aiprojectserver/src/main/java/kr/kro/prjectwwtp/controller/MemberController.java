@@ -1,6 +1,7 @@
 package kr.kro.prjectwwtp.controller;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.http.ResponseEntity;
@@ -8,6 +9,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -20,12 +22,13 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.config.PasswordEncoder;
 import kr.kro.prjectwwtp.domain.LoginLog;
-import kr.kro.prjectwwtp.domain.LoginRequestDTO;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.responseDTO;
@@ -128,12 +131,43 @@ public class MemberController {
 		return ResponseEntity.ok().body(res);
 	}
 	
+	@GetMapping("/listMember")
+	@Operation(summary="맴버 리스트 조회", description = "등록된 맴버 전체 리스트 조회")
+	@ApiResponse(description = "success : 성공/실패<br>dataSize : dataList에 들어 있는 값들의 개수<br>dataList : 결과값배열<br>errorMsg : success가 false 일때의 오류원인 ", content = @Content(schema = @Schema(implementation = Member.class)))
+	public ResponseEntity<Object> listMember(
+			HttpServletRequest request) {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request, memberRepo);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		if(member.getRole() != Role.ROLE_ADMIN){
+			res.setSuccess(false);
+			res.setErrorMsg("권한이 올바르지 않습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		List<Member> list = memberRepo.findAll();
+		for(Member mem : list)
+			res.addData(mem);
+		return ResponseEntity.ok().body(res);
+	}
+	
 	@PutMapping("/addMember")
 	@Operation(summary="맴버 추가", description = "userid/password/role값을 맴버에 추가")
 	@Parameters( {
 		@Parameter(name = "userid", description= "등록할 사용자 ID"),
 		@Parameter(name = "password", description= "등록할 비밀번호"),
-		@Parameter(name = "role", description = "등록할 이용자 권한", example = "ROLE_MEMBER")
 	})
 	@ApiResponse(description = "success : 성공/실패<br>dataSize : 0<br>dataList : NULL<br>errorMsg : success가 false 일때의 오류원인 ")
 	public ResponseEntity<Object> addMember(
@@ -171,7 +205,7 @@ public class MemberController {
 		memberRepo.save(Member.builder()
 							.userid(req.userid)
 							.password(encoder.encode(req.password))
-							.role(req.role)
+							.role(Role.ROLE_MEMBER)
 							.build());
 		
 		return ResponseEntity.ok().body(res);
