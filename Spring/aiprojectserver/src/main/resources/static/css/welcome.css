@@ -1,0 +1,54 @@
+@charset "UTF-8";
+
+body {
+	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	margin: 0;
+	padding: 0;
+	min-height: 100vh;
+}
+
+.welcome-container {
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 20px;
+}
+
+.header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background: white;
+	padding: 20px 30px;
+	border-radius: 12px;
+	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+	margin-bottom: 30px;
+}
+
+.header h1 {
+	color: #333;
+	margin: 0;
+	font-size: 28px;
+	font-weight: 300;
+}
+
+.logout-btn {
+	padding: 12px 24px;
+	background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+	color: white;
+	border: none;
+	border-radius: 8px;
+	font-size: 16px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+}
+
+.logout-btn:active {
+	transform: translateY(0);
+}

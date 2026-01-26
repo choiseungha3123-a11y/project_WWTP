@@ -1,0 +1,58 @@
+package kr.kro.prjectwwtp.controller;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import kr.kro.prjectwwtp.domain.responseDTO;
+import lombok.RequiredArgsConstructor;
+
+@RestController
+@RestControllerAdvice
+@RequiredArgsConstructor
+public class WeatherController {
+	
+	@ExceptionHandler(MissingServletRequestParameterException.class)
+	public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex) {
+		responseDTO res = responseDTO.builder()
+				.success(false)
+				.errorMsg(ex.getParameterName() + " 파라메터가 누락되었습니다.")
+				.build();
+		return ResponseEntity.ok().body(res);
+	}
+	
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	public ResponseEntity<Object> handleMismatchParams(MethodArgumentTypeMismatchException ex) {
+		responseDTO res = responseDTO.builder()
+				.success(false)
+				.errorMsg(ex.getName() + " 파라메터의 형식이 올바르지 않습니다.")
+				.build();
+		return ResponseEntity.ok().body(res);
+	}
+	
+	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+	public ResponseEntity<Object> handleMethodNotSupported(HttpRequestMethodNotSupportedException ext) {
+		responseDTO res = responseDTO.builder()
+				.success(false)
+				.errorMsg(" 허용되지 않는 Method 입니다.")
+				.build();
+		return ResponseEntity.ok().body(res);
+	}
+	
+	@GetMapping("/api/test")
+	public ResponseEntity<Object> getTest(@RequestParam String message) {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		res.addData(message);
+		return ResponseEntity.ok().body(res);
+	}
+
+}

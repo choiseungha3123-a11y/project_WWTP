@@ -2,7 +2,6 @@
 
 import { useState } from 'react'; 
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion'; 
 
@@ -15,21 +14,27 @@ export default function LandingPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    console.log('Attempting login with:', { username, password });
     try {
-      const response = await fetch('http://localhost:8080/api/auth/login', {
+      const response = await fetch('http://10.125.121.176:8081/api/member/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: username,
-          userPw: password,
+          userid: username,
+          password: password,
         }),
       });
 
       if (response.ok) {
-        router.push('/dashboard');
+        const data = await response.json();
+        if (!data.success) {
+          alert(`로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요. (에러 코드: ${data.errorMsg})`);
+        }
+        else {
+          router.push('/dashboard');
+        }
       } else {
         alert('로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.');
       }
