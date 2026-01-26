@@ -25,7 +25,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.config.PasswordEncoder;
 import kr.kro.prjectwwtp.domain.LoginLog;
-import kr.kro.prjectwwtp.domain.LoginRequestDTO;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.responseDTO;
@@ -178,12 +177,11 @@ public class MemberController {
 	}
 		
 	@PatchMapping("/modifyMember")
-	@Operation(summary="맴버 정보 변경", description = "user_no를 이용해서 userid,password,role을 변경")
+	@Operation(summary="맴버 정보 변경", description = "user_no를 이용해서 userid,password을 변경")
 	@Parameters( {
 		@Parameter(name = "user_no", description= "변경할 사용자 고유번호"),
 		@Parameter(name = "userid", description= "변경할 사용자 ID"),
-		@Parameter(name = "password", description= "변경할 비밀번호"),
-		@Parameter(name = "role", description = "변경할 이용자 권한", example = "ROLE_MEMBER")
+		@Parameter(name = "password", description= "변경할 비밀번호")
 	})
 	@ApiResponse(description = "success : 성공/실패<br>dataSize : 0<br>dataList : NULL<br>errorMsg : success가 false 일때의 오류원인 ")
 	public ResponseEntity<Object> modifyMember(
@@ -226,7 +224,7 @@ public class MemberController {
 		Member modifyMember = opt.get();
 		modifyMember.setUserid(req.userid);
 		modifyMember.setPassword(req.password);
-		modifyMember.setRole(req.role);
+		modifyMember.setRole(Role.ROLE_MEMBER);
 		memberRepo.save(modifyMember);
 		
 		return ResponseEntity.ok().body(res);
