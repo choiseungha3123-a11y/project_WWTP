@@ -3,8 +3,7 @@ DB Schema : aiproject
 User : aiproject
 Password : projectwwtp
 
-http://10.125.121.176:8081/api/test?message=테스트
-http://10.125.121.176:8081/api/data?tm1=202401010000&tm2=202401020000
+http://10.125.121.176:8081/swagger-ui/index.html
 
 
 

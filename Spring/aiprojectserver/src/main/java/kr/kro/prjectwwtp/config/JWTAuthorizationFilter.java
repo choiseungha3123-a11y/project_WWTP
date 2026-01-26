@@ -26,6 +26,9 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {
 		// TODO Auto-generated method stub
+		// api-docs에 대한 처리 추가
+		System.out.println("request : " + request);
+		System.out.println("filterChain : " + filterChain);
 		String jwtToken = request.getHeader(HttpHeaders.AUTHORIZATION);
 		if(jwtToken == null ||!jwtToken.startsWith(JWTUtil.useridClaim)) {
 			filterChain.doFilter(request, response);
@@ -53,5 +56,13 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 		SecurityContextHolder.getContext().setAuthentication(auth);
 		// SecurityFilterChain의 다음 필터로 이동
 		filterChain.doFilter(request, response);
+	}
+	
+	@Override
+	protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+		// TODO Auto-generated method stub
+		//return super.shouldNotFilter(request);
+		String path= request.getRequestURI();
+		return path.startsWith("/ve/api-docs") || path.startsWith("/swagger-ui");
 	}
 }

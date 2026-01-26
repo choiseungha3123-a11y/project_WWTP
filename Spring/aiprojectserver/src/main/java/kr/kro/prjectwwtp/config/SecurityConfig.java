@@ -35,6 +35,9 @@ public class SecurityConfig {
 		http.authorizeHttpRequests(auth->auth
 				.requestMatchers("/member/**").authenticated()
 				.requestMatchers("/admin/**").hasRole("ADMIN")
+				// Swagger 관련 리소스 허용
+	            //.requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
+				.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 				.anyRequest().permitAll());	// AuthorizationFilter 등록
 	
 		http.sessionManagement(sm ->sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));

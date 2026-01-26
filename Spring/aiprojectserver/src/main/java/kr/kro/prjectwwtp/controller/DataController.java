@@ -14,6 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.kro.prjectwwtp.domain.TmsData;
 import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.persistence.DataRepository;
@@ -22,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RestControllerAdvice
 @RequiredArgsConstructor
+@Tag(name="DataController", description = "데이터 조회용 API")
 public class DataController {
 	private final DataRepository dataRepo;
 	
@@ -53,6 +58,11 @@ public class DataController {
 	}
 	
 	@GetMapping("/api/data")
+	@Operation(summary="날씨 데이터 조회", description = "DB에 저장된 기상청 날씨 정보 조회")
+	@Parameters( {
+		@Parameter(name = "tm1", description= "조회시작날짜(yyyyMMddHHmm)", example = "202401010000"),
+		@Parameter(name = "tm2", description= "조회종료날짜(yyyyMMddHHmm)", example = "202401012359")
+	})
 	public ResponseEntity<Object> getTest(
 			@RequestParam String tm1,
 			@RequestParam String tm2) {
