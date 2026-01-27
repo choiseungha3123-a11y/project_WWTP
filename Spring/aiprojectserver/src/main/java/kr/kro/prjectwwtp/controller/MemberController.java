@@ -80,11 +80,9 @@ public class MemberController {
 	@Getter
 	@Setter
 	@ToString
-	static public class RequestDTO {
-		private long user_no;
-		private String userid;
+	static public class loginDTO {
+		private String userId;
 		private String password;
-		private Role role;
 	}
 	
 	@PostMapping("/login")
@@ -95,13 +93,13 @@ public class MemberController {
 	})
 	@ApiResponse(description = "success : 성공/실패<br>dataSize : 1<br>dataList : JWTToken<br>errorMsg : success가 false 일때의 오류원인 ")
 	public ResponseEntity<Object> login(
-			@RequestBody RequestDTO req) {
+			@RequestBody loginDTO req) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
 				.build();
-		//System.out.println("req : " + req);
-		Optional<Member> opt =  memberRepo.findByUserId(req.getUserid());
+		System.out.println("req : " + req);
+		Optional<Member> opt =  memberRepo.findByUserId(req.userId);
 		if(opt.isEmpty()) {
 			res.setSuccess(false);
 			res.setErrorMsg("회원 정보가 존재하지 않습니다. ID와 비밀번호를 확인해주세요.");
@@ -163,22 +161,48 @@ public class MemberController {
 		return ResponseEntity.ok().body(res);
 	}
 	
+	@Getter
+	@Setter
+	@ToString
+	static public class addDTO {
+		private String userId;
+		private String password;
+		private String userName;
+	}
+	
+	boolean validatePassword(String password) {
+		return password.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{10,20}$");
+	}
+	
 	@PutMapping("/addMember")
 	@Operation(summary="맴버 추가", description = "userid/password/role값을 맴버에 추가")
 	@Parameters( {
-		@Parameter(name = "userid", description= "등록할 사용자 ID"),
-		@Parameter(name = "password", description= "등록할 비밀번호"),
+		@Parameter(name = "userid", description = "등록할 사용자 ID"),
+		@Parameter(name = "password", description = "등록할 비밀번호"),
+		@Parameter(name = "userName", description = "등록할 유저명"),
 	})
 	@ApiResponse(description = "success : 성공/실패<br>dataSize : 0<br>dataList : NULL<br>errorMsg : success가 false 일때의 오류원인 ")
 	public ResponseEntity<Object> addMember(
 			HttpServletRequest request,
-			@RequestBody RequestDTO req
+			@RequestBody addDTO req
 			) {
 		//System.out.println("req : " + req);
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
 				.build();
+		if(req.userId == null || req.userId.length() == 0 
+				|| req.password == null || req.password.length() == 0
+				|| req.userName == null || req.userName.length() == 0) {
+			res.setSuccess(false);
+			res.setErrorMsg("정보가 올바르지 않습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		if(!validatePassword(req.password))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.");
+		}
 		if(JWTUtil.isExpired(request))
 		{
 			res.setSuccess(false);
@@ -196,19 +220,31 @@ public class MemberController {
 			res.setErrorMsg("권한이 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		if(memberRepo.findByUserId(req.userid).isPresent()) {
+		if(memberRepo.findByUserId(req.userId).isPresent()) {
 			res.setSuccess(false);
 			res.setErrorMsg("이미 사용중인 ID 입니다.");
 			return ResponseEntity.ok().body(res);
 		}
 		
 		memberRepo.save(Member.builder()
-							.userId(req.userid)
+							.userId(req.userId)
 							.password(encoder.encode(req.password))
+							.userName(req.userName)
 							.role(Role.ROLE_MEMBER)
 							.build());
 		
 		return ResponseEntity.ok().body(res);
+	}
+	
+	@Getter
+	@Setter
+	@ToString
+	static public class modifyDTO {
+		private long userNo;
+		private String userId;
+		private String password;
+		private String userName;
+		private Role role;
 	}
 		
 	@PatchMapping("/modifyMember")
@@ -217,22 +253,30 @@ public class MemberController {
 		@Parameter(name = "user_no", description= "변경할 사용자 고유번호"),
 		@Parameter(name = "userid", description= "변경할 사용자 ID"),
 		@Parameter(name = "password", description= "변경할 비밀번호"),
+		@Parameter(name = "userName", description = "변경할 유저명"),
 		@Parameter(name = "role", description = "변경할 이용자 권한", example = "ROLE_MEMBER")
 	})
 	@ApiResponse(description = "success : 성공/실패<br>dataSize : 0<br>dataList : NULL<br>errorMsg : success가 false 일때의 오류원인 ")
 	public ResponseEntity<Object> modifyMember(
 			HttpServletRequest request,
-			@RequestBody RequestDTO req
+			@RequestBody modifyDTO req
 			) {
 		//System.out.println("req : " + req);
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
 				.build();
-		if(req.userid == null || req.userid.length() == 0 || req.password == null || req.password.length() == 0) {
+		if(req.userId == null || req.userId.length() == 0 
+				|| req.password == null || req.password.length() == 0
+				|| req.userName == null || req.userName.length() == 0) {
 			res.setSuccess(false);
 			res.setErrorMsg("정보가 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
+		}
+		if(!validatePassword(req.password))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.");
 		}
 		if(JWTUtil.isExpired(request))
 		{
@@ -246,24 +290,38 @@ public class MemberController {
 			res.setErrorMsg("로그인이 필요합니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		Optional<Member> opt = memberRepo.findById(req.user_no);
+		Optional<Member> opt = memberRepo.findById(req.userNo);
 		if(opt.isEmpty()) {
 			res.setSuccess(false);
 			res.setErrorMsg("존재하지 않는 회원정보입니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		if(member.getRole() != Role.ROLE_ADMIN && member.getUserNo() != req.user_no) {
+		if(member.getRole() != Role.ROLE_ADMIN && member.getUserNo() != req.userNo) {
 			res.setSuccess(false);
 			res.setErrorMsg("권한이 없습니다.");
 			return ResponseEntity.ok().body(res);
 		}
+		if(memberRepo.findByUserId(req.userId).isPresent()) {
+			res.setSuccess(false);
+			res.setErrorMsg("이미 사용중인 ID 입니다.");
+			return ResponseEntity.ok().body(res);
+		}
 		Member modifyMember = opt.get();
-		modifyMember.setUserId(req.userid);
+		modifyMember.setUserId(req.userId);
 		modifyMember.setPassword(req.password);
+		modifyMember.setUserName(req.userName);
 		modifyMember.setRole(req.role);
 		memberRepo.save(modifyMember);
 		
 		return ResponseEntity.ok().body(res);
+	}
+	
+	@Getter
+	@Setter
+	@ToString
+	static public class deleteDTO {
+		private long userNo;
+		private String userId;
 	}
 	
 	@DeleteMapping("/deleteMember")
@@ -275,14 +333,14 @@ public class MemberController {
 	@ApiResponse(description = "success : 성공/실패<br>dataSize : 0<br>dataList : NULL<br>errorMsg : success가 false 일때의 오류원인 ")
 	public ResponseEntity<Object> deleteMember(
 			HttpServletRequest request,
-			@RequestBody RequestDTO req
+			@RequestBody deleteDTO req
 			) {
 		System.out.println("req : " + req);
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
 				.build();
-		if(req.userid == null || req.userid.length() == 0) {
+		if(req.userId == null || req.userId.length() == 0) {
 			res.setSuccess(false);
 			res.setErrorMsg("정보가 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
@@ -299,13 +357,13 @@ public class MemberController {
 			res.setErrorMsg("로그인이 필요합니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		Optional<Member> opt = memberRepo.findById(req.user_no);
+		Optional<Member> opt = memberRepo.findById(req.userNo);
 		if(opt.isEmpty()) {
 			res.setSuccess(false);
 			res.setErrorMsg("존재하지 않는 회원정보입니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		if(member.getRole() != Role.ROLE_ADMIN && member.getUserNo() != req.user_no) {
+		if(member.getRole() != Role.ROLE_ADMIN && member.getUserNo() != req.userNo) {
 			res.setSuccess(false);
 			res.setErrorMsg("권한이 없습니다.");
 			return ResponseEntity.ok().body(res);

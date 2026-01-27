@@ -21,6 +21,7 @@ public class JWTUtil {
 	public static final String prefix = "Bearer ";
 	public static final String usernoClaim = "Userno";
 	public static final String useridClaim = "Userid";
+	public static final String usernameClaim = "Username";
 	public static final String roleClaim = "Role";
 	
 	private static String getJWTSource(String token) {
@@ -28,11 +29,12 @@ public class JWTUtil {
 		return token;
 	}
 	
-	public static String getJWT(Long userno, String userid, Role role) {
+	public static String getJWT(Long userno, String userid, String username, Role role) {
 		//System.out.println("getJWT userno : " + userno);
 		String src = JWT.create()
 				.withClaim(usernoClaim, userno.toString())
 				.withClaim(useridClaim, userid)
+				.withClaim(usernameClaim, username)
 				.withClaim(roleClaim, role.toString())
 				.withExpiresAt(new Date(System.currentTimeMillis()+ACCESS_TOKEN_MSEC))
 				.sign(Algorithm.HMAC256(JWT_KEY));
@@ -40,7 +42,7 @@ public class JWTUtil {
 	}
 	public static String getJWT(Member member)
 	{
-		return getJWT(member.getUserNo(), member.getUserId(), member.getRole());
+		return getJWT(member.getUserNo(), member.getUserId(), member.getUserName(), member.getRole());
 	}
 	
 	// JWT에서 Claim 추출할 때 호출

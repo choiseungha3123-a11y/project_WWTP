@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 
 
-public interface DataRepository extends JpaRepository<TmsData, Long> {
+public interface WeatherRepository extends JpaRepository<TmsData, Long> {
 	TmsData findFirstByStnOrderByDataNoDesc(int stn);
 	//TmsData findFirstByOrderByDataNoDesc(); 
 	List<TmsData> findByTimeAndStn(LocalDateTime time, int stn);

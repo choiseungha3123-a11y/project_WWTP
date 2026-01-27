@@ -2,13 +2,8 @@ package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonProperty.Access;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -20,7 +15,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
-import lombok.Value;
 
 @Getter
 @Setter
@@ -29,21 +23,18 @@ import lombok.Value;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-public class Member {
+public class WeatherComplete {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private long userNo;
-	private String userId;
-	private String userName;
-	@JsonProperty(access = Access.WRITE_ONLY)
-	private String password;
-	@Enumerated(EnumType.STRING)
-	private Role role;
+	@Column(name = "data_no") // DB 컬럼명은 그대로 유지
+	private long dataNo; // 필드명을 CamelCase로 변경
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(updatable = false)
+	private LocalDateTime dataTime;
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(updatable = false)
 	@Builder.Default
-	private LocalDateTime createTime = LocalDateTime.now(); 
-	@Temporal(TemporalType.TIMESTAMP)
-	@Builder.Default
-	private LocalDateTime lastLoginTime = LocalDateTime.now();
+	private LocalDateTime createTime = LocalDateTime.now();
+	int stn;
+	int dataSize;
 }

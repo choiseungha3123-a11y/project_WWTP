@@ -9,6 +9,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -20,19 +21,19 @@ import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.kro.prjectwwtp.domain.TmsData;
 import kr.kro.prjectwwtp.domain.responseDTO;
-import kr.kro.prjectwwtp.persistence.DataRepository;
+import kr.kro.prjectwwtp.persistence.WeatherRepository;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RestControllerAdvice
+@RequestMapping("/api/weather")
 @RequiredArgsConstructor
-@Tag(name="DataController", description = "데이터 조회용 API")
-public class DataController {
-	private final DataRepository dataRepo;
+@Tag(name="WeatherController", description = "날씨 데이터 조회용 API")
+public class WeatherCompleteController {
+	private final WeatherRepository weatherRepo;
 	
 	@ExceptionHandler(MissingServletRequestParameterException.class)
 	public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex) {
@@ -61,14 +62,14 @@ public class DataController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@GetMapping("/api/data")
+	@GetMapping("/list")
 	@Operation(summary="날씨 데이터 조회", description = "DB에 저장된 기상청 날씨 정보 조회")
 	@Parameters( {
 		@Parameter(name = "tm1", description= "조회시작날짜(yyyyMMddHHmm)", example = "202401010000"),
 		@Parameter(name = "tm2", description= "조회종료날짜(yyyyMMddHHmm)", example = "202401012359")
 	})
 	@ApiResponse(description = "success : 성공/실패<br>dataSize : dataList에 들어 있는 값들의 개수<br>dataList : 결과값배열<br>errorMsg : success가 false 일때의 오류원인 ", content = @Content(schema = @Schema(implementation = TmsData.class)))
-	public ResponseEntity<Object> getTest(
+	public ResponseEntity<Object> getWeatherList(
 			@RequestParam String tm1,
 			@RequestParam String tm2) {
 		responseDTO res = responseDTO.builder()
@@ -80,7 +81,7 @@ public class DataController {
 		LocalDateTime end = LocalDateTime.parse(tm2, formatter);
 		System.out.println("start : " + start);
 		System.out.println("end : " + end);
-		List<TmsData> list = dataRepo.findByTimeBetweenOrderByDataNoDesc(start, end);
+		List<TmsData> list = weatherRepo.findByTimeBetweenOrderByDataNoDesc(start, end);
 		for(TmsData data : list)
 			res.addData(data);
 		return ResponseEntity.ok().body(res);

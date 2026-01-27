@@ -15,79 +15,60 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import kr.kro.prjectwwtp.domain.TmsData;
-import kr.kro.prjectwwtp.persistence.DataRepository;
+import kr.kro.prjectwwtp.domain.WeatherComplete;
+import kr.kro.prjectwwtp.persistence.WeatherCompleteRepository;
+import kr.kro.prjectwwtp.persistence.WeatherRepository;
 import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
-public class DataGether implements ApplicationRunner {
+public class CompleteWeather implements ApplicationRunner {
 
 	@Value("${spring.apihub.authKey}")
 	private String authKey;
 	@Value("${spring.apihub.baseUrl}")
 	private String baseUrl;
 	
-	private final DataRepository dataRepo;
+	private final WeatherRepository weatherRepo;
+	private final WeatherCompleteRepository completeRepo;
 	private RestTemplate restTemplate = new RestTemplate();
-	
-	@Value("${scheduler.delay_term}")
-	private int delayTerm;
-	private int delayCount = 0;
-	private int fetchListCount = -1;
-	@Value("${scheduler.delay}")
-	private int delaytime; 
-	@Value("${scheduler.enable}")
+		@Value("${scheduler.enable}")
 	private boolean enable;
 
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
-		// TODO Auto-generated method stub
-//		int fetchCount = fetchTmsData();
-//		while(fetchCount > 0)
-//			fetchCount = fetchTmsData();	
-//		System.out.println("delayTerm : " + delayTerm);
-//		System.out.println("enable : " + enable);
+	}
+	
+	boolean compareDay(LocalDateTime a, LocalDateTime b) {
+		if(a.getYear() == b.getYear() && a.getMonth() == b.getMonth() && a.getDayOfMonth() == a.getDayOfMonth())
+			return true;
+		return false;
 	}
 	
 	@Scheduled(fixedDelayString  = "${scheduler.delay}") 
-	public void fetchTmsData() {
+	public void completeWeatherData() {
 		if(!enable) return;
-		if(fetchListCount == 0)
-		{
-			++delayCount;
-			if(delayCount == delayTerm / delaytime)
-			{
-				fetchListCount = -1;
-				System.out.println("30 minute delayed");
-			}
-			return;
-		}
-		System.out.println("fetch start");
-		delayCount = 0;
-		fetchListCount = 0;
+		
 		int[] stnlist = { 368,		// 구리 수택동
 				569, // 구리 토평동
 				541 // 남양주 배양리
 		};
 		try {
 			for (int stn : stnlist) {
-				TmsData lastData = dataRepo.findFirstByStnOrderByDataNoDesc(stn);
-				LocalDateTime startTime = LocalDateTime.of(2024, 1, 1, 0, 0);
-				if (lastData != null) {
-					startTime = lastData.getTime();
+				LocalDateTime lastDay = LocalDateTime.of(2024, 1, 1, 0, 0);
+				List<WeatherComplete> listAll = completeRepo.findByStnOrderByDataNoDesc(stn);
+				for(WeatherComplete c : listAll) {
+					if(c.getDataSize() != 24 * 60 && !compareDay(LocalDateTime.now(), c.getDataTime()))
+					{
+						// 이상 및 결측 발견
+					}
+					lastDay = c.getDataTime();
 				}
-				LocalDateTime endTime = startTime.plusDays(1);
-				String tm1 = startTime.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-				String tm2 = endTime.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-				List<TmsData> list = fetchTmsData(tm1, tm2, stn);
-				if (list != null && list.size() > 0)
-					dataRepo.saveAll(list);
-				fetchListCount += list.size();
+				//List<TmsData>
 			}	
 		}catch (Exception e) {
 			// TODO: handle exception
 			e.printStackTrace();
-			fetchListCount = -1;
 		}
 	}
 

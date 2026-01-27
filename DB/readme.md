@@ -3,6 +3,10 @@ DB Schema : aiproject
 User : aiproject
 Password : projectwwtp
 
+실행중인 JAR 확인
+ps -ef | grep jar
+
+
 http://10.125.121.176:8081/swagger-ui/index.html
 
 
@@ -16,11 +20,8 @@ http://10.125.121.176:8081/swagger-ui/index.html
 	서버상에 파이썬 세팅
 	amazone linux 2023 let's encrypt
 	vscode 안티그라비티
-	메모 추가
+	메모 처리
 	
-
-
-
 
 
 완료한 일 :

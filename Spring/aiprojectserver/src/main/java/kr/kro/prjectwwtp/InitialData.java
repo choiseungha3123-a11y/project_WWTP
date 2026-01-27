@@ -20,10 +20,20 @@ public class InitialData implements ApplicationRunner {
 		// TODO Auto-generated method stub
 		//System.out.println("InitalData");
 		String adminUserid = "admin";
+		String memberUserid = "member";
 		if(memberRepo.findByUserId(adminUserid).isEmpty()) {
 			memberRepo.save(Member.builder()
 					.userId(adminUserid)
 					.password(encoder.encode("admin1234"))
+					.userName("관리자")
+					.role(Role.ROLE_ADMIN)
+					.build());
+		}
+		if(memberRepo.findByUserId(memberUserid).isEmpty()) {
+			memberRepo.save(Member.builder()
+					.userId(memberUserid)
+					.password(encoder.encode("member1234"))
+					.userName("이용자")
 					.role(Role.ROLE_ADMIN)
 					.build());
 		}
