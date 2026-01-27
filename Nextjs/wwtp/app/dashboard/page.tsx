@@ -1,13 +1,40 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [isAuthChecked, setIsAuthChecked] = useState(false); // 인증 체크 완료 여부
+  const [userRole, setUserRole] = useState("");
+  const [userName, setUserName] = useState("");
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  useEffect(() => {
+    // 1. 컴포넌트 마운트 후 딱 한 번만 실행
+    const savedRole = localStorage.getItem('userRole');
+    const savedName = localStorage.getItem('userName');
+
+    if (!savedRole) {
+      // 2. 데이터가 없으면 알림 후 이동 (alert 대신 바로 이동하는 것이 무한루프 방지에 더 좋음)
+      console.error("인증 실패: userRole 없음");
+      alert("로그인이 필요합니다.");
+      router.replace("/");
+    } else {
+      // 3. 데이터가 있으면 상태에 저장하고 렌더링 허용
+      setUserRole(savedRole);
+      setUserName(savedName || "username");
+      setIsAuthChecked(true);
+    }
+  }, [router]);
+
+  // 4. 인증 체크가 끝나기 전에는 아무것도 렌더링하지 않음
+  if (!isAuthChecked) {
+    return <div className="min-h-screen bg-slate-900" />;
+  }
 
   const handleLogout = () => {
-    
     if (confirm("로그아웃 하시겠습니까?")) {
       router.push("/"); 
     }
@@ -28,13 +55,69 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold tracking-tight text-blue-400">Smart WWTP Dashboard</h1>
           <p className="text-slate-400 mt-1">실시간 하수처리 공정 모니터링 시스템</p>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="bg-blue-500/20 text-blue-400 px-4 py-1 rounded-full text-sm border border-blue-500/30">
-            관리자 모드
-          </span>
-          <button 
-          onClick={handleLogout}
-          className="text-sm text-slate-400 hover:text-white transition-colors">로그아웃</button>
+
+        <div className="flex items-center gap-6">
+          <div className="relative">
+            <button 
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              className="flex items-center gap-3 hover:bg-white/5 p-2 rounded-lg transition-all"
+            >
+              <span className="text-sm font-medium">{userName}님</span>
+              <div className="w-8 h-8 bg-slate-700 rounded-full overflow-hidden border border-white/20">
+                {/* 실제 이미지가 있다면 src에 연결 */}
+                <div className="w-full h-full bg-blue-500 flex items-center justify-center text-xs">AD</div>
+              </div>
+              <span className="text-xs text-slate-400" onClick={handleLogout}>로그아웃</span>
+            </button>
+
+            {/* 드롭다운 메뉴 (이미지 2 스타일 반영) */}
+            <AnimatePresence>
+              {isProfileOpen && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute right-0 mt-4 w-64 bg-white text-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden"
+                >
+                  {/* 드롭다운 탭 영역 (My, 알림, 닫기) */}
+                  <div className="flex border-b text-center text-sm">
+                    <div className="flex-1 py-3 bg-slate-50 font-bold border-r text-blue-600">My</div>
+                    <div className="flex-1 py-3 hover:bg-gray-100 cursor-pointer border-r text-gray-400">알림</div>
+                    <div 
+                      className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-gray-400"
+                      onClick={() => setIsProfileOpen(false)}
+                    >✕</div>
+                  </div>
+
+                  {/* 프로필 정보 */}
+                  <div className="p-6 flex flex-col items-center border-b">
+                    <div className="w-16 h-16 bg-slate-200 rounded-full mb-3 overflow-hidden border border-gray-100">
+                       <div className="w-full h-full bg-blue-500 flex items-center justify-center text-white text-xl">최</div>
+                    </div>
+                    <p className="font-bold text-lg">{userName}</p>
+                    <select className="mt-2 text-xs border rounded px-2 py-1 outline-none">
+                      <option>한국어 (ko)</option>
+                    </select>
+                  </div>
+                  
+                  {/* 권한별 동적 메뉴 리스트 */}
+                  <div className="flex flex-col text-sm">
+                    <button className="text-left px-6 py-4 hover:bg-blue-50 transition-colors border-b">개인정보 수정</button>
+                    
+                    {/* 관리자(admin)일 때만 '사원 추가' 노출 */}
+                    {userRole === "ROLE_ADMIN" && (
+                      <button className="text-left px-6 py-4 hover:bg-blue-50 transition-colors border-b">사원 추가 (Admin)</button>
+                    )}
+                    
+                    <button 
+                      onClick={handleLogout}
+                      className="text-left px-6 py-4 hover:bg-red-50 text-red-500 transition-colors"
+                    >로그아웃</button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </header>
 

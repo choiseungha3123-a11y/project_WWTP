@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion'; 
+import { jwtDecode } from 'jwt-decode';
 
 export default function LandingPage() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -14,6 +15,15 @@ export default function LandingPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+  interface CustomJwtPayload {
+  Role?: string;
+  Userid?: string;
+  Username?: string;
+  auth?: string;
+  name?: string;
+  sub?: string;
+}
     console.log('Attempting login with:', { username, password });
     try {
       const response = await fetch('http://10.125.121.176:8081/api/member/login', {
@@ -22,7 +32,7 @@ export default function LandingPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userid: username,
+          userId: username,
           password: password,
         }),
       });
@@ -33,6 +43,19 @@ export default function LandingPage() {
           alert(`로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요. (에러 코드: ${data.errorMsg})`);
         }
         else {
+          const jwtToken = data.dataList[0];
+          const decodedToken = jwtDecode<CustomJwtPayload>(jwtToken);
+          console.log('Decoded JWT Token:', decodedToken);
+
+          const role = decodedToken.Role || ""; 
+          const name = decodedToken.Username || "사용자"; 
+
+          localStorage.setItem('accessToken', jwtToken);
+          localStorage.setItem('userRole', role); 
+          localStorage.setItem('userName', name);
+
+          console.log('최종 저장 데이터:', { role, name }); 
+
           router.push('/dashboard');
         }
       } else {
