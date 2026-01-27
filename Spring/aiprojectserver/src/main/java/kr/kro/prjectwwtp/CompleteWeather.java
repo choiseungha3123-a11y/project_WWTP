@@ -2,9 +2,12 @@ package kr.kro.prjectwwtp;
 
 import java.net.URI;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
@@ -45,6 +48,14 @@ public class CompleteWeather implements ApplicationRunner {
 		return false;
 	}
 	
+	List<TmsData> getList(int stn, LocalDateTime date) {
+		//LocalDateTime start = LocalDateTime.of(date.getYear(), date.getMonth(), date.getDayOfMonth(), 0, 0);
+		//LocalDateTime end = LocalDateTime.of(date.getYear(), date.getMonth(), date.getDayOfMonth(), 23, 59);
+		//List<TmsData> list = weatherRepo.findByStnAndTimeBetweenOrderByDataNoDesc(stn, start, end);
+		List<TmsData> list = weatherRepo.findByStnAndTime(stn, date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+		return list;
+	}
+	
 	@Scheduled(fixedDelayString  = "${scheduler.delay}") 
 	public void completeWeatherData() {
 		if(!enable) return;
@@ -56,15 +67,61 @@ public class CompleteWeather implements ApplicationRunner {
 		try {
 			for (int stn : stnlist) {
 				LocalDateTime lastDay = LocalDateTime.of(2024, 1, 1, 0, 0);
+				LocalDateTime now = LocalDateTime.now();
+				//List<WeatherComplete> listAll = completeRepo.findByStnOrderByDataNoDesc(stn);
 				List<WeatherComplete> listAll = completeRepo.findByStnOrderByDataNoDesc(stn);
 				for(WeatherComplete c : listAll) {
-					if(c.getDataSize() != 24 * 60 && !compareDay(LocalDateTime.now(), c.getDataTime()))
+					if(c.getDataSize() != 24 * 60 && !compareDay(now, c.getDataTime()))
 					{
+						List<TmsData> list = getList(c.getStn(), c.getDataTime());
 						// 이상 및 결측 발견
+						if(c.getDataSize() > 24 * 60) {
+							// 중첩
+							System.out.println("중첩 발견");
+							while(list.size() > 24 * 60)
+							{
+								TmsData match = list.stream()
+								    .filter(data -> data.getTime().equals(c.getDataTime()))
+								    .findFirst()
+								    .orElse(null);
+								if(match != null) {
+									list.remove(match);
+									weatherRepo.delete(match);
+								}
+							}
+							System.out.println("size : " + list.size());
+							System.out.println("중첩 제거");
+							c.setDataSize(list.size());
+							completeRepo.save(c);
+						} 
+						else if(c.getDataSize() < 24 * 60) {
+							// 결측
+//							LocalDateTime checkTime = c.getDataTime();
+//							LocalDateTime startTime = LocalDateTime.of(checkTime.getYear(), checkTime.getMonthValue(), checkTime.getDayOfMonth(), 0, 0);
+//							LocalDateTime endTime = startTime.plusDays(1);
+//							String tm1 = startTime.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
+//							String tm2 = endTime.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
+//							List<TmsData> newlist = fetchTmsData(tm1, tm2, stn);
+//							for(TmsData data : newlist) {
+//								weatherRepo.findby
+//							}
+						}
 					}
 					lastDay = c.getDataTime();
 				}
-				//List<TmsData>
+				while(lastDay.isBefore(now)) {
+					// 오늘 이전의 처리가 안된 데이터가 있음
+					List<TmsData> list = getList(stn, lastDay);
+					System.out.println(lastDay + " >> list 개수 : " + list.size());
+					completeRepo.save(WeatherComplete.builder()
+											.dataTime(lastDay)
+											.stn(stn)
+											.dataSize(list.size())
+											.build());
+					
+					
+					lastDay = lastDay.plusDays(1);
+				}
 			}	
 		}catch (Exception e) {
 			// TODO: handle exception

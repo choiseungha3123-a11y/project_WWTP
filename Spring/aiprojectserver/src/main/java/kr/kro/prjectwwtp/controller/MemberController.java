@@ -129,6 +129,41 @@ public class MemberController {
 		return ResponseEntity.ok().body(res);
 	}
 	
+	@PostMapping("/logout")
+	@Operation(summary="로그아웃", description = "사용자 로그아웃 처리")
+	@ApiResponse(description = "success : 성공/실패<br>errorMsg : 오류 메시지")
+	public ResponseEntity<Object> logout(HttpServletRequest request) {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		
+		// 토큰 추출 및 검증
+		String token = request.getHeader("Authorization");
+		if (token == null || !token.startsWith("Bearer ")) {
+			res.setSuccess(false);
+			res.setErrorMsg("유효한 토큰이 없습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		
+		// JWT에서 userid 추출
+		try {
+			String userid = JWTUtil.getClaim(token, JWTUtil.useridClaim);
+			System.out.println("[MemberController] logout request for user: " + userid);
+			
+			// TokenBlacklistManager에서 토큰 무효화
+			// (자동으로 TokenBlacklistManager의 invalidateToken이 호출됨)
+			
+			res.setSuccess(true);
+			res.setErrorMsg(null);
+		} catch (Exception e) {
+			res.setSuccess(false);
+			res.setErrorMsg("로그아웃 처리 중 오류가 발생했습니다.");
+		}
+		
+		return ResponseEntity.ok().body(res);
+	}
+	
 	@GetMapping("/listMember")
 	@Operation(summary="맴버 리스트 조회", description = "등록된 맴버 전체 리스트 조회")
 	@ApiResponse(description = "success : 성공/실패<br>dataSize : dataList에 들어 있는 값들의 개수<br>dataList : 결과값배열<br>errorMsg : success가 false 일때의 오류원인 ", content = @Content(schema = @Schema(implementation = Member.class)))
@@ -198,11 +233,11 @@ public class MemberController {
 			res.setErrorMsg("정보가 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		if(!validatePassword(req.password))
-		{
-			res.setSuccess(false);
-			res.setErrorMsg("비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.");
-		}
+//		if(!validatePassword(req.password))
+//		{
+//			res.setSuccess(false);
+//			res.setErrorMsg("비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.");
+//		}
 		if(JWTUtil.isExpired(request))
 		{
 			res.setSuccess(false);
@@ -261,7 +296,7 @@ public class MemberController {
 			HttpServletRequest request,
 			@RequestBody modifyDTO req
 			) {
-		//System.out.println("req : " + req);
+		System.out.println("req : " + req);
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
@@ -273,11 +308,11 @@ public class MemberController {
 			res.setErrorMsg("정보가 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		if(!validatePassword(req.password))
-		{
-			res.setSuccess(false);
-			res.setErrorMsg("비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.");
-		}
+//		if(!validatePassword(req.password))
+//		{
+//			res.setSuccess(false);
+//			res.setErrorMsg("비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.");
+//		}
 		if(JWTUtil.isExpired(request))
 		{
 			res.setSuccess(false);
@@ -308,7 +343,7 @@ public class MemberController {
 		}
 		Member modifyMember = opt.get();
 		modifyMember.setUserId(req.userId);
-		modifyMember.setPassword(req.password);
+		modifyMember.setPassword(encoder.encode(req.password));
 		modifyMember.setUserName(req.userName);
 		modifyMember.setRole(req.role);
 		memberRepo.save(modifyMember);
