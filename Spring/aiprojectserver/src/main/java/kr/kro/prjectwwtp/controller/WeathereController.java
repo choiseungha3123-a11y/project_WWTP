@@ -22,10 +22,14 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.TmsData;
 import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.persistence.WeatherRepository;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 @RestController
 @RestControllerAdvice
@@ -62,6 +66,31 @@ public class WeathereController {
 		return ResponseEntity.ok().body(res);
 	}
 	
+	@Getter
+	@Setter
+	@ToString
+	static public class weatherDTO {
+		LocalDateTime time;
+		double ta;
+		double rn15m;
+		double rn60m;
+		double rn12h;
+		double rnday;
+		double hm;
+		double td; 
+		
+		public weatherDTO(TmsData data) {
+			this.time = data.getTime();
+			this.ta = data.getTa();
+			this.rn15m = data.getRn15m();
+			this.rn60m = data.getRn60m();
+			this.rn12h = data.getRn12h();
+			this.rnday = data.getRnday();
+			this.hm = data.getHm();
+			this.td = data.getTd();
+		}
+	}
+	
 	@GetMapping("/list")
 	@Operation(summary="날씨 데이터 조회", description = "DB에 저장된 기상청 날씨 정보 조회")
 	@Parameters( {
@@ -83,7 +112,7 @@ public class WeathereController {
 		System.out.println("end : " + end);
 		List<TmsData> list = weatherRepo.findByTimeBetweenOrderByDataNoDesc(start, end);
 		for(TmsData data : list)
-			res.addData(data);
+			res.addData(new weatherDTO(data));
 		return ResponseEntity.ok().body(res);
 	}
 

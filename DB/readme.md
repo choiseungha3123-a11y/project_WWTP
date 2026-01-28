@@ -35,6 +35,7 @@ sudo certbot certonly -d projectwwtp.kro.kr --manual --preferred-challenges dns
 
 
 
+
 http://10.125.121.176:8081/swagger-ui/index.html
 
 
@@ -42,12 +43,9 @@ http://10.125.121.176:8081/swagger-ui/index.html
 
 해야할 일 : 
 	HTTP 인증 및 도메인 처리
-	기상 데이터(강수량, 기온, 습도)를 DB로 저장
-	 - 24년부터 가져오되... 1일 단위로 
-	 - 현재 기준이 되면 30분(혹은 1시간) 단위로 변경
-	서버상에 파이썬 세팅
 	amazone linux 2023 let's encrypt
 	vscode 안티그라비티
+	제로 SSL 확인
 
 	Oauth2 기능 추가 (구글, 네이버, 카카오)
 	메모 처리(한꺼번에 보내기)
