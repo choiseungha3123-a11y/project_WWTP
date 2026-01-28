@@ -17,6 +17,7 @@ export default function LandingPage() {
     e.preventDefault();
 
   interface CustomJwtPayload {
+  Userno: string;  
   Role?: string;
   Userid?: string;
   Username?: string;
@@ -26,7 +27,7 @@ export default function LandingPage() {
 }
     console.log('Attempting login with:', { username, password });
     try {
-      const response = await fetch('http://10.125.121.176:8081/api/member/login', {
+      const response = await fetch('/api/member/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -47,14 +48,17 @@ export default function LandingPage() {
           const decodedToken = jwtDecode<CustomJwtPayload>(jwtToken);
           console.log('Decoded JWT Token:', decodedToken);
 
+          const userNo = decodedToken.Userno || "";
           const role = decodedToken.Role || ""; 
           const name = decodedToken.Username || "사용자"; 
 
           localStorage.setItem('accessToken', jwtToken);
+          localStorage.setItem('userNo', String(userNo));
           localStorage.setItem('userRole', role); 
           localStorage.setItem('userName', name);
 
-          console.log('최종 저장 데이터:', { role, name }); 
+
+          console.log('최종 저장 데이터:', { userNo, role, name }); 
 
           router.push('/dashboard');
         }

@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 interface EditProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUser: {
+    userNo: number;
     id : string;
     name: string;
+    role: string;
   };
   onUpdateSuccess: (newId: string, newName: string) => void;
 }
@@ -25,6 +27,15 @@ export default function EditProfileModal({
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      setUserId(currentUser.id);
+      setUsername(currentUser.name);
+      setPassword(""); 
+      setConfirmPassword("");
+    }
+  }, [isOpen, currentUser]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,28 +48,35 @@ export default function EditProfileModal({
 
     setLoading(true);
     try {
-      const response = await fetch("/api/member/modifyMember", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+      console.log(
+        'userNo :', currentUser.userNo,
+      );
+      const response = await fetch(`/api/member/modifyMember`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("accessToken")}` },
         body: JSON.stringify({
-          username,
-          password: password || null, 
+          userNo: currentUser.userNo,
+          userId: userId,
+          password: password, 
+          userName: username,
+          role: currentUser.role
         }),
       });
 
-      if (response.ok) {
+      const result = await response.json();
+
+      if (result.success) {
         alert("정보가 성공적으로 수정되었습니다.");
         localStorage.setItem("userId", userId);
         localStorage.setItem("userName", username);
-        
         onUpdateSuccess(userId, username);
         onClose();
       } else {
-        const errorData = await response.json();
-        alert(errorData.message || "수정에 실패했습니다. 아이디 중복 여부를 확인하세요.");
+        alert(result.errorMsg);
       }
     } catch (error) {
       console.error("Error:", error);
+      alert("서버 통신 오류가 발생했습니다.")
     } finally {
       setLoading(false);
     }
@@ -83,10 +101,9 @@ export default function EditProfileModal({
               type="text" 
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
               required
             />
-            <p className="text-[10px] text-slate-400 mt-1">* 로그인 시 사용하는 아이디가 변경됩니다.</p>
           </div>
 
           <div>
@@ -95,7 +112,7 @@ export default function EditProfileModal({
               type="text" 
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
               required
             />
           </div>
@@ -103,13 +120,14 @@ export default function EditProfileModal({
           <hr className="border-slate-100" />
 
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1">새 비밀번호</label>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">새 비밀번호 (필수)</label>
             <input 
               type="password" 
-              placeholder="변경 시에만 입력"
+              placeholder="10~20자, 대소문자/숫자/특수문자 포함"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              required
             />
           </div>
 
@@ -117,15 +135,16 @@ export default function EditProfileModal({
             <label className="block text-xs font-semibold text-slate-500 mb-1">비밀번호 확인</label>
             <input 
               type="password" 
-              placeholder="비밀번호 확인"
+              placeholder="동일한 비밀번호 입력"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              required
             />
           </div>
 
           <div className="flex gap-3 mt-6">
-            <button type="button" onClick={onClose} className="flex-1 py-3 bg-slate-100 rounded-xl font-medium">취소</button>
+            <button type="button" onClick={onClose} className="flex-1 py-3 bg-slate-100 rounded-xl font-medium transition-colors">취소</button>
             <button 
               type="submit" 
               disabled={loading}

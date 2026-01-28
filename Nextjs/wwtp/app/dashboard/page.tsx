@@ -9,6 +9,7 @@ export default function DashboardPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const router = useRouter();
   const [isAuthChecked, setIsAuthChecked] = useState(false); // 인증 체크 완료 여부
+  const [userNo, setUserNo] = useState<number>(0);
   const [userRole, setUserRole] = useState("");
   const [userId, setUserId] = useState("");
   const [userName, setUserName] = useState("");
@@ -18,7 +19,9 @@ export default function DashboardPage() {
     const savedRole = localStorage.getItem('userRole');
     const savedId = localStorage.getItem('userId');
     const savedName = localStorage.getItem('userName');
-
+    const savedNo = localStorage.getItem('userNo');
+    
+    if (savedNo) setUserNo(Number(savedNo));
     if (savedId) setUserId(savedId);
     if (savedName) setUserName(savedName);
     if (!savedRole) {
@@ -169,7 +172,7 @@ export default function DashboardPage() {
       <EditProfileModal 
         isOpen={isEditModalOpen} 
         onClose={() => setIsEditModalOpen(false)} 
-        currentUser={{ id: userId, name: userName }}
+        currentUser={{ userNo: userNo, id: userId, name: userName }}
         onUpdateSuccess={(newId, newName) => {
           setUserId(newId);
           setUserName(newName);
