@@ -1,4 +1,4 @@
-DB URL : miniproject.c70cou4sk2dq.ap-northeast-2.rds.amazonaws.com:3306
+DB URL : ec2-3-37-183-184.ap-northeast-2.compute.amazonaws.com:3306
 DB Schema : aiproject
 User : aiproject
 Password : projectwwtp

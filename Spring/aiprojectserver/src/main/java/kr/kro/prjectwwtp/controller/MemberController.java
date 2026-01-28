@@ -416,8 +416,7 @@ public class MemberController {
 	@ApiResponse(description = "success : 성공/실패<br>dataSize : 0<br>dataList : NULL<br>errorMsg : success가 false 일때의 오류원인 ")
 	public ResponseEntity<Object> deleteMember(
 			HttpServletRequest request,
-			@RequestBody deleteDTO req
-			) {
+			@RequestBody deleteDTO req) {
 		//System.out.println("req : " + req);
 		responseDTO res = responseDTO.builder()
 				.success(true)

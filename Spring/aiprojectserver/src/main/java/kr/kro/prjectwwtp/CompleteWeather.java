@@ -80,7 +80,7 @@ public class CompleteWeather implements ApplicationRunner {
 				while(last.isBefore(now) || dataCount != 24 * 60) {
 					LocalDateTime start = LocalDateTime.of(last.getYear(), last.getMonthValue(), last.getDayOfMonth(), 0, 0);
 					LocalDateTime end = LocalDateTime.of(last.getYear(), last.getMonthValue(), last.getDayOfMonth(), 23, 59);
-					List<TmsData> list = weatherRepo.findByStnAndTimeBetweenOrderByDataNoDesc(stn, start, end);
+					List<TmsData> list = weatherRepo.findByStnAndTimeBetween(stn, start, end);
 					
 					int size = list.size();
 					if(size == 24 * 60) {
