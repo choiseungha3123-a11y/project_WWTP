@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import EditProfileModal from "../components/EditProfileModal";
+import AddMemberModal from "../components/AddMemberModal"
 
 export default function DashboardPage() {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const router = useRouter();
   const [isAuthChecked, setIsAuthChecked] = useState(false); // 인증 체크 완료 여부
@@ -112,7 +114,14 @@ export default function DashboardPage() {
                     </button>
                     
                     {userRole === "ROLE_ADMIN" && (
-                      <button className="text-left px-6 py-4 hover:bg-blue-50 transition-colors border-b">사원 추가 (Admin)</button>
+                      <button 
+                      onClick={() => {
+                        setIsAddModalOpen(true);
+                        setIsProfileOpen(false);
+                      }}
+                      className="text-left px-6 py-4 hover:bg-blue-50 transition-colors border-b">
+                        사원 추가 (Admin)
+                      </button>
                     )}
                     
                     <button 
@@ -176,6 +185,14 @@ export default function DashboardPage() {
         onUpdateSuccess={(newId, newName) => {
           setUserId(newId);
           setUserName(newName);
+        }}
+      />
+
+      <AddMemberModal 
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={() => {
+          console.log("회원 등록 완료");
         }}
       />
     </div>
