@@ -8,9 +8,9 @@
     - [] 이상치 필터링
     - [X] Feature engineering(시차 변수, 시간 특성) - V1/V2에서 구현
 
-- [X] 탐색적 데이터 분석(EDA)
-    - [X] 데이터 시각화 - Learning curves, R² comparison
-    - [X] 다변량 상관 분석 - Feature importance 분석
+- [] 탐색적 데이터 분석(EDA)
+    - [] 데이터 시각화 - Learning curves, R² comparison
+    - [] 다변량 상관 분석 - Feature importance 분석
 
 # 2. 머신러닝
 - [X] 베이스 라인 (V1 완료)
@@ -27,7 +27,7 @@
     - [X] 도메인 피처 추가 (강수량, 온도-습도, 탱크 수위, 수질 비율, 차분)
     - [X] 정규화 강화 (Ridge alpha 증가, RF max_depth 제한)
     - [X] 피처 수 감소 (과적합 방지)
-    - [] V2 실행 및 결과 분석 (대기 중)
+    - [X] V2 실행 및 결과 분석
 
 # 3. 딥러닝
 - [] LSTM

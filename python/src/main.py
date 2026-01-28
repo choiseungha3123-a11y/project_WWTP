@@ -1,9 +1,23 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import time
 import uuid
 
 app = FastAPI(title="Model Serving API", version="0.1.0")
+
+origins = [
+    "http://www.projectwwtp.kro.kr:8081",
+    "http://localhost:8081",  # 로컬 테스트용
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,             # 허용할 도메인 목록
+    allow_credentials=True,
+    allow_methods=["*"],               # 모든 HTTP 메서드 허용 (GET, POST 등)
+    allow_headers=["*"],               # 모든 HTTP 헤더 허용
+)
 
 class PredictIn(BaseModel):
     request_id: str | None = None
