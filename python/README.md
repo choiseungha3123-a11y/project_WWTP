@@ -188,19 +188,16 @@ Response (200 OK):
 ## 9. Repository Structure
 ```powershell
 코드 복사
-├── data/           # 원천 및 전처리 데이터
-├── notebooks/      # EDA 및 분석 노트북
-├── src/
-│   ├── features/   # 피처 생성
-│   └── models/     # 모델 학습 및 추론
-├── scripts/        # 실행 스크립트
-├── configs/        # 설정 파일
+├── data/                     # 원천 및 전처리 데이터
+├── model/                    # 학습된 모델
+├── notebook/                 # EDA 및 분석 노트북
+│   ├── linear_regression/    # 선형 회귀 코드
+│   ├── collect/              # 데이터 수집 코드
+│   └── preprocess/           # 전처리 코드
+├── src/                      # fastAPI 실행
+├── TODO.md
 └── README.md
 ```
 
-## 10. API 
-```bash
-
-```
-
 ---
+
