@@ -3,8 +3,18 @@
 ```
 notebook/preprocess/preprocess.ipynb
 notebook/preprocess/show.ipynb
-notebook/DL/
 ```
+
+TMS 관련
+
+- 하나의 모델로 TMS 지표 6개를 예측하기에는 성능이 낮은 현상이 계속 나타남
+
+-> 이를 해결하기 위해 TMS 지표 6개를 한 모델로 예측하는 것이 아닌 3-모델을 사용
+
+    - 모델 A: 유기물/입자 계열(TOC + SS, 유입/침전/생물 반응에서 같이 움직이는 경우가 많고 강우/유량 이벤트에도 같은 영향을 받음) => notebook/feature/modelA.ipynb
+    - 모델 B: 영양염 계열(TN + TP, 질소/인은 생물학적 영양염 제거 구간(BNR)에서 공정조건을 함께 공유해서 제거 성능이 같이 흔들리는 경우가 많음) => notebook/feature/modelB.ipynb
+    - 모델 C: 공정 상태 계열(FLUX + pH, pH는 생물반응과 연동되고, FLUX는 공정 부하/활성의 대표지표라서 상태로 같이 해석이 쉬움) => notebook/feature/modelC.ipynb
+    - pH는 변동 폭이 작고 센서 특성이 달라서 성능이 안 나오면 pH만 단독 모델로 빼도 될 것 같음
 
 preprocess
 1. 데이터 형태를 확인하기 위해서 show.ipynb에 데이터들의 기초 통계량, boxplot, distribution, 시계열 변화를 확인
@@ -16,6 +26,11 @@ preprocess
 -> 짧은 결측: 선형 보간(limit = 3) / 중간 결측: 스플라인 보간(limit = 12) / 남은 결측: forward/backward fill
 
 -> 결측치 처리 전후 그래프는 results/preprocess/*.png에서 확인 가능
+
+2026 / 01 / 29 해야 할 일
+
+feature engineering 하던 거 계속하기
+딥러닝 돌려보기
 
 ---
 2026 / 01 / 27
