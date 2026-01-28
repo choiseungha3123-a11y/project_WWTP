@@ -1,0 +1,24 @@
+python
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware  # 1. 미들웨어 임포트
+
+app = FastAPI()
+
+# 2. 허용할 Origin(출처) 목록 작성
+origins = [
+    "http://www.projectwwtp.kro.kr:8081",
+    "http://localhost:8081",  # 로컬 테스트용
+]
+
+# 3. CORSMiddleware 설정 추가
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,             # 허용할 도메인 목록
+    allow_credentials=True,
+    allow_methods=["*"],               # 모든 HTTP 메서드 허용 (GET, POST 등)
+    allow_headers=["*"],               # 모든 HTTP 헤더 허용
+)
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
