@@ -1,10 +1,23 @@
 2026 / 01 / 28
 
 ```
-notebook/preprocess/
+notebook/preprocess/preprocess.ipynb
+notebook/preprocess/show.ipynb
 notebook/DL/
 ```
 
+preprocess
+1. 데이터 형태를 확인하기 위해서 show.ipynb에 데이터들의 기초 통계량, boxplot, distribution, 시계열 변화를 확인
+
+-> 자세한 그래프는 results/boxplot/*.png, results/distribution/*.png, results/timeseries/*.png에서 확인 가능
+
+2. 01 / 27 에 사용한 데이터는 가장 기본적인 결측치에서 선형 보간을 사용하였는데 구간 길이에 따라 나눠서 결측치 처리를 해야 한다고 판단하여 수정
+
+-> 짧은 결측: 선형 보간(limit = 3) / 중간 결측: 스플라인 보간(limit = 12) / 남은 결측: forward/backward fill
+
+-> 결측치 처리 전후 그래프는 results/preprocess/*.png에서 확인 가능
+
+---
 2026 / 01 / 27
 ```
 notebook/ML/primary/baseline.ipynb
@@ -80,6 +93,8 @@ V1: 4.2% → V2: 94.3% (22배 증가)
 
 데이터 EDA
 딥러닝 모델 구상 및 구현
+
+---
 
 2026 / 01 / 26
 ```
