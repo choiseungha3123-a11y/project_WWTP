@@ -116,11 +116,11 @@ export default function DashboardPage() {
                     {userRole === "ROLE_ADMIN" && (
                       <button 
                       onClick={() => {
-                        setIsAddModalOpen(true);
+                        router.push("/admin/member");
                         setIsProfileOpen(false);
                       }}
                       className="text-left px-6 py-4 hover:bg-blue-50 transition-colors border-b">
-                        사원 추가 (Admin)
+                        사원 관리
                       </button>
                     )}
                     

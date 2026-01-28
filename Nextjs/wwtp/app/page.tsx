@@ -49,11 +49,13 @@ export default function LandingPage() {
           console.log('Decoded JWT Token:', decodedToken);
 
           const userNo = decodedToken.Userno || "";
+          const userId = decodedToken.Userid || "";
           const role = decodedToken.Role || ""; 
           const name = decodedToken.Username || "사용자"; 
 
           localStorage.setItem('accessToken', jwtToken);
           localStorage.setItem('userNo', String(userNo));
+          localStorage.setItem('userId', userId);
           localStorage.setItem('userRole', role); 
           localStorage.setItem('userName', name);
 
