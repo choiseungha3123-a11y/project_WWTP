@@ -30,6 +30,9 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {
+		JWTUtil.setMemberRepository(memberRepo);
+		JWTUtil.setTokenBlacklistManager(tokenBlacklistManager);
+		
 		String requestPath = request.getRequestURI();
 		String method = request.getMethod();
 		System.out.println("\n========== [JWTAuthorizationFilter] START ==========");
@@ -100,7 +103,7 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 		} catch (Exception e) {
 			System.out.println("[JWTAuthorizationFilter] Error during token validation: " + e.getMessage());
 			System.out.println("========== [JWTAuthorizationFilter] END (ERROR) ==========\n");
-			e.printStackTrace();
+			//e.printStackTrace();
 		}
 		
 		// SecurityFilterChain의 다음 필터로 이동

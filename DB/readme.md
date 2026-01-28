@@ -8,9 +8,11 @@ Password : projectwwtp
 ps -ef | grep jar
 kill XXXX(숫자, 프로세스 ID)
 -jar 파일(서버)를 back에서 돌아가도록하는 명령(메모리를 1G로 할당)-
-nohup java -Xmx1G -jar aiprojectserver-0.0.1.jar > ai-server.log 2>&1 &
+pm2 start "java -Xmx1G -jar aiprojectserver-0.0.1.jar" --name "ai-server" --output "./ai-server-out.log"
+
 -MYSQL 관련-
 mysql -u root -p
+sudo systemctl restart mysqld
 sudo systemctl status mysqld
 -nextjs 빌드-
 npm run build
@@ -23,9 +25,13 @@ sudo systemctl enable nginx
 sudo systemctl start nginx
 sudo vi /etc/nginx/nginx.conf
 sudo systemctl restart nginx
--파이썬 관련-
 
-nohup uvicorn main:app --host 0.0.0.0 --port 8000
+-파이썬 관련-
+conda activate projectwwtp 활성화 후
+pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" --name "fastapi-server" --output "./fastapi-out.log" --error "./fastapi-error.log"
+
+-HTTPS 인증 관련-
+sudo certbot certonly -d projectwwtp.kro.kr --manual --preferred-challenges dns
 
 
 
@@ -43,7 +49,6 @@ http://10.125.121.176:8081/swagger-ui/index.html
 	amazone linux 2023 let's encrypt
 	vscode 안티그라비티
 
-	회원정보 변경시 null 값은 처리 되지 않도록
 	Oauth2 기능 추가 (구글, 네이버, 카카오)
 	메모 처리(한꺼번에 보내기)
 	로그인 실패 관련 이력 처리
@@ -51,7 +56,6 @@ http://10.125.121.176:8081/swagger-ui/index.html
 	이상 조회 탐지(별도 테이블로 관리)
 	날씨 데이터 조회 기록 추가
 	날씨 데이터 직접 수정, 삭제(변경 이력 관리)
-	데이터 품질(결측/이상치)
 
 
 완료한 일 :
@@ -67,4 +71,6 @@ http://10.125.121.176:8081/swagger-ui/index.html
 	ID 중복 확인 / (X)비밀번호 제한 추가(비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.)
 	동시 로그인 제한
 	DB 이전
-	파이써 fastapi 연동 확인
+	파이썬 fastapi 연동 확인
+	회원정보 변경시(ID 중복에 관한 처리 추가, NULL 값은 변경되지 않도록 처리)
+	데이터 품질(결측/이상치)

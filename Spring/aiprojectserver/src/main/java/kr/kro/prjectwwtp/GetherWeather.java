@@ -84,6 +84,7 @@ public class GetherWeather implements ApplicationRunner {
 				list.removeIf(data -> data == null || data.getTa() == -99.9);
 				if (list != null && list.size() > 0)
 					weatherRepo.saveAll(list);
+				System.out.println("WeatherData 추가 : " + list.size());
 				fetchListCount += list.size();
 			}	
 		}catch (Exception e) {
@@ -150,7 +151,8 @@ public class GetherWeather implements ApplicationRunner {
                         .ps(Double.parseDouble(columns[16]))               // PS
                         .td(Double.parseDouble(columns[17]))               // TD
                         .build();
-                
+                //if(columns[8].equals("-99.9"))
+                //	continue;
                 dataList.add(data);
             } catch (Exception e) {
                 // 데이터 결측치(-99.0 등)나 파싱 에러 처리

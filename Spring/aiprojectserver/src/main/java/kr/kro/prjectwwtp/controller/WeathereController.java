@@ -32,7 +32,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/weather")
 @RequiredArgsConstructor
 @Tag(name="WeatherController", description = "날씨 데이터 조회용 API")
-public class WeatherCompleteController {
+public class WeathereController {
 	private final WeatherRepository weatherRepo;
 	
 	@ExceptionHandler(MissingServletRequestParameterException.class)

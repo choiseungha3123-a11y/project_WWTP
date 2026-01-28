@@ -16,6 +16,7 @@ import kr.kro.prjectwwtp.persistence.MemberRepository;
 public class JWTUtil {
 	
 	private static TokenBlacklistManager tokenBlacklistManager;
+	private static MemberRepository memberRepo;
 	//private static final long ACCESS_TOKEN_MSEC = 24 * 60 * (60 * 1000);	// 1일
 	private static final long ACCESS_TOKEN_MSEC = 60 * (60 * 1000);	// 1시간
 	//private static final long ACCESS_TOKEN_MSEC = (60 * 1000);	// 1분
@@ -29,6 +30,10 @@ public class JWTUtil {
 	
 	public static void setTokenBlacklistManager(TokenBlacklistManager manager) {
 		tokenBlacklistManager = manager;
+	}
+	
+	public static void setMemberRepository(MemberRepository repo) {
+		memberRepo = repo;
 	}
 	
 	private static String getJWTSource(String token) {
@@ -97,24 +102,26 @@ public class JWTUtil {
 		return false;
 	}
 	
-	public static Member parseToken(HttpServletRequest request, MemberRepository memberRepo) {
+	public static Member parseToken(HttpServletRequest request) {
+		String token = "none";
 		try {
-		String token = request.getHeader("Authorization");
-		if(isExpired(token))
-			return null;
-		Long userno = Long.parseLong(JWTUtil.getClaim(token, JWTUtil.usernoClaim));
-		String userid = JWTUtil.getClaim(token, JWTUtil.useridClaim);
-		Optional<Member> opt = memberRepo.findById(userno);
-		if(opt.isEmpty())
-			return null;
-		Member member = opt.get();
-		if(!member.getUserId().equals(userid))
-			return null;
-		return member;
+			token = request.getHeader("Authorization");
+			if(isExpired(token))
+				return null;
+			Long userno = Long.parseLong(JWTUtil.getClaim(token, JWTUtil.usernoClaim));
+			String userid = JWTUtil.getClaim(token, JWTUtil.useridClaim);
+			Optional<Member> opt = memberRepo.findById(userno);
+			if(opt.isEmpty())
+				return null;
+			Member member = opt.get();
+			if(!member.getUserId().equals(userid))
+				return null;
+			return member;
 		}
 		catch(Exception e)
 		{
-			//e.printStackTrace();
+			e.printStackTrace();
+			System.out.println("token : " + token);
 			System.out.println("쿠키 오류");
 			return null;
 		}

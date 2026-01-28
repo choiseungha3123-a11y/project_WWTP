@@ -1,8 +1,6 @@
 package kr.kro.prjectwwtp.controller;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -15,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -27,13 +26,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import kr.kro.prjectwwtp.config.PasswordEncoder;
-import kr.kro.prjectwwtp.domain.LoginLog;
+import kr.kro.prjectwwtp.config.TokenBlacklistManager;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.responseDTO;
-import kr.kro.prjectwwtp.persistence.LoginLogRepository;
-import kr.kro.prjectwwtp.persistence.MemberRepository;
+import kr.kro.prjectwwtp.service.LoginLogService;
+import kr.kro.prjectwwtp.service.MemberService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -46,9 +44,9 @@ import lombok.ToString;
 @RequiredArgsConstructor
 @Tag(name="MemberController", description = "회원정보 관리 API")
 public class MemberController {
-	private final MemberRepository memberRepo;
-	private final LoginLogRepository logRepo;
-	private PasswordEncoder encoder = new PasswordEncoder();
+	private final MemberService memberService;
+	private final LoginLogService logService;
+	private final TokenBlacklistManager tokenBlacklistManager;
 	
 	@ExceptionHandler(MissingServletRequestParameterException.class)
 	public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex) {
@@ -88,43 +86,53 @@ public class MemberController {
 	@PostMapping("/login")
 	@Operation(summary="로그인 시도", description = "userid/password를 통해 로그인을 시도")
 	@Parameters( {
-		@Parameter(name = "userid", description= "등록된 사용자 ID"),
+		@Parameter(name = "userId", description= "등록된 사용자 ID"),
 		@Parameter(name = "password", description= "등록된 비밀번호")
 	})
 	@ApiResponse(description = "success : 성공/실패<br>dataSize : 1<br>dataList : JWTToken<br>errorMsg : success가 false 일때의 오류원인 ")
 	public ResponseEntity<Object> login(
-			@RequestBody loginDTO req) {
+			@RequestBody loginDTO req,
+			HttpServletRequest request) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
 				.build();
-		System.out.println("req : " + req);
-		Optional<Member> opt =  memberRepo.findByUserId(req.userId);
-		if(opt.isEmpty()) {
+		if(req.userId == null || req.userId.length() == 0 
+				|| req.password == null || req.password.length() == 0) {
 			res.setSuccess(false);
-			res.setErrorMsg("회원 정보가 존재하지 않습니다. ID와 비밀번호를 확인해주세요.");
+			res.setErrorMsg("정보가 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		Member member = opt.get();
-		if(!encoder.matches(req.getPassword(), member.getPassword())) {
+		//System.out.println("req : " + req);
+		
+		Member member = memberService.getByIdAndPassword(req.userId, req.password);
+		
+		if(member == null) {
 			res.setSuccess(false);
 			res.setErrorMsg("회원 정보가 존재하지 않습니다. ID와 비밀번호를 확인해주세요.");
 			return ResponseEntity.ok().body(res);
 		}
 		
-		// 로그인 시간 갱신
-		LocalDateTime now = LocalDateTime.now();
-		member.setLastLoginTime(now);
-		memberRepo.save(member);
+		logService.addLog(member);
 		
-		// 로그 추가
-		logRepo.save(LoginLog.builder()
-				.member(member)
-				.loginTime(now)
-				.build());
+		// 기존 토큰 무효화 (다른 기기에서의 로그인을 무효화)
+		tokenBlacklistManager.invalidateToken(req.userId);
 		
 		// 토큰 생성
 		String token = JWTUtil.getJWT(member);
+		//System.out.println("token : " + token);
+		
+		// 새 토큰 등록
+		String userAgent = request.getHeader("User-Agent");
+		if (userAgent == null) {
+			userAgent = "Unknown";
+		}
+		String remoteAddr = getRemoteAddress(request);
+		int remotePort = request.getRemotePort();
+		String remoteInfo = remoteAddr + ":" + remotePort;
+		
+		tokenBlacklistManager.registerNewToken(req.userId, token, userAgent, remoteInfo);
+		
 		res.addData(token);
 		return ResponseEntity.ok().body(res);
 	}
@@ -139,26 +147,28 @@ public class MemberController {
 				.build();
 		
 		// 토큰 추출 및 검증
-		String token = request.getHeader("Authorization");
-		if (token == null || !token.startsWith("Bearer ")) {
+		if(JWTUtil.isExpired(request))
+		{
 			res.setSuccess(false);
-			res.setErrorMsg("유효한 토큰이 없습니다.");
+			res.setErrorMsg("토큰이 만료되었습니다.");
 			return ResponseEntity.ok().body(res);
 		}
 		
 		// JWT에서 userid 추출
 		try {
+			String token = request.getHeader("Authorization");
 			String userid = JWTUtil.getClaim(token, JWTUtil.useridClaim);
 			System.out.println("[MemberController] logout request for user: " + userid);
 			
 			// TokenBlacklistManager에서 토큰 무효화
-			// (자동으로 TokenBlacklistManager의 invalidateToken이 호출됨)
+			tokenBlacklistManager.invalidateToken(userid);
 			
 			res.setSuccess(true);
 			res.setErrorMsg(null);
 		} catch (Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg("로그아웃 처리 중 오류가 발생했습니다.");
+			System.out.println("[MemberController] logout error: " + e.getMessage());
 		}
 		
 		return ResponseEntity.ok().body(res);
@@ -179,7 +189,9 @@ public class MemberController {
 			res.setErrorMsg("토큰이 만료되었습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		Member member = JWTUtil.parseToken(request, memberRepo);
+		String token = request.getHeader("Authorization");
+		//System.out.println("token : " + token);
+		Member member = JWTUtil.parseToken(request);
 		if(member == null){
 			res.setSuccess(false);
 			res.setErrorMsg("로그인이 필요합니다.");
@@ -190,9 +202,42 @@ public class MemberController {
 			res.setErrorMsg("권한이 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		List<Member> list = memberRepo.findAll();
+		List<Member> list = memberService.getMemberList();
 		for(Member mem : list)
 			res.addData(mem);
+		return ResponseEntity.ok().body(res);
+	}
+	
+	@Getter
+	@Setter
+	@ToString
+	static public class checkDTO {
+		private String userId;
+	}
+	
+	@GetMapping("/checkId")
+	@Operation(summary="ID 중복 체크", description = "ID 중복체크")
+	@Parameters( {
+		@Parameter(name = "userId", description = "확인할 사용자 ID"),
+	})
+	@ApiResponse(description = "success : 성공/실패<br>dataSize : 0<br>dataList : NULL<br>errorMsg : success가 false 일때의 오류원인 ")
+	public ResponseEntity<Object> checkId(@RequestParam String userId) {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		if(userId == null || userId.length() == 0) {
+			res.setSuccess(false);
+			res.setErrorMsg("정보가 올바르지 않습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		
+		if(memberService.checkId(userId)) {
+			res.setSuccess(false);
+			res.setErrorMsg("이미 사용중인 ID 입니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		
 		return ResponseEntity.ok().body(res);
 	}
 	
@@ -212,7 +257,7 @@ public class MemberController {
 	@PutMapping("/addMember")
 	@Operation(summary="맴버 추가", description = "userid/password/role값을 맴버에 추가")
 	@Parameters( {
-		@Parameter(name = "userid", description = "등록할 사용자 ID"),
+		@Parameter(name = "userId", description = "등록할 사용자 ID"),
 		@Parameter(name = "password", description = "등록할 비밀번호"),
 		@Parameter(name = "userName", description = "등록할 유저명"),
 	})
@@ -244,7 +289,7 @@ public class MemberController {
 			res.setErrorMsg("토큰이 만료되었습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		Member member = JWTUtil.parseToken(request, memberRepo);
+		Member member = JWTUtil.parseToken(request);
 		if(member == null){
 			res.setSuccess(false);
 			res.setErrorMsg("로그인이 필요합니다.");
@@ -255,18 +300,13 @@ public class MemberController {
 			res.setErrorMsg("권한이 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		if(memberRepo.findByUserId(req.userId).isPresent()) {
+		if(memberService.checkId(req.userId)) {
 			res.setSuccess(false);
 			res.setErrorMsg("이미 사용중인 ID 입니다.");
 			return ResponseEntity.ok().body(res);
 		}
 		
-		memberRepo.save(Member.builder()
-							.userId(req.userId)
-							.password(encoder.encode(req.password))
-							.userName(req.userName)
-							.role(Role.ROLE_MEMBER)
-							.build());
+		memberService.addMember(req.userId, req.password, req.userName);
 		
 		return ResponseEntity.ok().body(res);
 	}
@@ -283,10 +323,10 @@ public class MemberController {
 	}
 		
 	@PatchMapping("/modifyMember")
-	@Operation(summary="맴버 정보 변경", description = "user_no를 이용해서 userid,password,role을 변경")
+	@Operation(summary="맴버 정보 변경", description = "userNo를 이용해서 userId,password,role을 변경")
 	@Parameters( {
-		@Parameter(name = "user_no", description= "변경할 사용자 고유번호"),
-		@Parameter(name = "userid", description= "변경할 사용자 ID"),
+		@Parameter(name = "userNo", description= "변경할 사용자 고유번호"),
+		@Parameter(name = "userId", description= "변경할 사용자 ID"),
 		@Parameter(name = "password", description= "변경할 비밀번호"),
 		@Parameter(name = "userName", description = "변경할 유저명"),
 		@Parameter(name = "role", description = "변경할 이용자 권한", example = "ROLE_MEMBER")
@@ -296,14 +336,15 @@ public class MemberController {
 			HttpServletRequest request,
 			@RequestBody modifyDTO req
 			) {
-		System.out.println("req : " + req);
+		//System.out.println("req : " + req);
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
 				.build();
-		if(req.userId == null || req.userId.length() == 0 
-				|| req.password == null || req.password.length() == 0
-				|| req.userName == null || req.userName.length() == 0) {
+		if((req.userId == null || req.userId.length() == 0) 
+				&& (req.password == null || req.password.length() == 0)
+				&& (req.userName == null || req.userName.length() == 0)
+				&& req.role == null) {
 			res.setSuccess(false);
 			res.setErrorMsg("정보가 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
@@ -319,16 +360,10 @@ public class MemberController {
 			res.setErrorMsg("토큰이 만료되었습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		Member member = JWTUtil.parseToken(request, memberRepo);
+		Member member = JWTUtil.parseToken(request);
 		if(member == null){
 			res.setSuccess(false);
 			res.setErrorMsg("로그인이 필요합니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		Optional<Member> opt = memberRepo.findById(req.userNo);
-		if(opt.isEmpty()) {
-			res.setSuccess(false);
-			res.setErrorMsg("존재하지 않는 회원정보입니다.");
 			return ResponseEntity.ok().body(res);
 		}
 		if(member.getRole() != Role.ROLE_ADMIN && member.getUserNo() != req.userNo) {
@@ -336,18 +371,31 @@ public class MemberController {
 			res.setErrorMsg("권한이 없습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		if(memberRepo.findByUserId(req.userId).isPresent()) {
+		Member modifyMember = memberService.getByNo(req.userNo);
+		if(modifyMember == null) {
 			res.setSuccess(false);
-			res.setErrorMsg("이미 사용중인 ID 입니다.");
+			res.setErrorMsg("존재하지 않는 회원정보입니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		Member modifyMember = opt.get();
-		modifyMember.setUserId(req.userId);
-		modifyMember.setPassword(encoder.encode(req.password));
-		modifyMember.setUserName(req.userName);
-		modifyMember.setRole(req.role);
-		memberRepo.save(modifyMember);
+		if(member.getUserNo() == req.userNo) {
+			// 자기 정보 수정시
+			if(!member.getUserId().equals(req.userId) 
+					&& memberService.checkId(req.userId)) {
+				res.setSuccess(false);
+				res.setErrorMsg("이미 사용중인 ID 입니다.");
+				return ResponseEntity.ok().body(res);
+			}
+		} else {
+			// 관리자가 정보 수정시
+			if(!modifyMember.getUserId().equals(req.userId) 
+					&& memberService.checkId(req.userId)) {
+				res.setSuccess(false);
+				res.setErrorMsg("이미 사용중인 ID 입니다.");
+				return ResponseEntity.ok().body(res);
+			}
+		}
 		
+		memberService.modifyMember(modifyMember, req.userId, req.password, req.userName, req.role);
 		return ResponseEntity.ok().body(res);
 	}
 	
@@ -360,17 +408,17 @@ public class MemberController {
 	}
 	
 	@DeleteMapping("/deleteMember")
-	@Operation(summary="맴버 정보 삭제", description = "user_no/user_id를 이용해서 회원정보를 삭제")
+	@Operation(summary="맴버 정보 삭제", description = "userNo/userId를 이용해서 회원정보를 삭제")
 	@Parameters( {
-		@Parameter(name = "user_no", description= "변경할 사용자 고유번호"),
-		@Parameter(name = "userid", description= "변경할 사용자 ID")
+		@Parameter(name = "userNo", description= "변경할 사용자 고유번호"),
+		@Parameter(name = "userId", description= "변경할 사용자 ID")
 	})
 	@ApiResponse(description = "success : 성공/실패<br>dataSize : 0<br>dataList : NULL<br>errorMsg : success가 false 일때의 오류원인 ")
 	public ResponseEntity<Object> deleteMember(
 			HttpServletRequest request,
 			@RequestBody deleteDTO req
 			) {
-		System.out.println("req : " + req);
+		//System.out.println("req : " + req);
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
@@ -386,14 +434,14 @@ public class MemberController {
 			res.setErrorMsg("토큰이 만료되었습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		Member member = JWTUtil.parseToken(request, memberRepo);
+		Member member = JWTUtil.parseToken(request);
 		if(member == null){
 			res.setSuccess(false);
 			res.setErrorMsg("로그인이 필요합니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		Optional<Member> opt = memberRepo.findById(req.userNo);
-		if(opt.isEmpty()) {
+		Member deleteMember = memberService.getByNo(req.userNo);
+		if(deleteMember == null) {
 			res.setSuccess(false);
 			res.setErrorMsg("존재하지 않는 회원정보입니다.");
 			return ResponseEntity.ok().body(res);
@@ -403,9 +451,31 @@ public class MemberController {
 			res.setErrorMsg("권한이 없습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		Member deleteMember = opt.get();
-		memberRepo.delete(deleteMember);
+		memberService.deleteMember(deleteMember);
+		//System.out.println("delete success");
 		
 		return ResponseEntity.ok().body(res);
+	}
+	
+	/**
+	 * 클라이언트의 실제 IP 주소 추출
+	 * 프록시 환경에서도 올바른 IP를 가져오도록 처리
+	 */
+	private String getRemoteAddress(HttpServletRequest request) {
+		String ip = request.getHeader("X-Forwarded-For");
+		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("Proxy-Client-IP");
+		}
+		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("WL-Proxy-Client-IP");
+		}
+		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getRemoteAddr();
+		}
+		// X-Forwarded-For가 여러 IP를 포함할 수 있으므로 첫 번째만 사용
+		if (ip != null && ip.contains(",")) {
+			ip = ip.split(",")[0].trim();
+		}
+		return ip;
 	}
 }

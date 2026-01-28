@@ -34,6 +34,7 @@ public class CompleteWeather implements ApplicationRunner {
 	
 	private final WeatherRepository weatherRepo;
 	private final WeatherCompleteRepository completeRepo;
+	private final GetherWeather getherWeather;
 	private RestTemplate restTemplate = new RestTemplate();
 		@Value("${scheduler.enable}")
 	private boolean enable;
@@ -65,6 +66,83 @@ public class CompleteWeather implements ApplicationRunner {
 				541 // 남양주 배양리
 		};
 		try {
+			for(int stn : stnlist) {
+				WeatherComplete complete = completeRepo.findFirstByStnOrderByDataNoDesc(stn);
+				LocalDateTime last = LocalDateTime.of(2024, 1, 1, 0, 0);
+				int dataCount = 0;
+				LocalDateTime now = LocalDateTime.now();
+				//System.out.println("now : " + now);
+				if(complete != null) {
+					last = complete.getDataTime();
+					dataCount = complete.getDataSize();
+				}
+				
+				while(last.isBefore(now) || dataCount != 24 * 60) {
+					LocalDateTime start = LocalDateTime.of(last.getYear(), last.getMonthValue(), last.getDayOfMonth(), 0, 0);
+					LocalDateTime end = LocalDateTime.of(last.getYear(), last.getMonthValue(), last.getDayOfMonth(), 23, 59);
+					List<TmsData> list = weatherRepo.findByStnAndTimeBetweenOrderByDataNoDesc(stn, start, end);
+					
+					int size = list.size();
+					if(size == 24 * 60) {
+						// 데이터 완료
+						last = last.plusDays(1);
+						completeRepo.save(WeatherComplete.builder()
+											.dataTime(start)
+											.stn(stn)
+											.dataSize(size)
+											.build());
+					} else if(size > 24 * 60) {
+						// 중복 발견 - time값이 동일한 중복 데이터 제거
+						System.out.println("중복 발견 : " + last);
+						List<TmsData> toDelete = new ArrayList<>();
+						var uniqueMap = list.stream()
+							.collect(Collectors.toMap(
+								TmsData::getTime,
+								d -> d,
+								(existing, duplicate) -> {
+									toDelete.add(duplicate);
+									return existing;
+								}
+							));
+						
+						// 데이터베이스에서 삭제
+						weatherRepo.deleteAll(toDelete);
+						
+						System.out.println("중복 제거 완료: " + toDelete.size() + "개 삭제");
+						list = new ArrayList<>(uniqueMap.values());
+					} else {
+						// 결측 발견
+						System.out.println("결측 발견 : " + last + " (현재: " + size + "개)");
+						
+						// GetherWeather를 이용해 API에서 데이터 조회
+						String tm1 = start.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
+						String tm2 = end.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
+						
+						List<TmsData> apiList = getherWeather.fetchTmsData(tm1, tm2, stn);
+						System.out.println("API에서 조회: " + apiList.size() + "개");
+						
+						// 현재 list에 없는 데이터 찾기 (현재 list의 time 값과 비교)
+						Set<LocalDateTime> existingTimes = list.stream()
+							.map(TmsData::getTime)
+							.collect(Collectors.toSet());
+						
+						List<TmsData> missingData = apiList.stream()
+							.filter(data -> !existingTimes.contains(data.getTime()))
+							.collect(Collectors.toList());
+						
+						// 빠진 데이터를 DB에 저장
+						if(missingData.size() > 0) {
+							weatherRepo.saveAll(missingData);
+							System.out.println("결측 데이터 보충: " + missingData.size() + "개 저장");
+							list.addAll(missingData);
+						} else {
+							System.out.println("추가될 결측 데이터 없음");
+						}
+					}
+				}
+				System.out.println("last : " + last);
+			}
+/*			
 			for (int stn : stnlist) {
 				LocalDateTime lastDay = LocalDateTime.of(2024, 1, 1, 0, 0);
 				LocalDateTime now = LocalDateTime.now();
@@ -123,6 +201,7 @@ public class CompleteWeather implements ApplicationRunner {
 					lastDay = lastDay.plusDays(1);
 				}
 			}	
+*/			
 		}catch (Exception e) {
 			// TODO: handle exception
 			e.printStackTrace();

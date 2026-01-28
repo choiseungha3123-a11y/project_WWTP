@@ -30,18 +30,20 @@ public class TokenBlacklistManager {
 		public String token;
 		public long loginTime;
 		public String userAgent;
+		public String remoteInfo;
 		
-		public LoginInfo(String userId, String token, String userAgent) {
+		public LoginInfo(String userId, String token, String userAgent, String remoteInfo) {
 			this.userId = userId;
 			this.token = token;
 			this.loginTime = System.currentTimeMillis();
 			this.userAgent = userAgent;
+			this.remoteInfo = remoteInfo;
 		}
 		
 		@Override
 		public String toString() {
-			return String.format("[LoginInfo] userId=%s, token=%s, loginTime=%d, userAgent=%s", 
-				userId, token.substring(0, Math.min(20, token.length())) + "...", loginTime, userAgent);
+			return String.format("[LoginInfo] userId=%s, token=%s, loginTime=%d, userAgent=%s, remoteInfo=%s", 
+				userId, token.substring(0, Math.min(20, token.length())) + "...", loginTime, userAgent, remoteInfo);
 		}
 	}
 	
@@ -50,11 +52,13 @@ public class TokenBlacklistManager {
 	 * @param userId 사용자 ID
 	 * @param newToken 새로 발급된 토큰
 	 * @param userAgent 사용자 에이전트 (브라우저 정보)
+	 * @param remoteInfo Remote IP:PORT 정보
 	 */
-	public void registerNewToken(String userId, String newToken, String userAgent) {
+	public void registerNewToken(String userId, String newToken, String userAgent, String remoteInfo) {
 		System.out.println("[TokenBlacklistManager] ====== New Login Attempt ======");
 		System.out.println("[TokenBlacklistManager] userId: " + userId);
 		System.out.println("[TokenBlacklistManager] userAgent: " + userAgent);
+		System.out.println("[TokenBlacklistManager] remoteInfo: " + remoteInfo);
 		
 		// 기존 토큰이 있으면 블랙리스트에 추가 (다른 브라우저/기기의 로그인 무효화)
 		String oldToken = activeTokens.get(userId);
@@ -68,7 +72,7 @@ public class TokenBlacklistManager {
 		activeTokens.put(userId, newToken);
 		
 		// 로그인 정보 저장
-		LoginInfo newLoginInfo = new LoginInfo(userId, newToken, userAgent);
+		LoginInfo newLoginInfo = new LoginInfo(userId, newToken, userAgent, remoteInfo);
 		loginInfoMap.put(userId, newLoginInfo);
 		
 		System.out.println("[TokenBlacklistManager] ✅ New token registered for: " + userId);

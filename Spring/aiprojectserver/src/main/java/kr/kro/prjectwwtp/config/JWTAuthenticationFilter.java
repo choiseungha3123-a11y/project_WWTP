@@ -67,13 +67,22 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 			userAgent = "Unknown";
 		}
 		
+		// Remote IP 및 PORT 정보 추출
+		String remoteAddr = getRemoteAddress(request);
+		int remotePort = request.getRemotePort();
+		String remoteInfo = remoteAddr + ":" + remotePort;
+		
+		System.out.println("[JWTAuthenticationFilter] User Agent: " + userAgent);
+		System.out.println("[JWTAuthenticationFilter] Remote IP:PORT: " + remoteInfo);
+		
 		// JWT 토큰 생성
 		String token = JWTUtil.getJWT(member);
+		System.out.println("token : " + token);
 		System.out.println("[JWTAuthenticationFilter] Token generated for: " + userId);
 		
 		// 기존 토큰 무효화 및 새 토큰 등록 (다른 브라우저/기기의 로그인 제거)
 		System.out.println("[JWTAuthenticationFilter] Registering new login (previous browser/device logins will be invalidated)");
-		tokenBlacklistManager.registerNewToken(userId, token, userAgent);
+		tokenBlacklistManager.registerNewToken(userId, token, userAgent, remoteInfo);
 		
 		// 응답 헤더에 토큰 추가
 		response.addHeader(HttpHeaders.AUTHORIZATION, token);
@@ -109,5 +118,27 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 		String responseBody = new ObjectMapper().writeValueAsString(res);
 		response.getWriter().write(responseBody);
 		response.getWriter().flush();
+	}
+	
+	/**
+	 * 클라이언트의 실제 IP 주소 추출
+	 * 프록시 환경에서도 올바른 IP를 가져오도록 처리
+	 */
+	private String getRemoteAddress(HttpServletRequest request) {
+		String ip = request.getHeader("X-Forwarded-For");
+		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("Proxy-Client-IP");
+		}
+		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("WL-Proxy-Client-IP");
+		}
+		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getRemoteAddr();
+		}
+		// X-Forwarded-For가 여러 IP를 포함할 수 있으므로 첫 번째만 사용
+		if (ip != null && ip.contains(",")) {
+			ip = ip.split(",")[0].trim();
+		}
+		return ip;
 	}
 }

@@ -21,7 +21,7 @@ public class InitialData implements ApplicationRunner {
 		//System.out.println("InitalData");
 		String adminUserid = "admin";
 		String memberUserid = "member";
-		if(memberRepo.findByUserId(adminUserid).isEmpty()) {
+		if(memberRepo.findByRole(Role.ROLE_ADMIN).size() == 0) {
 			memberRepo.save(Member.builder()
 					.userId(adminUserid)
 					.password(encoder.encode("admin1234"))
@@ -29,12 +29,12 @@ public class InitialData implements ApplicationRunner {
 					.role(Role.ROLE_ADMIN)
 					.build());
 		}
-		if(memberRepo.findByUserId(memberUserid).isEmpty()) {
+		if(memberRepo.findByRole(Role.ROLE_MEMBER).size() == 0) {
 			memberRepo.save(Member.builder()
 					.userId(memberUserid)
 					.password(encoder.encode("member1234"))
 					.userName("이용자")
-					.role(Role.ROLE_ADMIN)
+					.role(Role.ROLE_MEMBER)
 					.build());
 		}
 	}
