@@ -22,10 +22,14 @@ export default function MemberManagementPage() {
   // 1. 사원 리스트 불러오기
   const fetchMembers = async () => {
     setLoading(true);
+
+  const token = localStorage.getItem("accessToken");
+  console.log('token', token);
+
     try {
       const response = await fetch("/api/member/listMember", { // 컨트롤러 주소와 일치
         headers: { 
-          "Authorization": `Bearer ${localStorage.getItem('token')}` 
+          "Authorization": `${localStorage.getItem('accessToken')}` 
         }
       });
       const result = await response.json();
@@ -57,7 +61,7 @@ export default function MemberManagementPage() {
         method: "DELETE",
         headers: { 
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem('token')}` 
+          "Authorization": `Bearer ${localStorage.getItem('accessToken')}` 
         },
         body: JSON.stringify({ userNo })
       });

@@ -95,7 +95,7 @@ export default function DashboardPage() {
 
                   <div className="p-6 flex flex-col items-center border-b">
                     <div className="w-16 h-16 bg-slate-200 rounded-full mb-3 overflow-hidden border border-gray-100">
-                       <div className="w-full h-full bg-blue-500 flex items-center justify-center text-white text-xl">최</div>
+                       <div className="w-full h-full bg-blue-500 flex items-center justify-center text-white text-xl">AD</div>
                     </div>
                     <p className="font-bold text-lg">{userName}</p>
                     <select className="mt-2 text-xs border rounded px-2 py-1 outline-none">
