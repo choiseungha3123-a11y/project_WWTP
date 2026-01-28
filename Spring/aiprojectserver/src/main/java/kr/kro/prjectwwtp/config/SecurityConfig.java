@@ -122,7 +122,14 @@ public class SecurityConfig {
 		CorsConfiguration config = new CorsConfiguration();
 		config.setAllowedOriginPatterns(Arrays.asList(
 			"http://localhost:3000",
-			"http://127.0.0.1:3000"));
+			"http://127.0.0.1:3000",
+			"http://localhost:8000",
+			"http://localhost:8081",
+			"http://localhost:80",
+			"http://www.projectwwtp.kro.kr:3000",
+			"http://www.projectwwtp.kro.kr:8000",
+			"http://www.projectwwtp.kro.kr:8081",
+			"http://www.projectwwtp.kro.kr:80"));
 		config.addAllowedMethod(CorsConfiguration.ALL);
 		config.addAllowedHeader(CorsConfiguration.ALL);
 		config.setAllowCredentials(true);

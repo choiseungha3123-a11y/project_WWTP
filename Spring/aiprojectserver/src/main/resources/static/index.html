@@ -4,18 +4,146 @@
 <meta charset="UTF-8">
 <title>시작 페이지</title>
 <link rel="stylesheet" href="./css/login.css">
+<style>
+	body {
+		font-family: Arial, sans-serif;
+		background-color: #f5f5f5;
+		padding: 20px;
+	}
+	.container {
+		max-width: 800px;
+		margin: 0 auto;
+		background-color: white;
+		border-radius: 8px;
+		padding: 30px;
+		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+	}
+	h1 {
+		color: #333;
+		text-align: center;
+		margin-bottom: 30px;
+	}
+	.button-container {
+		text-align: center;
+		margin-bottom: 20px;
+	}
+	button {
+		background-color: #4CAF50;
+		color: white;
+		padding: 12px 30px;
+		font-size: 16px;
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+		transition: background-color 0.3s;
+	}
+	button:hover {
+		background-color: #45a049;
+	}
+	button:active {
+		background-color: #3d8b40;
+	}
+	.loading {
+		text-align: center;
+		color: #666;
+		display: none;
+		margin: 20px 0;
+	}
+	.response-container {
+		background-color: #f9f9f9;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		padding: 20px;
+		margin-top: 20px;
+		min-height: 100px;
+		display: none;
+	}
+	.response-container h3 {
+		margin-top: 0;
+		color: #333;
+	}
+	.response-content {
+		background-color: white;
+		border: 1px solid #e0e0e0;
+		border-radius: 4px;
+		padding: 15px;
+		font-family: 'Courier New', monospace;
+		white-space: pre-wrap;
+		word-wrap: break-word;
+		max-height: 400px;
+		overflow-y: auto;
+		color: #333;
+	}
+	.error {
+		color: #d32f2f;
+		background-color: #ffebee;
+		border: 1px solid #ef5350;
+		border-radius: 4px;
+		padding: 15px;
+		margin-top: 20px;
+		display: none;
+	}
+	.success {
+		color: #388e3c;
+		background-color: #e8f5e9;
+	}
+</style>
 </head>
 <body>
-	<div>
-		<div>
-			<a href="http://localhost:8080/oauth2/authorization/google" class="google-login">구글 로그인</a>
+	<div class="container">
+		<h1>Health Check</h1>
+		
+		<div class="button-container">
+			<button onclick="checkHealth()">Health 상태 확인</button>
 		</div>
-		<div>
-			<a href="http://localhost:8080/oauth2/authorization/naver" class="google-login">네이버 로그인</a>
+		
+		<div class="loading" id="loading">
+			<p>로딩 중...</p>
 		</div>
-		<div>
-			<a href="http://localhost:8080/oauth2/authorization/kakao" class="google-login">카카오 로그인</a>
+		
+		<div class="error" id="error"></div>
+		
+		<div class="response-container" id="responseContainer">
+			<h3>응답 결과:</h3>
+			<div class="response-content" id="responseContent"></div>
 		</div>
 	</div>
+
+	<script>
+		async function checkHealth() {
+			const loading = document.getElementById('loading');
+			const error = document.getElementById('error');
+			const responseContainer = document.getElementById('responseContainer');
+			const responseContent = document.getElementById('responseContent');
+			
+			// 초기화
+			loading.style.display = 'block';
+			error.style.display = 'none';
+			responseContainer.style.display = 'none';
+			
+			try {
+				const response = await fetch('http://www.projectwwtp.kro.kr:8000/health', {
+					method: 'GET',
+					mode: 'cors',
+					headers: {
+						'Content-Type': 'application/json'
+					}
+				});
+				
+				const data = await response.json();
+				
+				loading.style.display = 'none';
+				responseContainer.style.display = 'block';
+				responseContent.textContent = JSON.stringify(data, null, 2);
+				responseContainer.classList.add('success');
+				
+			} catch (err) {
+				loading.style.display = 'none';
+				error.style.display = 'block';
+				error.textContent = '오류 발생: ' + err.message + '\n\n참고: CORS 정책 또는 네트워크 문제로 인해 외부 URL에 접근할 수 없을 수 있습니다.';
+				responseContainer.style.display = 'none';
+			}
+		}
+	</script>
 </body>
 </html>

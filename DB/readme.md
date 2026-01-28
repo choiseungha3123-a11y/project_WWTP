@@ -24,10 +24,10 @@ sudo systemctl start nginx
 sudo vi /etc/nginx/nginx.conf
 sudo systemctl restart nginx
 -파이썬 관련-
-active 폴더 찾기(/opt/cert/bin/activate)
-sudo find / -name "activate" -type f | grep "/bin/"
 
--배포-
+nohup uvicorn main:app --host 0.0.0.0 --port 8000
+
+
 
 http://10.125.121.176:8081/swagger-ui/index.html
 
@@ -43,6 +43,7 @@ http://10.125.121.176:8081/swagger-ui/index.html
 	amazone linux 2023 let's encrypt
 	vscode 안티그라비티
 
+	회원정보 변경시 null 값은 처리 되지 않도록
 	Oauth2 기능 추가 (구글, 네이버, 카카오)
 	메모 처리(한꺼번에 보내기)
 	로그인 실패 관련 이력 처리
@@ -66,4 +67,4 @@ http://10.125.121.176:8081/swagger-ui/index.html
 	ID 중복 확인 / (X)비밀번호 제한 추가(비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.)
 	동시 로그인 제한
 	DB 이전
-	
+	파이써 fastapi 연동 확인
