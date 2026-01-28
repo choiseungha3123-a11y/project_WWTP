@@ -10,7 +10,6 @@ interface Member {
   userId: string;
   userName: string;
   role: string;
-  // 추가로 백엔드에서 내려주는 필드가 있다면 적어주세요 (ex. createDate: string;)
 }
 
 export default function MemberManagementPage() {
@@ -19,15 +18,12 @@ export default function MemberManagementPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // 1. 사원 리스트 불러오기
+  // 사원 리스트 불러오기
   const fetchMembers = async () => {
     setLoading(true);
 
-  const token = localStorage.getItem("accessToken");
-  console.log('token', token);
-
     try {
-      const response = await fetch("/api/member/listMember", { // 컨트롤러 주소와 일치
+      const response = await fetch("/api/member/listMember", { 
         headers: { 
           "Authorization": `${localStorage.getItem('accessToken')}` 
         }
@@ -53,6 +49,37 @@ export default function MemberManagementPage() {
     fetchMembers();
   }, []);
 
+
+  const handleResetPassword = async (userNo: number, userId: string) => {
+    const newPassword = `${userId}1234`;
+
+    if (!confirm(`${userId}님의 비밀번호를 '${newPassword}'로 초기화하시겠습니까?`)) return;
+
+    try {
+      const res = await fetch("/api/member/modifyMember", {
+        method: "PATCH", 
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem('accessToken')}`
+        },
+        body: JSON.stringify({
+          userNo: userNo,
+          password: newPassword
+        })
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        alert(`비밀번호가 성공적으로 초기화되었습니다.\n새 비밀번호: ${newPassword}`);
+      } else {
+        alert(result.errorMsg || "초기화에 실패했습니다.");
+      }
+    } catch (error) {
+      alert("서버와 통신 중 오류가 발생했습니다.");
+    }
+  };
+
+
   const handleDelete = async (userNo: number, userId: string) => {
     if (!confirm(`${userId}(${userNo}) 사원을 삭제하시겠습니까?`)) return;
     
@@ -63,7 +90,7 @@ export default function MemberManagementPage() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${localStorage.getItem('accessToken')}` 
         },
-        body: JSON.stringify({ userNo })
+        body: JSON.stringify({ userNo, userId })
       });
       const result = await res.json();
       if (result.success) {
@@ -82,9 +109,9 @@ export default function MemberManagementPage() {
         <div>
           <button 
             onClick={() => router.push("/dashboard")}
-            className="text-slate-500 hover:text-blue-400 text-sm mb-4 transition-colors flex items-center gap-1"
+            className="text-slate-300 hover:text-blue-400 text-medium mb-4 transition-colors flex items-center gap-1"
           >
-            ← 대시보드로 돌아가기
+            ⬅ 대시보드로 돌아가기
           </button>
           <h1 className="text-4xl font-black tracking-tight text-white">
             사원 <span className="text-blue-500">관리</span>
@@ -134,10 +161,10 @@ export default function MemberManagementPage() {
                   </td>
                   <td className="p-6 flex justify-center gap-2">
                     <button 
-                      onClick={() => {/* 비밀번호 수정 모달 혹은 prompt */}}
+                      onClick={() => handleResetPassword(mem.userNo, mem.userId)}
                       className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-colors"
                     >
-                      비번 초기화
+                      비밀번호 초기화
                     </button>
                     <button 
                       onClick={() => handleDelete(mem.userNo, mem.userId)}

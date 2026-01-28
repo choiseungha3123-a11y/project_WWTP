@@ -19,7 +19,6 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
   });
   const [loading, setLoading] = useState(false);
 
-  // 모달이 열릴 때마다 입력창 초기화
   useEffect(() => {
     if (isOpen) {
       setFormData({
@@ -42,10 +41,16 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
       return;
     }
 
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,20}$/;
+    if (!passwordRegex.test(formData.password)) {
+      alert("비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const response = await fetch("/api/member/saveMember", { // 백엔드 엔드포인트 확인 필요
-        method: "POST",
+      const response = await fetch("/api/member/addMember", { 
+        method: "PUT",
         headers: { 
           "Content-Type": "application/json",
           "Authorization": `Bearer ${localStorage.getItem('accessToken')}` 
@@ -75,7 +80,7 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-110 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
