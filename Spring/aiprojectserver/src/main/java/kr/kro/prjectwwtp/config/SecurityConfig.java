@@ -135,7 +135,11 @@ public class SecurityConfig {
 			"http://www.projectwwtp.kro.kr:3000",
 			"http://www.projectwwtp.kro.kr:8000",
 			"http://www.projectwwtp.kro.kr:8081",
-			"http://www.projectwwtp.kro.kr:80"));
+			"http://www.projectwwtp.kro.kr:80",
+			"https://www.projectwwtp.kro.kr:3000",
+			"https://www.projectwwtp.kro.kr:8000",
+			"https://www.projectwwtp.kro.kr:8081",
+			"https://www.projectwwtp.kro.kr:80"));
 		config.addAllowedMethod(CorsConfiguration.ALL);
 		config.addAllowedHeader(CorsConfiguration.ALL);
 		config.setAllowCredentials(true);
