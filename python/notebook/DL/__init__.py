@@ -1,33 +1,33 @@
 """
-WWTP Deep Learning Prediction System
+하수처리장 딥러닝 예측 시스템
 
-This package contains LSTM-based models for predicting wastewater treatment
-plant inflow (Q_in) and water quality indicators (TMS).
+이 패키지는 하수처리장 유입량(Q_in)과 수질 지표(TMS)를 예측하기 위한
+LSTM 기반 모델을 포함합니다.
 """
 
 __version__ = "0.1.0"
 __author__ = "WWTP DL Team"
 
-# Import configuration for easy access
+# 쉬운 접근을 위한 설정 import
 from .config import (
-    # Hyperparameters
+    # 하이퍼파라미터
     LSTM_CONFIG,
     TRAINING_CONFIG,
     WINDOW_SIZE,
     SPLIT_RATIOS,
     
-    # Paths
+    # 경로
     FLOW_DATA_PATH,
     TMS_DATA_PATH,
     ALL_DATA_PATH,
     MODEL_SAVE_DIR,
     RESULTS_SAVE_DIR,
     
-    # Target variables
+    # 타겟 변수
     FLOW_TARGET,
     TMS_TARGETS,
     
-    # Utility functions
+    # 유틸리티 함수
     create_directories,
     get_model_path,
     get_scaler_path,
@@ -37,24 +37,24 @@ from .config import (
 )
 
 __all__ = [
-    # Hyperparameters
+    # 하이퍼파라미터
     "LSTM_CONFIG",
     "TRAINING_CONFIG",
     "WINDOW_SIZE",
     "SPLIT_RATIOS",
     
-    # Paths
+    # 경로
     "FLOW_DATA_PATH",
     "TMS_DATA_PATH",
     "ALL_DATA_PATH",
     "MODEL_SAVE_DIR",
     "RESULTS_SAVE_DIR",
     
-    # Target variables
+    # 타겟 변수
     "FLOW_TARGET",
     "TMS_TARGETS",
     
-    # Utility functions
+    # 유틸리티 함수
     "create_directories",
     "get_model_path",
     "get_scaler_path",
