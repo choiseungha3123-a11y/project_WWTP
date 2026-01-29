@@ -38,6 +38,7 @@ export default function LandingPage() {
         }),
       });
 
+      console.log(`process.env.NEXT_PUBLIC_API_URL: ${process.env.NEXT_PUBLIC_API_URL}`);
       if (response.ok) {
         const data = await response.json();
         if (!data.success) {
