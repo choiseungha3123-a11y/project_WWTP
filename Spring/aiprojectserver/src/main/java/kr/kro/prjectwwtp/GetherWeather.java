@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import kr.kro.prjectwwtp.domain.TmsData;
+import kr.kro.prjectwwtp.domain.Weather;
 import kr.kro.prjectwwtp.persistence.WeatherRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -71,7 +71,7 @@ public class GetherWeather implements ApplicationRunner {
 		};
 		try {
 			for (int stn : stnlist) {
-				TmsData lastData = weatherRepo.findFirstByStnOrderByDataNoDesc(stn);
+				Weather lastData = weatherRepo.findFirstByStnOrderByDataNoDesc(stn);
 				LocalDateTime startTime = LocalDateTime.of(2024, 1, 1, 0, 0);
 				if (lastData != null) {
 					startTime = lastData.getTime();
@@ -79,7 +79,7 @@ public class GetherWeather implements ApplicationRunner {
 				LocalDateTime endTime = startTime.plusDays(1);
 				String tm1 = startTime.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
 				String tm2 = endTime.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-				List<TmsData> list = fetchTmsData(tm1, tm2, stn);
+				List<Weather> list = fetchTmsData(tm1, tm2, stn);
 				// ta 값이 -99.9라면 예상값인걸로 보임
 				list.removeIf(data -> data == null || data.getTa() == -99.9);
 				if (list != null && list.size() > 0)
@@ -94,7 +94,7 @@ public class GetherWeather implements ApplicationRunner {
 		}
 	}
 
-	public List<TmsData> fetchTmsData(String tm1, String tm2, int stn) {
+	public List<Weather> fetchTmsData(String tm1, String tm2, int stn) {
 		// build()와 expand()를 사용하여 값을 채워 넣습니다.
 	    URI uri = UriComponentsBuilder.fromUriString(baseUrl)
 	            .queryParam("tm1", tm1)
@@ -114,9 +114,9 @@ public class GetherWeather implements ApplicationRunner {
 	    return parseResponse(response);
     }
 	
-	private List<TmsData> parseResponse(String response) {
+	private List<Weather> parseResponse(String response) {
 		//System.out.println("response : " + response);
-        List<TmsData> dataList = new ArrayList<>();
+        List<Weather> dataList = new ArrayList<>();
         if (response == null || response.isEmpty()) return dataList;
 
         LocalDateTime now = LocalDateTime.now();
@@ -150,7 +150,7 @@ public class GetherWeather implements ApplicationRunner {
             	double pa = Double.parseDouble(columns[15]);
             	double ps = Double.parseDouble(columns[16]);
             	double td = Double.parseDouble(columns[17]);
-                TmsData data = TmsData.builder()
+            	Weather data = Weather.builder()
                         .time(tm) // TM
                         .stn(stn)                // STN
                         .wd1(wd1)              // WD1

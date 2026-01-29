@@ -6,7 +6,7 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
-import kr.kro.prjectwwtp.domain.TmsData;
+import kr.kro.prjectwwtp.domain.Weather;
 import kr.kro.prjectwwtp.persistence.WeatherRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -15,18 +15,18 @@ import lombok.RequiredArgsConstructor;
 public class WeatherService {
 	private final WeatherRepository weatherRepo;
 	
-	public TmsData findById(long id) {
-		Optional<TmsData> opt = weatherRepo.findById(id);
+	public Weather findById(long id) {
+		Optional<Weather> opt = weatherRepo.findById(id);
 		if(opt.isEmpty())
 			return null;
 		return opt.get();
 	}
 	
-	public List<TmsData> findByTimeBetween(LocalDateTime start, LocalDateTime end) {
+	public List<Weather> findByTimeBetween(LocalDateTime start, LocalDateTime end) {
 		return weatherRepo.findByTimeBetween(start, end);
 	}
 	
-	public void modifyWeahter(TmsData data, double ta, double rn15m, double rn60m, double rn12h, double rnday, double hm, double td) {
+	public void modifyWeahter(Weather data, double ta, double rn15m, double rn60m, double rn12h, double rnday, double hm, double td) {
 		data.setTa(ta);
 		data.setRn15m(rn15m);
 		data.setRn60m(rn60m);

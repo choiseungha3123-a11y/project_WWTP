@@ -3,7 +3,6 @@ package kr.kro.prjectwwtp.controller;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Optional;
 import java.util.TimeZone;
 
 import org.springframework.http.ResponseEntity;
@@ -30,9 +29,8 @@ import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
-import kr.kro.prjectwwtp.domain.TmsData;
+import kr.kro.prjectwwtp.domain.Weather;
 import kr.kro.prjectwwtp.domain.responseDTO;
-import kr.kro.prjectwwtp.persistence.WeatherRepository;
 import kr.kro.prjectwwtp.service.WeatherService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import lombok.AllArgsConstructor;
@@ -98,7 +96,7 @@ public class WeatherController {
 		double hm;
 		double td; 
 		
-		public weatherDTO(TmsData data) {
+		public weatherDTO(Weather data) {
 			this.dataNo = data.getDataNo();
 			this.time = data.getTime().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
 			this.ta = data.getTa();
@@ -131,8 +129,8 @@ public class WeatherController {
 		System.out.println("start : " + start);
 		System.out.println("end : " + end);
 		//List<TmsData> list = weatherRepo.findByTimeBetweenOrderByDataNoDesc(start, end);
-		List<TmsData> list = weatherService.findByTimeBetween(start, end);
-		for(TmsData data : list)
+		List<Weather> list = weatherService.findByTimeBetween(start, end);
+		for(Weather data : list)
 		{
 			weatherDTO d = new weatherDTO(data);
 			res.addData(d);
@@ -184,7 +182,7 @@ public class WeatherController {
 			return ResponseEntity.ok().body(res);
 		}
 		
-		TmsData data = weatherService.findById(req.dataNo);
+		Weather data = weatherService.findById(req.dataNo);
 		if(data == null) {
 			res.setSuccess(false);
 			res.setErrorMsg("정보가 올바르지 않습니다.");

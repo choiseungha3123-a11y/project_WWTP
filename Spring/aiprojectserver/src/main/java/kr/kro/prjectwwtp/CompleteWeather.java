@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import kr.kro.prjectwwtp.domain.TmsData;
+import kr.kro.prjectwwtp.domain.Weather;
 import kr.kro.prjectwwtp.domain.WeatherComplete;
 import kr.kro.prjectwwtp.persistence.WeatherCompleteRepository;
 import kr.kro.prjectwwtp.persistence.WeatherRepository;
@@ -49,10 +49,10 @@ public class CompleteWeather implements ApplicationRunner {
 		return false;
 	}
 	
-	List<TmsData> getList(int stn, LocalDateTime date) {
+	List<Weather> getList(int stn, LocalDateTime date) {
 		LocalDateTime start = LocalDateTime.of(date.getYear(), date.getMonth(), date.getDayOfMonth(), 0, 0);
 		LocalDateTime end = LocalDateTime.of(date.getYear(), date.getMonth(), date.getDayOfMonth(), 23, 59).with(LocalTime.MAX);
-		List<TmsData> list = weatherRepo.findByStnAndTimeBetween(stn, start, end);
+		List<Weather> list = weatherRepo.findByStnAndTimeBetween(stn, start, end);
 		
 		return list;
 	}
@@ -80,7 +80,7 @@ public class CompleteWeather implements ApplicationRunner {
 				while(last.isBefore(now) || dataCount != 24 * 60) {
 					LocalDateTime start = LocalDateTime.of(last.getYear(), last.getMonthValue(), last.getDayOfMonth(), 0, 0);
 					LocalDateTime end = LocalDateTime.of(last.getYear(), last.getMonthValue(), last.getDayOfMonth(), 23, 59);
-					List<TmsData> list = weatherRepo.findByStnAndTimeBetween(stn, start, end);
+					List<Weather> list = weatherRepo.findByStnAndTimeBetween(stn, start, end);
 					
 					int size = list.size();
 					if(size == 24 * 60) {
@@ -94,10 +94,10 @@ public class CompleteWeather implements ApplicationRunner {
 					} else if(size > 24 * 60) {
 						// 중복 발견 - time값이 동일한 중복 데이터 제거
 						System.out.println("중복 발견 : " + last);
-						List<TmsData> toDelete = new ArrayList<>();
+						List<Weather> toDelete = new ArrayList<>();
 						var uniqueMap = list.stream()
 							.collect(Collectors.toMap(
-								TmsData::getTime,
+									Weather::getTime,
 								d -> d,
 								(existing, duplicate) -> {
 									toDelete.add(duplicate);
@@ -118,15 +118,15 @@ public class CompleteWeather implements ApplicationRunner {
 						String tm1 = start.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
 						String tm2 = end.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
 						
-						List<TmsData> apiList = getherWeather.fetchTmsData(tm1, tm2, stn);
+						List<Weather> apiList = getherWeather.fetchTmsData(tm1, tm2, stn);
 						System.out.println("API에서 조회: " + apiList.size() + "개");
 						
 						// 현재 list에 없는 데이터 찾기 (현재 list의 time 값과 비교)
 						Set<LocalDateTime> existingTimes = list.stream()
-							.map(TmsData::getTime)
+							.map(Weather::getTime)
 							.collect(Collectors.toSet());
 						
-						List<TmsData> missingData = apiList.stream()
+						List<Weather> missingData = apiList.stream()
 							.filter(data -> !existingTimes.contains(data.getTime()))
 							.collect(Collectors.toList());
 						
@@ -208,7 +208,7 @@ public class CompleteWeather implements ApplicationRunner {
 		}
 	}
 
-	public List<TmsData> fetchTmsData(String tm1, String tm2, int stn) {
+	public List<Weather> fetchTmsData(String tm1, String tm2, int stn) {
 		// build()와 expand()를 사용하여 값을 채워 넣습니다.
 	    URI uri = UriComponentsBuilder.fromUriString(baseUrl)
 	            .queryParam("tm1", tm1)
@@ -228,9 +228,9 @@ public class CompleteWeather implements ApplicationRunner {
 	    return parseResponse(response);
     }
 	
-	private List<TmsData> parseResponse(String response) {
+	private List<Weather> parseResponse(String response) {
 		//System.out.println("response : " + response);
-        List<TmsData> dataList = new ArrayList<>();
+        List<Weather> dataList = new ArrayList<>();
         if (response == null || response.isEmpty()) return dataList;
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
@@ -245,7 +245,7 @@ public class CompleteWeather implements ApplicationRunner {
 
             try {
                 // API 제공 순서에 맞춰 인덱스 매핑 (기상청 nph-aws2_min 사양 기준 예시)
-                TmsData data = TmsData.builder()
+            	Weather data = Weather.builder()
                         .time(LocalDateTime.parse(columns[0], formatter)) // TM
                         .stn(Integer.parseInt(columns[1]))                // STN
                         .wd1(Double.parseDouble(columns[2]))              // WD1
