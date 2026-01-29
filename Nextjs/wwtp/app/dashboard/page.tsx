@@ -3,12 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-// 차트 라이브러리 import
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import EditProfileModal from "../components/EditProfileModal";
 import AddMemberModal from "../components/AddMemberModal";
 
-// 1. JSON 데이터의 구조 정의 (TypeScript 오류 방지)
 interface ProcessDataItem {
   time: string;
   toc: number;
@@ -19,59 +16,58 @@ interface ProcessDataItem {
   tp: number;
 }
 
-// 2. 공통 차트 컴포넌트 (반복되는 6개 그래프를 효율적으로 생성)
-const MiniChart = ({ title, data, dataKey, color, unit }: { title: string, data: ProcessDataItem[], dataKey: string, color: string, unit: string }) => (
-  <div className="bg-slate-800/50 p-4 rounded-2xl border border-white/5 shadow-xl h-64 hover:border-blue-500/30 transition-all flex flex-col">
-    <div className="flex justify-between items-center mb-2">
-      <h3 className="text-sm font-semibold text-slate-300">{title}</h3>
-      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white/5 text-slate-400">{unit}</span>
+// 1. 개별 지표 카드 컴포넌트
+const MetricCard = ({ 
+  title, 
+  value, 
+  unit, 
+  color, 
+  onClick 
+}: { 
+  title: string; 
+  value: string | number; 
+  unit: string; 
+  color: string; 
+  onClick: () => void; 
+}) => (
+  <motion.div
+    whileHover={{ scale: 1.02, translateY: -5 }}
+    whileTap={{ scale: 0.98 }}
+    onClick={onClick}
+    className="bg-slate-800/40 p-8 rounded-3xl border border-white/5 backdrop-blur-md cursor-pointer hover:border-blue-500/50 transition-all shadow-2xl flex flex-col justify-between min-h-45"
+  >
+    <div>
+      <div className="flex items-center gap-2 mb-4">
+        <div className={`w-2 h-2 rounded-full animate-pulse`} style={{ backgroundColor: color }}></div>
+        <h3 className="text-slate-400 font-medium tracking-wider">{title}</h3>
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span className="text-4xl font-bold tracking-tight text-white">
+          {value}
+        </span>
+        <span className="text-slate-500 font-medium">{unit}</span>
+      </div>
     </div>
-    <div className="flex-1 w-full h-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-          <XAxis dataKey="time" hide />
-          <YAxis 
-            domain={['auto', 'auto']} 
-            fontSize={10} 
-            tick={{fill: '#64748b'}} 
-            tickLine={false} 
-            axisLine={false} 
-          />
-          <Tooltip 
-            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', fontSize: '11px' }}
-            itemStyle={{ color: '#fff' }}
-          />
-          <Line 
-            type="monotone" 
-            dataKey={dataKey} 
-            stroke={color} 
-            strokeWidth={2} 
-            dot={false} 
-            isAnimationActive={false} 
-          />
-        </LineChart>
-      </ResponsiveContainer>
+    <div className="mt-6 flex justify-between items-center text-xs text-slate-500 border-t border-white/5 pt-4">
+      <span>실시간 데이터</span>
+      <span className="text-blue-400">상세보기 →</span>
     </div>
-  </div>
+  </motion.div>
 );
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const router = useRouter();
   const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [userNo, setUserNo] = useState<number>(0);
   const [userRole, setUserRole] = useState("");
   const [userId, setUserId] = useState("");
   const [userName, setUserName] = useState("");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-
-  // 실제 JSON 데이터를 저장할 상태
   const [processData, setProcessData] = useState<ProcessDataItem[]>([]);
 
   useEffect(() => {
-    // 로컬 스토리지 인증 정보 가져오기
     const savedRole = localStorage.getItem('userRole');
     const savedId = localStorage.getItem('userId');
     const savedName = localStorage.getItem('userName');
@@ -79,7 +75,6 @@ export default function DashboardPage() {
     
     if (savedNo) setUserNo(Number(savedNo));
     if (savedId) setUserId(savedId);
-    if (savedName) setUserName(savedName);
     
     if (!savedRole) {
       alert("로그인이 필요합니다.");
@@ -90,189 +85,148 @@ export default function DashboardPage() {
       setIsAuthChecked(true);
     }
 
-    // JSON 데이터 호출
     fetch("/data/process_data.json")
       .then(res => res.json())
       .then(json => setProcessData(json))
       .catch(err => console.error("데이터 로딩 실패:", err));
   }, [router]);
 
-  if (!isAuthChecked) {
-    return <div className="min-h-screen bg-slate-900" />;
-  }
-
   const handleLogout = () => {
     if (confirm("로그아웃 하시겠습니까?")) {
       router.push("/"); 
     }
   };
-  
-  // 6개 차트의 설정값
-  const chartConfigs = [
-    { title: "TOC (유기물 농도)", key: "toc", color: "#60a5fa", unit: "mg/L" },
-    { title: "pH (수소이온 농도)", key: "ph", color: "#34d399", unit: "pH" },
+
+  // 최신 데이터 1건 추출
+  const latest = processData.length > 0 ? processData[processData.length - 1] : null;
+
+  // 지표 설정값 정의
+  const metrics = [
+    { title: "TOC (총유기탄소)", key: "toc", color: "#60a5fa", unit: "mg/L" },
+    { title: "pH (수소이온농도)", key: "ph", color: "#34d399", unit: "pH" },
     { title: "SS (부유물질)", key: "ss", color: "#fbbf24", unit: "mg/L" },
-    { title: "FLUX (유입유량)", key: "flux", color: "#a78bfa", unit: "m³/h" },
+    { title: "FLUX (유량)", key: "flux", color: "#a78bfa", unit: "m³/h" },
     { title: "TN (총질소)", key: "tn", color: "#f87171", unit: "mg/L" },
     { title: "TP (총인)", key: "tp", color: "#22d3ee", unit: "mg/L" },
   ];
 
-  // 최신 데이터 1건 추출 (상단 요약 카드용)
-  const latest = processData.length > 0 ? processData[processData.length - 1] : ({} as Partial<ProcessDataItem>);
-
-  // 상단 요약 카드 데이터 구성
-  const stats = [
-    { 
-      name: "현재 유입 유량", 
-      value: latest.flux ? `${latest.flux.toLocaleString()} m³/h` : "연결 중...", 
-      status: "정상", 
-      color: "text-blue-400" 
-    },
-    { 
-      name: "현재 pH 농도", 
-      value: latest.ph ? `${latest.ph} pH` : "연결 중...", 
-      status: "안정", 
-      color: "text-green-400" 
-    },
-    { 
-      name: "현재 TOC 농도", 
-      value: latest.toc ? `${latest.toc} mg/L` : "연결 중...", 
-      status: (latest.toc ?? 0) > 4.3 ? "주의" : "정상", 
-      color: (latest.toc ?? 0) > 4.3 ? "text-red-400" : "text-yellow-400" 
-    },
-    { 
-      name: "현재 SS 농도", 
-      value: latest.ss ? `${latest.ss} mg/L` : "연결 중...", 
-      status: "운영중", 
-      color: "text-purple-400" 
-    },
-  ];
+  if (!isAuthChecked) return <div className="min-h-screen bg-slate-900" />;
 
   return (
     <div className="min-h-screen bg-slate-900 text-white p-8 font-sans">
-      {/* ---------------- 상단 헤더 섹션 ---------------- */}
-      <header className="flex justify-between items-center mb-10 border-b border-white/10 pb-6">
+      {/* ---------------- 상단 헤더 ---------------- */}
+      <header className="flex justify-between items-center mb-12 border-b border-white/10 pb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-blue-400">Smart WWTP Dashboard</h1>
-          <p className="text-slate-400 mt-1">실시간 하수처리 공정 모니터링 시스템</p>
+          <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+            <span className="text-blue-500">●</span> Smart WWTP Monitoring
+          </h1>
+          <p className="text-slate-400 mt-2 font-light">공정별 실시간 상태 요약</p>
         </div>
 
         <div className="relative flex items-center gap-6">
-          <div className="flex items-center gap-4">
-            <div 
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="flex items-center gap-3 hover:bg-white/5 p-2 rounded-lg transition-all cursor-pointer"
-            >
-              <span className="text-sm font-medium text-white">{userName}님</span>
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-xs text-white font-bold border border-white/20">
-                AD
-              </div>
+          <div 
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+            className="flex items-center gap-3 hover:bg-white/5 p-2 rounded-xl transition-all cursor-pointer border border-transparent hover:border-white/10"
+          >
+            <div className="text-right">
+              <p className="text-sm font-bold text-white">{userName}님</p>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest">{userRole.replace("ROLE_", "")}</p>
             </div>
-            <button 
-              onClick={(e) => { e.stopPropagation(); handleLogout(); }}
-              className="text-sm text-slate-400 hover:text-white transition-all p-1"
-            >
-              로그아웃
-            </button>
+            <div className="w-10 h-10 bg-linear-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-sm text-white font-bold shadow-lg">
+              {userName.substring(0, 1)}
+            </div>
           </div>
-
+          
+          {/* 드롭다운 메뉴 (기존과 동일) */}
           <AnimatePresence>
-            {isProfileOpen && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="absolute right-0 top-full mt-2 w-64 bg-white text-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden border border-slate-200"
-              >
-                <div className="flex border-b text-center text-sm">
-                  <div className="flex-1 py-3 bg-slate-50 font-bold border-r text-blue-600">My</div>
-                  <div className="flex-1 py-3 hover:bg-gray-100 cursor-pointer border-r text-gray-400">알림</div>
-                  <div className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-gray-400" onClick={() => setIsProfileOpen(false)}>✕</div>
-                </div>
-                <div className="p-6 flex flex-col items-center border-b">
-                  <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center text-white text-xl font-bold">CP</div>
-                  <p className="font-bold text-lg">{userName}</p>
-                </div>
-                <div className="flex flex-col text-sm">
-                  <button onClick={() => { setIsEditModalOpen(true); setIsProfileOpen(false); }} className="text-left px-6 py-4 hover:bg-blue-50 border-b transition-colors">
-                    개인정보 수정
-                  </button>
-                  {userRole === "ROLE_ADMIN" && (
-                    <button onClick={() => { router.push("/admin/member"); setIsProfileOpen(false); }} className="text-left px-6 py-4 hover:bg-blue-50 border-b transition-colors">
-                      사원 관리
-                    </button>
-                  )}
-                  <button onClick={handleLogout} className="text-left px-6 py-4 hover:bg-red-50 text-red-500 transition-colors">
-                    로그아웃
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+  {isProfileOpen && (
+    <motion.div 
+      initial={{ opacity: 0, y: 10, scale: 0.95 }} 
+      animate={{ opacity: 1, y: 0, scale: 1 }} 
+      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+      className={`
+        absolute right-0 top-full mt-4 w-64 
+        /* 1. 배경을 더 밝게 변경 */
+        bg-slate-700 
+        rounded-2xl z-50 overflow-hidden 
+        /* 2. 테두리를 더 밝고 선명하게 (눈에 띄는 구분선) */
+        border border-slate-500/50 
+        /* 3. 우측 하단 그림자에 파란색을 살짝 섞어 대비 증폭 */
+        shadow-[15px_20px_40px_rgba(0,0,0,0.7),5px_5px_15px_rgba(59,130,246,0.1)]
+      `}
+    >
+      {/* 상단 섹션: 더 밝은 배경색으로 강조 */}
+      <div className="p-6 flex flex-col items-center border-b border-slate-600 bg-slate-600/50">
+        <div className="relative mb-3">
+          {/* 아바타 테두리에 밝은 글로우 추가 */}
+          <div className="absolute inset-0 bg-blue-400 blur-md rounded-full opacity-30"></div>
+          <div className="relative w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white text-xl font-bold border-2 border-white/20 shadow-lg">
+            {userName.substring(0, 1)}
+          </div>
+        </div>
+        <p className="font-bold text-lg text-white leading-tight">{userName}</p>
+        <p className="text-xs text-blue-300/80 mt-1 font-medium">{userId}</p>
+      </div>
+
+      {/* 메뉴 리스트: 호버 시 더 밝은 색상으로 반응 */}
+      <div className="flex flex-col text-sm p-2 bg-slate-700">
+        <button 
+          onClick={() => { setIsEditModalOpen(true); setIsProfileOpen(false); }} 
+          className="flex items-center gap-3 text-left px-4 py-3 rounded-xl hover:bg-slate-600 text-slate-100 transition-all"
+        >
+          <span className="text-lg">👤</span>
+          <span className="font-medium">개인정보 수정</span>
+        </button>
+        
+        {userRole === "ROLE_ADMIN" && (
+          <button 
+            onClick={() => { router.push("/admin/member"); setIsProfileOpen(false); }} 
+            className="flex items-center gap-3 text-left px-4 py-3 rounded-xl hover:bg-slate-600 text-slate-100 transition-all"
+          >
+            <span className="text-lg">⚙️</span>
+            <span className="font-medium">사원 관리</span>
+          </button>
+        )}
+        
+        <div className="h-px bg-slate-600 my-1 mx-2"></div>
+
+        <button 
+          onClick={handleLogout} 
+          className="flex items-center gap-3 text-left px-4 py-3 rounded-xl hover:bg-red-500/20 text-red-300 transition-all"
+        >
+          <span className="text-lg">🚪</span>
+          <span className="font-bold">로그아웃</span>
+        </button>
+      </div>
+    </motion.div>
+  )}
+</AnimatePresence>
         </div>
       </header>
 
-      {/* ---------------- 상단 요약 카드 섹션 ---------------- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        {stats.map((stat, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className="bg-slate-800/50 p-6 rounded-2xl border border-white/5 backdrop-blur-sm hover:border-blue-500/50 transition-all shadow-xl"
-          >
-            <p className="text-sm text-slate-400 mb-2">{stat.name}</p>
-            <h3 className={`text-2xl font-bold ${stat.color} mb-1`}>{stat.value}</h3>
-            <p className="text-xs opacity-60">현재 상태: {stat.status}</p>
-          </motion.div>
+      {/* ---------------- 지표 카드 그리드 섹션 ---------------- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {metrics.map((metric, index) => (
+          <MetricCard
+            key={metric.key}
+            title={metric.title}
+            // 최신 데이터가 있으면 해당 key값 출력, 없으면 대기중 표시
+            value={latest ? (latest[metric.key as keyof ProcessDataItem]) : "..."}
+            unit={metric.unit}
+            color={metric.color}
+            // 클릭 시 상세 페이지로 이동 (예: /dashboard/toc)
+            onClick={() => router.push(`/dashboard/${metric.key}`)}
+          />
         ))}
-      </div>
-
-      {/* ---------------- 메인 차트 및 알림 섹션 ---------------- */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* 왼쪽: 6개 차트 그리드 (2열 3행 구성) */}
-        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-          {chartConfigs.map((cfg) => (
-            <MiniChart 
-              key={cfg.key}
-              title={cfg.title}
-              data={processData}
-              dataKey={cfg.key}
-              color={cfg.color}
-              unit={cfg.unit}
-            />
-          ))}
-        </div>
-
-        {/* 오른쪽: 최근 알림 섹션 */}
-        <div className="bg-slate-800/80 rounded-3xl border border-white/5 p-6 flex flex-col h-fit shadow-2xl">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
-            최근 시스템 알림
-          </h3>
-          <div className="space-y-4 overflow-y-auto max-h-125">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="p-4 bg-white/5 rounded-xl border-l-4 border-yellow-500 text-sm hover:bg-white/10 transition-colors">
-                <p className="font-medium text-yellow-500">주의: 유입 유량 임계치 근접</p>
-                <p className="text-slate-400 text-xs mt-1">방금 전 - 수처리 제1공정</p>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* ---------------- 모달 섹션 ---------------- */}
       <EditProfileModal 
         isOpen={isEditModalOpen} 
         onClose={() => setIsEditModalOpen(false)} 
-        currentUser={{ userNo: userNo, id: userId, name: userName, role: userRole }}
-        onUpdateSuccess={(newId, newName) => {
-          setUserId(newId);
-          setUserName(newName);
-        }}
+        currentUser={{ userNo, id: userId, name: userName, role: userRole }}
+        onUpdateSuccess={(newId, newName) => { setUserId(newId); setUserName(newName); }}
       />
-
       <AddMemberModal 
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}

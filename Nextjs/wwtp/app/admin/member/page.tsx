@@ -113,7 +113,7 @@ export default function MemberManagementPage() {
             onClick={() => router.push("/dashboard")}
             className="text-slate-300 hover:text-blue-400 text-medium mb-4 transition-colors flex items-center gap-1"
           >
-            ⬅ 대시보드로 돌아가기
+            🏠 대시보드로 돌아가기
           </button>
           <h1 className="text-4xl font-black tracking-tight text-white">
             사원 <span className="text-blue-500">관리</span>
