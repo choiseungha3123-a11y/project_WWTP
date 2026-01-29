@@ -119,6 +119,7 @@ public class GetherWeather implements ApplicationRunner {
         List<TmsData> dataList = new ArrayList<>();
         if (response == null || response.isEmpty()) return dataList;
 
+        LocalDateTime now = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
 
         // 3. 데이터 파싱 (주석 '#'으로 시작하는 줄 제외 및 공백 분리)
@@ -131,27 +132,48 @@ public class GetherWeather implements ApplicationRunner {
 
             try {
                 // API 제공 순서에 맞춰 인덱스 매핑 (기상청 nph-aws2_min 사양 기준 예시)
+            	LocalDateTime tm = LocalDateTime.parse(columns[0], formatter);
+            	int stn = Integer.parseInt(columns[1]);
+            	double wd1 = Double.parseDouble(columns[2]);
+            	double wd2 = Double.parseDouble(columns[3]);
+            	double wds = Double.parseDouble(columns[4]);
+            	double wss = Double.parseDouble(columns[5]);
+            	double wd10 = Double.parseDouble(columns[6]);
+            	double ws10 = Double.parseDouble(columns[7]);
+            	double ts = Double.parseDouble(columns[8]);
+            	double re = Double.parseDouble(columns[9]);
+            	double rn15m = Double.parseDouble(columns[10]);
+            	double rn60m = Double.parseDouble(columns[11]);
+            	double rn12h = Double.parseDouble(columns[12]);
+            	double rnday = Double.parseDouble(columns[13]);
+            	double hm = Double.parseDouble(columns[14]);
+            	double pa = Double.parseDouble(columns[15]);
+            	double ps = Double.parseDouble(columns[16]);
+            	double td = Double.parseDouble(columns[17]);
                 TmsData data = TmsData.builder()
-                        .time(LocalDateTime.parse(columns[0], formatter)) // TM
-                        .stn(Integer.parseInt(columns[1]))                // STN
-                        .wd1(Double.parseDouble(columns[2]))              // WD1
-                        .wd2(Double.parseDouble(columns[3]))              // WD2
-                        .wds(Double.parseDouble(columns[4]))              // WDS
-                        .wss(Double.parseDouble(columns[5]))              // WSS
-                        .wd10(Double.parseDouble(columns[6]))             // WD10
-                        .ws10(Double.parseDouble(columns[7]))             // WS10
-                        .ta(Double.parseDouble(columns[8]))               // TA
-                        .re(Double.parseDouble(columns[9]))               // RE
-                        .rn15m(Double.parseDouble(columns[10]))           // RN_15M
-                        .rn60m(Double.parseDouble(columns[11]))           // RN_60M
-                        .rn12h(Double.parseDouble(columns[12]))           // RN_12H
-                        .rnday(Double.parseDouble(columns[13]))           // RN_DAY
-                        .hm(Double.parseDouble(columns[14]))               // HM
-                        .pa(Double.parseDouble(columns[15]))               // PA
-                        .ps(Double.parseDouble(columns[16]))               // PS
-                        .td(Double.parseDouble(columns[17]))               // TD
+                        .time(tm) // TM
+                        .stn(stn)                // STN
+                        .wd1(wd1)              // WD1
+                        .wd2(wd2)              // WD2
+                        .wds(wds)              // WDS
+                        .wss(wss)              // WSS
+                        .wd10(wd10)             // WD10
+                        .ws10(ws10)             // WS10
+                        .ta(ts)               // TA
+                        .re(re)               // RE
+                        .rn15m(rn15m)           // RN_15M
+                        .rn60m(rn60m)           // RN_60M
+                        .rn12h(rn12h)           // RN_12H
+                        .rnday(rnday)           // RN_DAY
+                        .hm(hm)               // HM
+                        .pa(pa)               // PA
+                        .ps(ps)               // PS
+                        .td(td)               // TD
                         .build();
-                //if(columns[8].equals("-99.9"))
+                
+                if(tm.isAfter(now))
+                	continue;
+                //if(ts)
                 //	continue;
                 dataList.add(data);
             } catch (Exception e) {

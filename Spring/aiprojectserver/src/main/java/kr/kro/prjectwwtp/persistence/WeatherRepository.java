@@ -14,7 +14,7 @@ public interface WeatherRepository extends JpaRepository<TmsData, Long> {
 	List<TmsData> findByTimeAndStn(LocalDateTime time, int stn);
 	List<TmsData> findByTimeBetween(LocalDateTime start, LocalDateTime end);
 	List<TmsData> findByStnAndTimeBetween(int stn, LocalDateTime start, LocalDateTime end);
-	@Query(value = "SELECT * FROM tms_data WHERE stn = :stn AND time LIKE CONCAT(:time, '%') ORDER BY data_no ASC", nativeQuery = true)
-	List<TmsData> findByStnAndTime(int stn, String time);
-	Optional<TmsData> findByStnAndTime(int stn, LocalDateTime time);
+	//@Query(value = "SELECT * FROM tms_data WHERE stn = :stn AND time LIKE CONCAT(:time, '%') ORDER BY data_no ASC", nativeQuery = true)
+	//List<TmsData> findByStnAndTime(int stn, String time);
+	//Optional<TmsData> findByStnAndTime(int stn, LocalDateTime time);
 }

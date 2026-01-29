@@ -2,7 +2,6 @@ package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -50,12 +49,4 @@ public class Memo{
 	LocalDateTime sendDeleteTime;
     @Temporal(TemporalType.TIMESTAMP)
 	LocalDateTime recvDeleteTime;
-    
-//    // 제목
-//    private String title;
-//    // 내용
-//    private String content;
-//    // 생성/수정 시각
-//    private LocalDateTime createdAt;
-//    private LocalDateTime updatedAt;
 }

@@ -13,6 +13,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.web.cors.CorsConfiguration;
@@ -20,6 +21,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import kr.kro.prjectwwtp.persistence.MemberRepository;
+import kr.kro.prjectwwtp.service.SessionService;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -28,7 +30,9 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
 	private final MemberRepository memberRepo;
+	private final AuthenticationSuccessHandler oauth2SuccessHandler;
 	private final TokenBlacklistManager tokenBlacklistManager;
+	private final SessionService sessionService;
 	
 	@Bean
 	public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
@@ -38,7 +42,7 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager) throws Exception {
 		// JWT 인증 필터 생성 (로그인 처리)
-		JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(authenticationManager, tokenBlacklistManager);
+		JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(authenticationManager, tokenBlacklistManager, sessionService);
 		// 로그인 엔드포인트 지정
 		jwtAuthenticationFilter.setFilterProcessesUrl("/api/member/login");
 		
@@ -92,6 +96,10 @@ public class SecurityConfig {
 		// 폼 로그인 설정 비활성화
 		http.formLogin(form -> form.disable());
 		
+		// OAuth2 인증 추가
+		http.oauth2Login(oauth2->oauth2.successHandler(oauth2SuccessHandler));
+		System.out.println("[SecurityConfig] Filter oauth2Login complete!");
+		
 		// 예외 처리
 		http.exceptionHandling(ex -> ex.accessDeniedPage("/system/accessDenied"));
 		
@@ -121,7 +129,6 @@ public class SecurityConfig {
 		CorsConfiguration config = new CorsConfiguration();
 		config.setAllowedOriginPatterns(Arrays.asList(
 			"http://localhost:3000",
-			"http://127.0.0.1:3000",
 			"http://localhost:8000",
 			"http://localhost:8081",
 			"http://localhost:80",

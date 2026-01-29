@@ -1,11 +1,9 @@
 package kr.kro.prjectwwtp.service;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
-import kr.kro.prjectwwtp.config.PasswordEncoder;
 import kr.kro.prjectwwtp.domain.LoginLog;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.persistence.LoginLogRepository;

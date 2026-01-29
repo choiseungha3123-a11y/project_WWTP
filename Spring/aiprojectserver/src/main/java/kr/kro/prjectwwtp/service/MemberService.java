@@ -66,6 +66,25 @@ public class MemberService {
 		memberRepo.save(member);
 	}
 	
+	public Member addSocialMember(String socialAuth, String userId, String userName) {
+		Member member = Member.builder()
+				.userName(userName)
+				.userId(userId)
+				.password("socialUser")
+				.socialAuth(socialAuth)
+				.role(Role.ROLE_MEMBER)
+				.build();
+		memberRepo.save(member);
+		return member;
+	}
+	
+	public Member findBySocialAuth(String socialAuth) {
+		Optional<Member> opt = memberRepo.findBySocialAuth(socialAuth); 
+		if(opt.isEmpty())
+			return null;
+		return opt.get();
+	}
+	
 	public void deleteMember(Member member) {
 		memberRepo.delete(member);
 	}

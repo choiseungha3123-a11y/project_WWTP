@@ -113,6 +113,7 @@ public class MemberController {
 			return ResponseEntity.ok().body(res);
 		}
 		
+		// 접속 로그 기록
 		logService.addLog(member);
 		
 		// 기존 토큰 무효화 (다른 기기에서의 로그인을 무효화)
@@ -145,6 +146,8 @@ public class MemberController {
 				.success(true)
 				.errorMsg(null)
 				.build();
+		
+		// 종료 로그 기록 : 필요
 		
 		// 토큰 추출 및 검증
 		if(JWTUtil.isExpired(request))
@@ -189,7 +192,7 @@ public class MemberController {
 			res.setErrorMsg("토큰이 만료되었습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		String token = request.getHeader("Authorization");
+		//String token = request.getHeader("Authorization");
 		//System.out.println("token : " + token);
 		Member member = JWTUtil.parseToken(request);
 		if(member == null){
@@ -349,11 +352,6 @@ public class MemberController {
 			res.setErrorMsg("정보가 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-//		if(!validatePassword(req.password))
-//		{
-//			res.setSuccess(false);
-//			res.setErrorMsg("비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.");
-//		}
 		if(JWTUtil.isExpired(request))
 		{
 			res.setSuccess(false);
@@ -379,6 +377,12 @@ public class MemberController {
 		}
 		if(member.getUserNo() == req.userNo) {
 			// 자기 정보 수정시
+			if(!validatePassword(req.password))
+			{
+				res.setSuccess(false);
+				res.setErrorMsg("비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.");
+				return ResponseEntity.ok().body(res);
+			}
 			if(!member.getUserId().equals(req.userId) 
 					&& memberService.checkId(req.userId)) {
 				res.setSuccess(false);

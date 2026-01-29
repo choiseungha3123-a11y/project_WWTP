@@ -8,16 +8,22 @@ Password : projectwwtp
 ps -ef | grep jar
 kill XXXX(숫자, 프로세스 ID)
 -jar 파일(서버)를 back에서 돌아가도록하는 명령(메모리를 1G로 할당)-
-pm2 start "java -Xmx1G -jar aiprojectserver-0.0.1.jar" --name "ai-server" --output "./ai-server-out.log"
+pm2 start "java -jar backend-0.0.1-SNAPSHOT.jar" --name "miniproject-server" --output "./miniproject-Server-out.log"
+pm2 start "java -Xmx1G -jar aiprojectserver-0.0.1.jar" --name "FlowWater-server" --output "./FlowWater-Server-out.log"
 
 -MYSQL 관련-
 mysql -u root -p
 sudo systemctl restart mysqld
 sudo systemctl status mysqld
+
 -nextjs 빌드-
+npm install
 npm run build
 -pm2 실행 관련-
-pm2 start npm --name "miniproject-app" -- start
+pm2 start npm --name "miniproject-app" -- start -- -p 3001
+pm2 start npm --name "FlowWater-app" -- start
+pm2 restart 6 --update-env
+
 pm2 restart all
 pm2 list
 -NGINX(포트 포워딩용) 관련-
@@ -28,47 +34,52 @@ sudo systemctl restart nginx
 
 -파이썬 관련-
 conda activate projectwwtp 활성화 후
-pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" --name "fastapi-server" --output "./fastapi-out.log" --error "./fastapi-error.log"
+pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" --name "FlowWater-Fastapi" --output "./FlowWater-Fastapi-out.log" --error "./FlowWater-Fastapi-error.log"
 
 -HTTPS 인증 관련-
 sudo certbot certonly -d projectwwtp.kro.kr --manual --preferred-challenges dns
 
-
-
+-사용중인 포트 확인-
+sudo ss -tunlp
 
 http://10.125.121.176:8081/swagger-ui/index.html
 
 
 
 
+
 해야할 일 : 
 	HTTP 인증 및 도메인 처리
-	amazone linux 2023 let's encrypt
-	vscode 안티그라비티
-	제로 SSL 확인
-
-	Oauth2 기능 추가 (구글, 네이버, 카카오)
+	
 	메모 처리(한꺼번에 보내기)
 	로그인 실패 관련 이력 처리
 	조회 로그
 	이상 조회 탐지(별도 테이블로 관리)
-	날씨 데이터 조회 기록 추가
-	날씨 데이터 직접 수정, 삭제(변경 이력 관리)
+	DB에 TMS 실시간 데이터 테이블과, 예측 데이터 테이블 구성
+
+	!!!리눅스 설정 정보 정리
 
 
 완료한 일 :
-	강의실에서 리눅스 서버 연결
-	강의실에서 DB 서버 연결
-	집에서 리눅스 서버 연결
-	집에서 DB 서버 연결
-	기상청 API 허브 가입 및 인증키 발급
-	swagger UI를 통한 API 설명 페이지 구성
-	로그인 토큰 처리 추가
-	회원 관리(로그인/추가/변경/삭제)
-	회원 정보에 이름 추가
-	ID 중복 확인 / (X)비밀번호 제한 추가(비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.)
-	동시 로그인 제한
-	DB 이전
-	파이썬 fastapi 연동 확인
-	회원정보 변경시(ID 중복에 관한 처리 추가, NULL 값은 변경되지 않도록 처리)
-	데이터 품질(결측/이상치)
+2026-01-22	아마존 리숙스 설정 시작
+2026-01-23	강의실에서 리눅스 서버 연결
+2026-01-23	강의실에서 DB 서버 연결
+2026-01-23	집에서 리눅스 서버 연결
+2026-01-23	집에서 DB 서버 연결
+2026-01-23	기상청 API 허브 가입 및 인증키 발급
+2026-01-23	swagger UI를 통한 API 설명 페이지 구성
+2026-01-23	로그인 토큰 처리 추가
+2026-01-26	회원 관리(로그인/추가/변경/삭제)
+2026-01-26	회원 정보에 이름 추가
+2026-01-26	ID 중복 확인 / (X)비밀번호 제한 추가(비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.)
+2026-01-26	동시 로그인 제한
+2026-01-27	DB 이전
+2026-01-27	BackEnd, FrontEnd, Python FastAPI가 각각 리눅스 서버에서 연동되는지 확인
+2026-01-28	회원정보 변경시(ID 중복에 관한 처리 추가, NULL 값은 변경되지 않도록 처리)
+2026-01-28	날씨 데이터 수집 수정(DB 및 java 코드상에 timezone 설정 추가)
+2026-01-28	데이터 품질(결측/이상치) 처리 완료
+2026-01-29	https를 위한 인증서 발급 완료
+2026-01-29	Oauth2 기능 추가 (구글, 네이버, 카카오)
+2026-01-29	Oauth2 테스트를 위한 ngrok 설치 및 테스트
+2026-01-29	날씨 데이터는 수정만 가능하도록함.
+2026-01-29	control => control과 service로 분리

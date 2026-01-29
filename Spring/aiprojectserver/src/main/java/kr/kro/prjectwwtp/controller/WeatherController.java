@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
+import java.util.TimeZone;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -25,14 +26,18 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.TmsData;
 import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.persistence.WeatherRepository;
+import kr.kro.prjectwwtp.service.WeatherService;
 import kr.kro.prjectwwtp.util.JWTUtil;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
@@ -42,8 +47,13 @@ import lombok.ToString;
 @RequestMapping("/api/weather")
 @RequiredArgsConstructor
 @Tag(name="WeatherController", description = "날씨 데이터 조회용 API")
-public class WeathereController {
-	private final WeatherRepository weatherRepo;
+public class WeatherController {
+	private final WeatherService weatherService;
+	
+	@PostConstruct
+	public void init() {
+		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+	}
 	
 	@ExceptionHandler(MissingServletRequestParameterException.class)
 	public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex) {
@@ -75,9 +85,11 @@ public class WeathereController {
 	@Getter
 	@Setter
 	@ToString
+	@NoArgsConstructor
+	@AllArgsConstructor
 	static public class weatherDTO {
 		long dataNo;
-		LocalDateTime time;
+		String time;
 		double ta;
 		double rn15m;
 		double rn60m;
@@ -88,7 +100,7 @@ public class WeathereController {
 		
 		public weatherDTO(TmsData data) {
 			this.dataNo = data.getDataNo();
-			this.time = data.getTime();
+			this.time = data.getTime().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
 			this.ta = data.getTa();
 			this.rn15m = data.getRn15m();
 			this.rn60m = data.getRn60m();
@@ -118,12 +130,11 @@ public class WeathereController {
 		LocalDateTime end = LocalDateTime.parse(tm2, formatter);
 		System.out.println("start : " + start);
 		System.out.println("end : " + end);
-		List<TmsData> list = weatherRepo.findByTimeBetween(start, end);
-		System.out.println("list size : " + list.size());
+		//List<TmsData> list = weatherRepo.findByTimeBetweenOrderByDataNoDesc(start, end);
+		List<TmsData> list = weatherService.findByTimeBetween(start, end);
 		for(TmsData data : list)
 		{
 			weatherDTO d = new weatherDTO(data);
-			System.out.println(d);
 			res.addData(d);
 		}
 		return ResponseEntity.ok().body(res);
@@ -145,6 +156,7 @@ public class WeathereController {
 	public ResponseEntity<Object> modifyWeatherData(
 			HttpServletRequest request,
 			@RequestBody weatherDTO req) {
+		System.out.println("req : " + req);
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
@@ -172,22 +184,19 @@ public class WeathereController {
 			return ResponseEntity.ok().body(res);
 		}
 		
-		Optional<TmsData> opt = weatherRepo.findById(req.dataNo);
-		if(opt.isEmpty()) {
+		TmsData data = weatherService.findById(req.dataNo);
+		if(data == null) {
 			res.setSuccess(false);
 			res.setErrorMsg("정보가 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
 		}
 		
-		TmsData data = opt.get();
-		data.setTa(req.ta);
-		data.setRn15m(req.rn15m);
-		data.setRn60m(req.rn60m);
-		data.setRn12h(req.rn12h);
-		data.setRnday(req.rnday);
-		data.setHm(req.hm);
-		data.setTd(req.td);
-		weatherRepo.save(data);
+		try {
+			weatherService.modifyWeahter(data, req.ta, req.rn15m, req.rn60m, req.rn12h, req.rnday, req.hm, req.td);
+		} catch(Exception e) {
+			res.setSuccess(false);
+			res.setErrorMsg(e.getMessage());
+		}
 		
 		return ResponseEntity.ok().body(res);
 	}

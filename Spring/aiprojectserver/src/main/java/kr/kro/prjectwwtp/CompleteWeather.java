@@ -50,10 +50,10 @@ public class CompleteWeather implements ApplicationRunner {
 	}
 	
 	List<TmsData> getList(int stn, LocalDateTime date) {
-		//LocalDateTime start = LocalDateTime.of(date.getYear(), date.getMonth(), date.getDayOfMonth(), 0, 0);
-		//LocalDateTime end = LocalDateTime.of(date.getYear(), date.getMonth(), date.getDayOfMonth(), 23, 59);
-		//List<TmsData> list = weatherRepo.findByStnAndTimeBetweenOrderByDataNoDesc(stn, start, end);
-		List<TmsData> list = weatherRepo.findByStnAndTime(stn, date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+		LocalDateTime start = LocalDateTime.of(date.getYear(), date.getMonth(), date.getDayOfMonth(), 0, 0);
+		LocalDateTime end = LocalDateTime.of(date.getYear(), date.getMonth(), date.getDayOfMonth(), 23, 59).with(LocalTime.MAX);
+		List<TmsData> list = weatherRepo.findByStnAndTimeBetween(stn, start, end);
+		
 		return list;
 	}
 	

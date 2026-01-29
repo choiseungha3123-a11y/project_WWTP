@@ -46,4 +46,5 @@ public class Member {
 	@Temporal(TemporalType.TIMESTAMP)
 	@Builder.Default
 	private LocalDateTime lastLoginTime = LocalDateTime.now();
+	private String socialAuth;
 }

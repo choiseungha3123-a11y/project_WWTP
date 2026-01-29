@@ -1,8 +1,6 @@
 package kr.kro.prjectwwtp.controller;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
+import java.util.TimeZone;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -10,21 +8,14 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import kr.kro.prjectwwtp.domain.TmsData;
+import jakarta.annotation.PostConstruct;
 import kr.kro.prjectwwtp.domain.responseDTO;
-import kr.kro.prjectwwtp.persistence.WeatherRepository;
+import kr.kro.prjectwwtp.service.PredictService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -33,7 +24,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Tag(name="PredictController", description = "예측값 조회 API")
 public class PredictController {
-	private final WeatherRepository weatherRepo;
+	private final PredictService predictService;
+	
+	@PostConstruct
+	public void init() {
+		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+	}
 	
 	@ExceptionHandler(MissingServletRequestParameterException.class)
 	public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex) {

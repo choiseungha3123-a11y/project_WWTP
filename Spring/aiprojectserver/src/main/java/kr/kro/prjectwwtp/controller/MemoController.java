@@ -1,6 +1,7 @@
 package kr.kro.prjectwwtp.controller;
 
 import java.util.List;
+import java.util.TimeZone;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -16,11 +17,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
-import kr.kro.prjectwwtp.domain.Role;
+import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.responseDTO;
-import kr.kro.prjectwwtp.persistence.MemberRepository;
-import kr.kro.prjectwwtp.persistence.MemoRepository;
+import kr.kro.prjectwwtp.service.MemoService;
+import kr.kro.prjectwwtp.util.JWTUtil;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -32,8 +34,12 @@ import lombok.ToString;
 @RequiredArgsConstructor
 @Tag(name="MemoController", description = "회원간 메모 관리 API")
 public class MemoController {
-	private final MemberRepository memberRepo;
-	private final MemoRepository memoRepo;
+	private final MemoService memoService;
+	
+	@PostConstruct
+	public void init() {
+		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+	}
 	
 	@ExceptionHandler(MissingServletRequestParameterException.class)
 	public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex) {
@@ -69,6 +75,19 @@ public class MemoController {
 				.success(true)
 				.errorMsg(null)
 				.build();
+		// 토큰 추출 및 검증
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
 		
 		
 		
@@ -82,6 +101,19 @@ public class MemoController {
 				.success(true)
 				.errorMsg(null)
 				.build();
+		// 토큰 추출 및 검증
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
 		
 		
 		
@@ -104,6 +136,19 @@ public class MemoController {
 				.success(true)
 				.errorMsg(null)
 				.build();
+		// 토큰 추출 및 검증
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
 		
 		
 		
@@ -125,6 +170,19 @@ public class MemoController {
 				.success(true)
 				.errorMsg(null)
 				.build();
+		// 토큰 추출 및 검증
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
 		
 		
 		
@@ -146,6 +204,19 @@ public class MemoController {
 				.success(true)
 				.errorMsg(null)
 				.build();
+		// 토큰 추출 및 검증
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
 		
 		
 		
@@ -160,6 +231,19 @@ public class MemoController {
 				.success(true)
 				.errorMsg(null)
 				.build();
+		// 토큰 추출 및 검증
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
 		
 		
 		
@@ -174,6 +258,19 @@ public class MemoController {
 				.success(true)
 				.errorMsg(null)
 				.build();
+		// 토큰 추출 및 검증
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
 		
 		
 		
