@@ -20,6 +20,23 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (formData.userId) {
+      const defaultPw = `${formData.userId}1234`;
+      setFormData(prev => ({
+        ...prev,
+        password: defaultPw,
+        confirmPassword: defaultPw
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        password: "",
+        confirmPassword: ""
+      }));
+    }
+  }, [formData.userId]);
+
+  useEffect(() => {
     if (isOpen) {
       setFormData({
         userId: "",
@@ -35,17 +52,6 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (formData.password !== formData.confirmPassword) {
-      alert("비밀번호가 일치하지 않습니다.");
-      return;
-    }
-
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,20}$/;
-    if (!passwordRegex.test(formData.password)) {
-      alert("비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.");
-      return;
-    }
 
     setLoading(true);
     try {
@@ -66,13 +72,14 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
       const result = await response.json();
 
       if (result.success) {
-        alert("새로운 회원이 성공적으로 등록되었습니다.");
+        alert(`새로운 회원이 성공적으로 등록되었습니다. 초기 비밀번호는 [ ${formData.password} ] 입니다.`);
         onSuccess();
         onClose();
       } else {
         alert(result.errorMsg || "등록에 실패했습니다.");
       }
     } catch (error) {
+      console.error("회원 등록 에러:", error);
       alert("서버 통신 오류가 발생했습니다.");
     } finally {
       setLoading(false);

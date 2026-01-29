@@ -75,6 +75,7 @@ export default function MemberManagementPage() {
         alert(result.errorMsg || "초기화에 실패했습니다.");
       }
     } catch (error) {
+      console.error("비밀번호 초기화 오류:", error);
       alert("서버와 통신 중 오류가 발생했습니다.");
     }
   };
@@ -98,6 +99,7 @@ export default function MemberManagementPage() {
         fetchMembers();
       }
     } catch (error) {
+      console.error("삭제 오류:", error);
       alert("삭제 실패");
     }
   };
