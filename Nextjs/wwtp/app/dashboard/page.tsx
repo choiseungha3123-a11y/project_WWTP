@@ -63,55 +63,65 @@ export default function DashboardPage() {
           <p className="text-slate-400 mt-1">실시간 하수처리 공정 모니터링 시스템</p>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="relative">
-            <button 
+        <div className="relative flex items-center gap-6">
+          <div className="flex items-center gap-4">
+            <div 
               onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="flex items-center gap-3 hover:bg-white/5 p-2 rounded-lg transition-all"
+              className="flex items-center gap-3 hover:bg-white/5 p-2 rounded-lg transition-all cursor-pointer"
             >
-              <span className="text-sm font-medium">{userName}님</span>
-              <div className="w-8 h-8 bg-slate-700 rounded-full overflow-hidden border border-white/20">
-                <div className="w-full h-full bg-blue-500 flex items-center justify-center text-xs">AD</div>
+            <span className="text-sm font-medium text-white">{userName}님</span>
+            <div className="w-8 h-8 bg-slate-700 rounded-full overflow-hidden border border-white/20">
+            <div className="w-full h-full bg-blue-500 flex items-center justify-center text-xs text-white font-bold">
+                AD
               </div>
-              <span className="text-xs text-slate-400" onClick={handleLogout}>로그아웃</span>
-            </button>
+            </div>
+          </div>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation(); 
+              handleLogout();
+            }}
+            className="text-sm text-slate-400 hover:text-white hover:font-bold transition-all p-1"
+          >
+            로그아웃
+          </button>
 
-            <AnimatePresence>
-              {isProfileOpen && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="absolute right-0 mt-4 w-64 bg-white text-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden"
-                >
-                  <div className="flex border-b text-center text-sm">
-                    <div className="flex-1 py-3 bg-slate-50 font-bold border-r text-blue-600">My</div>
-                    <div className="flex-1 py-3 hover:bg-gray-100 cursor-pointer border-r text-gray-400">알림</div>
-                    <div 
-                      className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-gray-400"
-                      onClick={() => setIsProfileOpen(false)}
+          <AnimatePresence>
+             {isProfileOpen && (
+              <motion.div 
+                 initial={{ opacity: 0, y: 10 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 exit={{ opacity: 0, y: 10 }}
+                 className="absolute right-0 top-full mt-2 w-64 bg-white text-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden border border-slate-200"
+              >
+                <div className="flex border-b text-center text-sm">
+                  <div className="flex-1 py-3 bg-slate-50 font-bold border-r text-blue-600">My</div>
+                  <div className="flex-1 py-3 hover:bg-gray-100 cursor-pointer border-r text-gray-400">알림</div>
+                  <div 
+                    className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-gray-400"
+                    onClick={() => setIsProfileOpen(false)}
                     >✕</div>
-                  </div>
+                </div>
 
-                  <div className="p-6 flex flex-col items-center border-b">
-                    <div className="w-16 h-16 bg-slate-200 rounded-full mb-3 overflow-hidden border border-gray-100">
-                       <div className="w-full h-full bg-blue-500 flex items-center justify-center text-white text-xl">AD</div>
-                    </div>
-                    <p className="font-bold text-lg">{userName}</p>
-                    <select className="mt-2 text-xs border rounded px-2 py-1 outline-none">
-                      <option>한국어 (ko)</option>
-                    </select>
+                <div className="p-6 flex flex-col items-center border-b">
+                  <div className="w-16 h-16 bg-slate-200 rounded-full mb-3 overflow-hidden border border-gray-100">
+                      <div className="w-full h-full bg-blue-500 flex items-center justify-center text-white text-xl">CP</div>
                   </div>
+                  <p className="font-bold text-lg">{userName}</p>
+                  <select className="mt-2 text-xs border rounded px-2 py-1 outline-none">
+                    <option>한국어 (ko)</option>
+                  </select>
+                </div>
                   
-                  <div className="flex flex-col text-sm">
-                    <button 
+                <div className="flex flex-col text-sm">
+                  <button 
                     onClick={() => {
-                                      setIsEditModalOpen(true);
-                                      setIsProfileOpen(false); 
+                                    setIsEditModalOpen(true);
+                                    setIsProfileOpen(false); 
                                     }}
                     className="text-left px-6 py-4 hover:bg-blue-50 transition-colors border-b">
                       개인정보 수정
-                    </button>
+                  </button>
                     
                     {userRole === "ROLE_ADMIN" && (
                       <button 
@@ -132,8 +142,8 @@ export default function DashboardPage() {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
-        </div>
+      </div>
+    </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
@@ -181,7 +191,7 @@ export default function DashboardPage() {
       <EditProfileModal 
         isOpen={isEditModalOpen} 
         onClose={() => setIsEditModalOpen(false)} 
-        currentUser={{ userNo: userNo, id: userId, name: userName }}
+        currentUser={{ userNo: userNo, id: userId, name: userName, role: userRole }}
         onUpdateSuccess={(newId, newName) => {
           setUserId(newId);
           setUserName(newName);
