@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class CompleteWeather implements ApplicationRunner {
+	private boolean isFirst = true;
 
 	@Value("${spring.apihub.authKey}")
 	private String authKey;
@@ -33,11 +34,19 @@ public class CompleteWeather implements ApplicationRunner {
 	private String baseUrl;
 	
 	private final WeatherRepository weatherRepo;
+	private RestTemplate restTemplate = new RestTemplate();
+	
+	@Value("${scheduler.delay_term}")
+	private int delayTerm;
+	private int delayCount = 0;
+	private int fetchListCount = -1;
+	@Value("${scheduler.delay}")
+	private int delaytime; 
+	@Value("${scheduler.enable}")
+	private boolean enable;
+	
 	private final WeatherCompleteRepository completeRepo;
 	private final GetherWeather getherWeather;
-	private RestTemplate restTemplate = new RestTemplate();
-		@Value("${scheduler.enable}")
-	private boolean enable;
 
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
@@ -59,7 +68,21 @@ public class CompleteWeather implements ApplicationRunner {
 	
 	@Scheduled(fixedDelayString  = "${scheduler.delay}") 
 	public void completeWeatherData() {
+		if(isFirst) {
+			isFirst = false;
+			return;
+		}
 		if(!enable) return;
+		if(fetchListCount == 0)
+		{
+			++delayCount;
+			if(delayCount == delayTerm / delaytime)
+			{
+				fetchListCount = -1;
+				System.out.println("30 minute delayed");
+			}
+			return;
+		}
 		
 		int[] stnlist = { 368,		// 구리 수택동
 				569, // 구리 토평동
@@ -140,7 +163,7 @@ public class CompleteWeather implements ApplicationRunner {
 						}
 					}
 				}
-				System.out.println("last : " + last);
+				System.out.println("last : " + stn + " >> " + last);
 			}
 /*			
 			for (int stn : stnlist) {

@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class GetherWeather implements ApplicationRunner {
+	private boolean isFirst = true;
 
 	@Value("${spring.apihub.authKey}")
 	private String authKey;
@@ -51,6 +52,10 @@ public class GetherWeather implements ApplicationRunner {
 	
 	@Scheduled(fixedDelayString  = "${scheduler.delay}") 
 	public void fetchTmsData() {
+		if(isFirst) {
+			isFirst = false;
+			return;
+		}
 		if(!enable) return;
 		if(fetchListCount == 0)
 		{
