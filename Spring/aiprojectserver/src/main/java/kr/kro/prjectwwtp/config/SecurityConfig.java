@@ -2,6 +2,7 @@ package kr.kro.prjectwwtp.config;
 
 import java.util.Arrays;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -126,25 +127,14 @@ public class SecurityConfig {
 		return new SessionRegistryImpl();
 	}
 	
+	@Value("${spring.AllowedOriginPatterns}")
+	private String[] patterns;
+	
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
+		System.out.println(Arrays.toString(patterns));
 		CorsConfiguration config = new CorsConfiguration();
-		config.setAllowedOriginPatterns(Arrays.asList(
-			"http://localhost:3000",
-			"https://localhost:3000",
-			"http://127.0.0.1:3000",
-			"http://localhost:8000",
-			"http://localhost:8081",
-			"http://localhost:80",
-			"http://www.projectwwtp.kro.kr:3000",
-			"http://www.projectwwtp.kro.kr:8000",
-			"http://www.projectwwtp.kro.kr:8081",
-			"http://www.projectwwtp.kro.kr:80",
-			"https://www.projectwwtp.kro.kr:3000",
-			"https://www.projectwwtp.kro.kr:8000",
-			"https://www.projectwwtp.kro.kr:8081",
-			"https://www.projectwwtp.kro.kr:80"));
-//		config.addAllowedOriginPattern("*");
+		config.setAllowedOriginPatterns(Arrays.asList(patterns));
 		config.addAllowedMethod(CorsConfiguration.ALL);
 		config.addAllowedHeader(CorsConfiguration.ALL);
 		config.setAllowCredentials(true);

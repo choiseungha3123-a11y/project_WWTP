@@ -22,6 +22,7 @@ npm run build
 -pm2 실행 관련-
 pm2 start npm --name "miniproject-app" -- start -- -p 3001
 pm2 start npm --name "FlowWater-app" -- start
+pm2 start npm --name "FlowWater-app-dev" -- run dev
 pm2 restart 6 --update-env
 
 pm2 restart all
@@ -103,3 +104,4 @@ http://10.125.121.176:8081/swagger-ui/index.html
 2026-01-29	control => control과 service로 분리
 2026-01-30	Member 권한 : Role에 VIEW 권한 추가
 2026-01-30	API 요청 기록 저장
+2026-01-30 개발용 NextJS와 Springboot 간의 통신을 위해서
