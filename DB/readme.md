@@ -42,7 +42,7 @@ sudo certbot certonly -d projectwwtp.kro.kr --manual --preferred-challenges dns
 -사용중인 포트 확인-
 sudo ss -tunlp
 
-나노!!!!
+도메인 인증서 재발급(와일드카드를 이용해서 받아야 주의요망이 사라짐 *****)
 
 
 http://10.125.121.176:8081/swagger-ui/index.html
