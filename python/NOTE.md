@@ -1,4 +1,81 @@
-### 2026 / 01 / 29
+
+---
+
+## 2026 / 01 / 30
+
+```
+note/preprocess/correlation.ipynb
+note/preprocess/preprocess_casual_mask.ipynb
+scripts/*.py
+src/*.py
+```
+
+### 1. 데이터 간 상관 관계 -> results/correlation/*.png 확인
+
+#### TMS Spearman 상관분석 결과 요약
+
+#### 강한 상관관계 (|r| > 0.4)
+- **SS_VU ↔ TP_VU**: 0.48 (중간 정도의 양의 상관)
+  - 부유물질과 총인이 함께 증가하는 경향
+- **PH_VU ↔ TP_VU**: -0.39 (중간 정도의 음의 상관)
+  - pH가 높을수록 총인이 감소하는 경향
+
+#### 약한~중간 상관관계 (0.2 < |r| < 0.4)
+- **PH_VU ↔ TN_VU**: -0.28
+- **FLUX_VU ↔ TP_VU**: -0.26
+- **PH_VU ↔ SS_VU**: -0.23
+
+#### 매우 약한 상관관계 (|r| < 0.2)
+- **TOC_VU**: 다른 변수들과 거의 상관관계 없음 (-0.08 ~ 0.15)
+- **FLUX_VU**: 대부분의 변수와 약한 상관관계
+- 나머지 변수 쌍들도 대부분 매우 약한 상관관계
+
+#### 주요 인사이트
+1. SS(부유물질)와 TP(총인)가 함께 증가하는 경향이 가장 뚜렷
+2. PH가 높을수록 TP와 TN(총질소)이 감소하는 경향
+3. TOC(총유기탄소)와 FLUX(유량)는 다른 수질 지표들과 독립적으로 작동
+4. 전반적으로 변수 간 상관관계가 약해 **다중공선성 문제는 크지 않을 것으로 예상**
+
+#### FLOW Spearman 상관분석 결과 요약
+
+#### 매우 강한 상관관계 (|r| > 0.7)
+- **flow_TankA ↔ flow_TankB**: 0.72 (강한 양의 상관)
+  - 두 탱크의 유입량이 함께 변동하는 경향
+- **level_TankA ↔ level_TankB**: 1.00 (완벽한 양의 상관)
+  - 두 탱크의 수위가 동일하게 변동 (동일한 데이터일 가능성)
+
+#### 중간 상관관계 (0.4 < |r| < 0.7)
+- **flow_TankA ↔ level_TankA**: 0.42
+- **flow_TankA ↔ level_TankB**: 0.42
+- **flow_TankB ↔ level_TankA**: 0.48
+- **flow_TankB ↔ level_TankB**: 0.48
+
+#### 주요 인사이트
+1. **TankA와 TankB의 수위가 완벽하게 일치** (r=1.00)
+   - 두 탱크가 연결되어 있거나 동일한 센서 데이터일 가능성
+2. **두 탱크의 유입량이 강하게 연동** (r=0.72)
+   - 동일한 수원에서 유입되거나 유사한 패턴을 보임
+3. **유입량과 수위 간 중간 정도의 양의 상관관계** (r=0.42~0.48)
+   - 유입량이 증가하면 수위도 증가하는 경향이 있으나 완벽하지는 않음
+   - 배출량이나 다른 요인도 수위에 영향을 미침
+
+### 2. 결측치 보간 수정
+- 기존 보간은 선형 보간을 사용하여 결측치를 처리했는데 선형 보간이 간단하긴 하지만, 미래값을 사용하기 때문에 수정
+- 단기 결측: ffill / 중기 결측: 시간가중 EWMA / EMA / 장기 결측: NaN
+- 모든 결측 처리에 대한 mask 추가(is_missing: 원본 결측, imputed_ffill: ffill로 보간, imputed_ewma: EWMA로 보간, imputed_NaN: 장기 결측로 결측 상태)
+
+### 3. 머신러닝 최적화
+- baseline.ipynb를 baseline.py로 수정하면서 파이프라인 형태로 수정
+- 이에 대한 코드 리뷰를 받았는데, 입력 데이터 정규화 / 이상치 처리 / 하이퍼파라미터 최적화 (Optuna) / 과적합 방지 (TimeSeriesSplit) / Feature Importance(RandomForest 기반) 특성 줄이기를 목표로 코드 수정
+- 추가로, 결측치 보간 전략 추가(baseline은 전부 드랍)
+- 전처리 과정: 시간축 정합(정합) -> 결측치 보간(ffill/EWMA 전략) -> 이상치 처리(NaN 변환 후 재보간) -> 리샘플링(10분/1시간) -> 파생 특성 생성(rolling/lag/시간 특성) -> 데이터 분할(train/valid/test) -> 모델 학습 및 평가
+- 특성 엔지니어링 과정을 model에 따라 다르게 적용되도록 수정
+
+#### 2026 / 01 / 31 해야 할 일
+model 실행하고 결과 확인
+
+---
+## 2026 / 01 / 29
 
 ```
 notebook/preprocess/feature/modelA.ipynb
@@ -10,7 +87,7 @@ scripts/*.py
 src/*.py
 ```
 
-#### 1. 어제 진행하던 수질 모델 특성 엔지니어링 계속하는 중
+### 1. 어제 진행하던 수질 모델 특성 엔지니어링 계속하는 중
 
 #### 공통 문제 정의
 
@@ -23,11 +100,11 @@ src/*.py
 - 모델 C: 공정 사태 계열(FLUX/PH) 특성 엔지니어링 결과 => data/processed/modelC_dataset.csv
 - 모델 FLOW: 유입유량(Q_in) 특성 엔지니어링 결과 => data/processed/modelFLOW_dataset.csv
 
-#### 2. 유입유량 모델의 경우 .ipynb -> .py로 수정해야 함(코드 리뷰를 위해)
+### 2. 유입유량 모델의 경우 .ipynb -> .py로 수정해야 함(코드 리뷰를 위해)
 - 파이프라인을 활용하여 변경
 - main에 무식하게 다 넣지 않기
 
-#### 3. 유입유량 모델 딥러닝 LSTM 시도 - modelFLOW_dataset.csv 사용
+### 3. 유입유량 모델 딥러닝 LSTM 시도 - modelFLOW_dataset.csv 사용
 
 | 실험 | 모델 구조 | Test R² | Test RMSE | 과적합 정도 | 학습 시간 |
 |-----|----------|---------|-----------|-----------|----------|
@@ -54,7 +131,7 @@ LSTM 개선
 
 ---
 
-### 2026 / 01 / 28
+## 2026 / 01 / 28
 
 ```
 notebook/preprocess/preprocess.ipynb
@@ -62,7 +139,7 @@ notebook/preprocess/show.ipynb
 notebook/preprocess/feature/modelA.ipynb
 ```
 
-#### TMS 관련
+### TMS 관련
 
 - 하나의 모델로 TMS 지표 6개를 예측하기에는 성능이 낮은 현상이 계속 나타남
 
@@ -73,7 +150,7 @@ notebook/preprocess/feature/modelA.ipynb
     - 모델 C: 공정 상태 계열(FLUX + pH, pH는 생물반응과 연동되고, FLUX는 공정 부하/활성의 대표지표라서 상태로 같이 해석이 쉬움) => notebook/feature/modelC.ipynb
     - pH는 변동 폭이 작고 센서 특성이 달라서 성능이 안 나오면 pH만 단독 모델로 빼도 될 것 같음
 
-#### preprocess
+### preprocess
 1. 데이터 형태를 확인하기 위해서 show.ipynb에 데이터들의 기초 통계량, boxplot, distribution, 시계열 변화를 확인
 
 -> 자세한 그래프는 results/boxplot/*.png, results/distribution/*.png, results/timeseries/*.png에서 확인 가능
@@ -91,13 +168,13 @@ feature engineering 하던 거 계속하기
 딥러닝 돌려보기
 
 ---
-### 2026 / 01 / 27
+## 2026 / 01 / 27
 ```
 notebook/ML/primary/baseline.ipynb
 notebook/ML/improved/v1/improved_baseline.py
 notebook/ML/improved/v2/improved_v2_baseline.py
 ```
-#### baseline
+### baseline
 1. 가용한 데이터의 전체 기간 확인(flow, tms, asw)
 2. 결측치 제거
 3. 1시간 단위로 리샘플링
@@ -116,7 +193,7 @@ aws: 2024/08/01 00:00:00 ~ 2026/01/25 05:09:00
 
 -> flow(Q_in), tms(FLUX_VU) 종속 변수만 성능이 좋음, 나머지 변수는 여전히 성능 낮음
 
-#### improved_baseline
+### improved_baseline
 1. 결측치 제거
 2. StandardScaler 적용
 3. GridSearchCV로 하이퍼파라미터 튜닝
@@ -135,7 +212,7 @@ aws: 2024/08/01 00:00:00 ~ 2026/01/25 05:09:00
     - 심각한 과적합: Train R² 0.97 → Test R² -1.31
     - 피처 부족: 수질 관련 직접 피처 없음
 ```
-#### improved_baseline_v2
+### improved_baseline_v2
 1. 전처리 과정에서 1분 간격 확인 후 선형 보간으로 채우기
 2. 도메인 피처 추가
 3. 정규화 강화
@@ -170,7 +247,7 @@ V1: 4.2% → V2: 94.3% (22배 증가)
 
 ---
 
-### 2026 / 01 / 26
+## 2026 / 01 / 26
 ```
 notebook/ML/linear/flow_baseline.ipynb
 notebook/ML/linear/tms_baseline.ipynb
