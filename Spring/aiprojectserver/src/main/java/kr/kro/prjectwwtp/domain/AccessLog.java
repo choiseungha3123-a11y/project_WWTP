@@ -2,16 +2,15 @@ package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonProperty.Access;
+import org.springframework.beans.factory.annotation.Value;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 import lombok.AllArgsConstructor;
@@ -28,22 +27,20 @@ import lombok.ToString;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-public class Member {
+public class AccessLog {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private long userNo;
-	private String userId;
-	private String userName;
-	@JsonProperty(access = Access.WRITE_ONLY)
-	private String password;
-	@Enumerated(EnumType.STRING)
-	private Role role;
+	private long log_no;
+	@ManyToOne
+	@JoinColumn(name="user_no")
+	private Member member;
+	private String userAgent;
+	private String remoteInfo;
+	private String method;
+	private String requestURI;
+	private String errorMsg;
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(updatable = false)
 	@Builder.Default
-	private LocalDateTime createTime = LocalDateTime.now(); 
-	@Temporal(TemporalType.TIMESTAMP)
-	@Builder.Default
-	private LocalDateTime lastLoginTime = LocalDateTime.now();
-	private String socialAuth;
+	private LocalDateTime logTime = LocalDateTime.now();
 }

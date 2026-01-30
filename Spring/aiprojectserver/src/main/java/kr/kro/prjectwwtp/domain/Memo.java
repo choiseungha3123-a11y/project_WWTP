@@ -35,18 +35,14 @@ public class Memo{
     private String content;
     
     @ManyToOne
-    @JoinColumn(name="sendUserNo")
-    private Member sendMember;
+    @JoinColumn(name="createUserNo")
+    private Member createMember;
     @ManyToOne
-    @JoinColumn(name="recvUseNo")
-    private Member recvMember;
+    @JoinColumn(name="diableUseNo")
+    private Member disableMember;
     
     @Temporal(TemporalType.TIMESTAMP)
-	LocalDateTime sendTime;
+	LocalDateTime createTime;
     @Temporal(TemporalType.TIMESTAMP)
-	LocalDateTime recvTime;
-    @Temporal(TemporalType.TIMESTAMP)
-	LocalDateTime sendDeleteTime;
-    @Temporal(TemporalType.TIMESTAMP)
-	LocalDateTime recvDeleteTime;
+	LocalDateTime disableTime;
 }

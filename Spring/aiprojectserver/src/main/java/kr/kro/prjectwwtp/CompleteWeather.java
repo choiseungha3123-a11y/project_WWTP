@@ -20,7 +20,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 import kr.kro.prjectwwtp.domain.Weather;
 import kr.kro.prjectwwtp.domain.WeatherComplete;
 import kr.kro.prjectwwtp.persistence.WeatherCompleteRepository;
-import kr.kro.prjectwwtp.persistence.WeatherRepository;
+import kr.kro.prjectwwtp.service.WeatherAPILogService;
+import kr.kro.prjectwwtp.service.WeatherService;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -33,7 +34,8 @@ public class CompleteWeather implements ApplicationRunner {
 	@Value("${spring.apihub.baseUrl}")
 	private String baseUrl;
 	
-	private final WeatherRepository weatherRepo;
+	private final WeatherService weatherService;
+	private final WeatherAPILogService logService;
 	private RestTemplate restTemplate = new RestTemplate();
 	
 	@Value("${scheduler.delay_term}")
@@ -61,11 +63,12 @@ public class CompleteWeather implements ApplicationRunner {
 	List<Weather> getList(int stn, LocalDateTime date) {
 		LocalDateTime start = LocalDateTime.of(date.getYear(), date.getMonth(), date.getDayOfMonth(), 0, 0);
 		LocalDateTime end = LocalDateTime.of(date.getYear(), date.getMonth(), date.getDayOfMonth(), 23, 59).with(LocalTime.MAX);
-		List<Weather> list = weatherRepo.findByStnAndTimeBetween(stn, start, end);
+		List<Weather> list = weatherService.findByStnAndTimeBetween(stn, start, end);
 		
 		return list;
 	}
 	
+
 	@Scheduled(fixedDelayString  = "${scheduler.delay}") 
 	public void completeWeatherData() {
 		if(isFirst) {
@@ -84,10 +87,17 @@ public class CompleteWeather implements ApplicationRunner {
 			return;
 		}
 		
+		delayCount = 0;
+		fetchListCount = 0;
+		
 		int[] stnlist = { 368,		// 구리 수택동
 				569, // 구리 토평동
 				541 // 남양주 배양리
 		};
+		int originSize = 0;
+        int modifySize = 0;
+        String errorMag = null;
+        String uri = null;
 		try {
 			for(int stn : stnlist) {
 				WeatherComplete complete = completeRepo.findFirstByStnOrderByDataNoDesc(stn);
@@ -97,13 +107,14 @@ public class CompleteWeather implements ApplicationRunner {
 				//System.out.println("now : " + now);
 				if(complete != null) {
 					last = complete.getDataTime();
-					dataCount = complete.getDataSize();
+					fetchListCount = dataCount = complete.getDataSize();
+					
 				}
 				
-				while(last.isBefore(now) || dataCount != 24 * 60) {
+				if(last.isBefore(now) || dataCount != 24 * 60) {
 					LocalDateTime start = LocalDateTime.of(last.getYear(), last.getMonthValue(), last.getDayOfMonth(), 0, 0);
 					LocalDateTime end = LocalDateTime.of(last.getYear(), last.getMonthValue(), last.getDayOfMonth(), 23, 59);
-					List<Weather> list = weatherRepo.findByStnAndTimeBetween(stn, start, end);
+					List<Weather> list = weatherService.findByStnAndTimeBetween(stn, start, end);
 					
 					int size = list.size();
 					if(size == 24 * 60) {
@@ -117,121 +128,76 @@ public class CompleteWeather implements ApplicationRunner {
 					} else if(size > 24 * 60) {
 						// 중복 발견 - time값이 동일한 중복 데이터 제거
 						System.out.println("중복 발견 : " + last);
-						List<Weather> toDelete = new ArrayList<>();
-						var uniqueMap = list.stream()
-							.collect(Collectors.toMap(
-									Weather::getTime,
-								d -> d,
-								(existing, duplicate) -> {
-									toDelete.add(duplicate);
-									return existing;
-								}
-							));
-						
-						// 데이터베이스에서 삭제
-						weatherRepo.deleteAll(toDelete);
-						
-						System.out.println("중복 제거 완료: " + toDelete.size() + "개 삭제");
-						list = new ArrayList<>(uniqueMap.values());
+						originSize = size;
+						try {
+							List<Weather> toDelete = new ArrayList<>();
+							var uniqueMap = list.stream()
+								.collect(Collectors.toMap(
+										Weather::getTime,
+									d -> d,
+									(existing, duplicate) -> {
+										toDelete.add(duplicate);
+										return existing;
+									}
+								));
+							
+							// 데이터베이스에서 삭제
+							weatherService.deleteWeatherList(toDelete);
+							
+							System.out.println("중복 제거 완료: " + toDelete.size() + "개 삭제");
+							list = new ArrayList<>(uniqueMap.values());
+							dataCount = modifySize = list.size();
+						}
+						catch(Exception e) {
+							errorMag = e.getMessage();
+						}finally {
+							logService.addLog("DeleteDuplicateWeatherAPI", originSize,  0, modifySize, uri, errorMag);
+						}
 					} else {
 						// 결측 발견
 						System.out.println("결측 발견 : " + last + " (현재: " + size + "개)");
-						
-						// GetherWeather를 이용해 API에서 데이터 조회
-						String tm1 = start.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-						String tm2 = end.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-						
-						List<Weather> apiList = getherWeather.fetchTmsData(tm1, tm2, stn);
-						System.out.println("API에서 조회: " + apiList.size() + "개");
-						
-						// 현재 list에 없는 데이터 찾기 (현재 list의 time 값과 비교)
-						Set<LocalDateTime> existingTimes = list.stream()
-							.map(Weather::getTime)
-							.collect(Collectors.toSet());
-						
-						List<Weather> missingData = apiList.stream()
-							.filter(data -> !existingTimes.contains(data.getTime()))
-							.collect(Collectors.toList());
-						
-						// 빠진 데이터를 DB에 저장
-						if(missingData.size() > 0) {
-							weatherRepo.saveAll(missingData);
-							System.out.println("결측 데이터 보충: " + missingData.size() + "개 저장");
-							list.addAll(missingData);
-						} else {
-							System.out.println("추가될 결측 데이터 없음");
-						}
-					}
-				}
-				System.out.println("last : " + stn + " >> " + last);
-			}
-/*			
-			for (int stn : stnlist) {
-				LocalDateTime lastDay = LocalDateTime.of(2024, 1, 1, 0, 0);
-				LocalDateTime now = LocalDateTime.now();
-				//List<WeatherComplete> listAll = completeRepo.findByStnOrderByDataNoDesc(stn);
-				List<WeatherComplete> listAll = completeRepo.findByStnOrderByDataNoDesc(stn);
-				for(WeatherComplete c : listAll) {
-					if(c.getDataSize() != 24 * 60 && !compareDay(now, c.getDataTime()))
-					{
-						List<TmsData> list = getList(c.getStn(), c.getDataTime());
-						// 이상 및 결측 발견
-						if(c.getDataSize() > 24 * 60) {
-							// 중첩
-							System.out.println("중첩 발견");
-							while(list.size() > 24 * 60)
-							{
-								TmsData match = list.stream()
-								    .filter(data -> data.getTime().equals(c.getDataTime()))
-								    .findFirst()
-								    .orElse(null);
-								if(match != null) {
-									list.remove(match);
-									weatherRepo.delete(match);
-								}
+						originSize = size;
+						try {
+							// GetherWeather를 이용해 API에서 데이터 조회
+							String tm1 = start.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
+							String tm2 = end.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
+							
+							List<Weather> apiList = getherWeather.fetchWeatherData(tm1, tm2, stn);
+							System.out.println("API에서 조회: " + apiList.size() + "개");
+							
+							// 현재 list에 없는 데이터 찾기 (현재 list의 time 값과 비교)
+							Set<LocalDateTime> existingTimes = list.stream()
+								.map(Weather::getTime)
+								.collect(Collectors.toSet());
+							
+							List<Weather> missingData = apiList.stream()
+								.filter(data -> !existingTimes.contains(data.getTime()))
+								.collect(Collectors.toList());
+							
+							// 빠진 데이터를 DB에 저장
+							if(missingData.size() > 0) {
+								weatherService.saveWeatherList(missingData);
+								System.out.println("결측 데이터 보충: " + missingData.size() + "개 저장");
+								list.addAll(missingData);
+								dataCount = modifySize = list.size();
+							} else {
+								System.out.println("추가될 결측 데이터 없음");
 							}
-							System.out.println("size : " + list.size());
-							System.out.println("중첩 제거");
-							c.setDataSize(list.size());
-							completeRepo.save(c);
-						} 
-						else if(c.getDataSize() < 24 * 60) {
-							// 결측
-//							LocalDateTime checkTime = c.getDataTime();
-//							LocalDateTime startTime = LocalDateTime.of(checkTime.getYear(), checkTime.getMonthValue(), checkTime.getDayOfMonth(), 0, 0);
-//							LocalDateTime endTime = startTime.plusDays(1);
-//							String tm1 = startTime.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-//							String tm2 = endTime.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-//							List<TmsData> newlist = fetchTmsData(tm1, tm2, stn);
-//							for(TmsData data : newlist) {
-//								weatherRepo.findby
-//							}
+						} catch(Exception e) {
+							errorMag = e.getMessage();
+						} finally {
+							logService.addLog("AddNotEnoughWeatherAPI", originSize,  0, modifySize, uri, errorMag);
 						}
 					}
-					lastDay = c.getDataTime();
 				}
-				while(lastDay.isBefore(now)) {
-					// 오늘 이전의 처리가 안된 데이터가 있음
-					List<TmsData> list = getList(stn, lastDay);
-					System.out.println(lastDay + " >> list 개수 : " + list.size());
-					completeRepo.save(WeatherComplete.builder()
-											.dataTime(lastDay)
-											.stn(stn)
-											.dataSize(list.size())
-											.build());
-					
-					
-					lastDay = lastDay.plusDays(1);
-				}
-			}	
-*/			
+			}
 		}catch (Exception e) {
 			// TODO: handle exception
 			e.printStackTrace();
 		}
 	}
 
-	public List<Weather> fetchTmsData(String tm1, String tm2, int stn) {
+	public List<Weather> fetchWeatherData(String tm1, String tm2, int stn) {
 		// build()와 expand()를 사용하여 값을 채워 넣습니다.
 	    URI uri = UriComponentsBuilder.fromUriString(baseUrl)
 	            .queryParam("tm1", tm1)

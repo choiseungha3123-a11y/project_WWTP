@@ -1,15 +1,16 @@
 package kr.kro.prjectwwtp.config;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -19,6 +20,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.responseDTO;
+import kr.kro.prjectwwtp.service.AccessLogService;
 import kr.kro.prjectwwtp.service.SessionService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 	private final AuthenticationManager authenticationManager;
 	private final TokenBlacklistManager tokenBlacklistManager;
 	private final SessionService sessionService;
+	private final AccessLogService logService;
 	
 	@Override
 	public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
@@ -35,24 +38,94 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 		System.out.println("\n========== [JWTAuthenticationFilter] attemptAuthentication START ==========");
 		System.out.println("[JWTAuthenticationFilter] Request Method: " + request.getMethod());
 		System.out.println("[JWTAuthenticationFilter] Request URI: " + request.getRequestURI());
+		System.out.println("[JWTAuthenticationFilter] Content-Type: " + request.getContentType());
+		System.out.println("[JWTAuthenticationFilter] Content-Length: " + request.getContentLength());
+		
+		byte[] requestBodyBytes = null;
+		String requestBodyStr = null;
 		
 		try {
+			// 요청 본문을 바이트 배열로 읽기
+			requestBodyBytes = request.getInputStream().readAllBytes();
+			requestBodyStr = new String(requestBodyBytes, StandardCharsets.UTF_8);
+			
+			System.out.println("[JWTAuthenticationFilter] Request Body (String): " + requestBodyStr);
+			System.out.println("[JWTAuthenticationFilter] Request Body (Length): " + requestBodyStr.length() + " chars");
+			System.out.println("[JWTAuthenticationFilter] Request Body (Bytes): " + requestBodyBytes.length + " bytes");
+			
+			// 요청 본문의 각 문자 확인 (특수 문자 체크)
+			System.out.println("[JWTAuthenticationFilter] Request Body (Hex): " + bytesToHex(requestBodyBytes));
+			
+			if (requestBodyStr.isEmpty()) {
+				System.out.println("[ERROR] [JWTAuthenticationFilter] 요청 본문이 비어있습니다!");
+				throw new AuthenticationException("요청 본문이 비어있습니다") {};
+			}
+			
+			// JSON 유효성 검사
+			requestBodyStr = requestBodyStr.trim();
+			if (!requestBodyStr.startsWith("{") || !requestBodyStr.endsWith("}")) {
+				System.out.println("[ERROR] [JWTAuthenticationFilter] JSON 형식이 올바르지 않습니다!");
+				System.out.println("  - 첫 글자: '" + (requestBodyStr.length() > 0 ? requestBodyStr.charAt(0) : "없음") + "'");
+				System.out.println("  - 마지막 글자: '" + (requestBodyStr.length() > 0 ? requestBodyStr.charAt(requestBodyStr.length()-1) : "없음") + "'");
+				throw new AuthenticationException("JSON 형식이 올바르지 않습니다") {};
+			}
+			
 			ObjectMapper mapper = new ObjectMapper();
-			Member member = mapper.readValue(request.getInputStream(), Member.class);
+			Member member = mapper.readValue(requestBodyStr, Member.class);
 			
 			if (member == null) {
-				System.out.println("[JWTAuthenticationFilter] Member is null");
+				System.out.println("[JWTAuthenticationFilter] ERROR: Member is null");
 				throw new AuthenticationException("회원 정보가 없습니다") {};
 			}
 			
+			System.out.println("[JWTAuthenticationFilter] Parsed Member - UserId: " + member.getUserId());
 			System.out.println("[JWTAuthenticationFilter] Attempting authentication for: " + member.getUserId());
 			UsernamePasswordAuthenticationToken authToken = 
 				new UsernamePasswordAuthenticationToken(member.getUserId(), member.getPassword());
 			return authenticationManager.authenticate(authToken);
 		} catch (IOException e) {
-			System.out.println("[JWTAuthenticationFilter] IOException: " + e.getMessage());
-			throw new AuthenticationException("요청 처리 중 오류가 발생했습니다") {};
+			System.out.println("\n=============== [ERROR] [JWTAuthenticationFilter] IOException 발생! ===============");
+			System.out.println("[에러 메시지]: " + e.getMessage());
+			System.out.println("[에러 타입]: " + e.getClass().getName());
+			System.out.println("[에러 원인]: " + (e.getCause() != null ? e.getCause().toString() : "없음"));
+			
+			if (requestBodyStr != null) {
+				System.out.println("\n[요청 본문 정보]");
+				System.out.println("  - String 형식: " + requestBodyStr);
+				System.out.println("  - 길이: " + requestBodyStr.length() + " chars");
+				System.out.println("  - Hex: " + bytesToHex(requestBodyBytes));
+				
+				// 각 라인별 분석
+				String[] lines = requestBodyStr.split("\n");
+				System.out.println("  - 라인 수: " + lines.length);
+				for (int i = 0; i < lines.length; i++) {
+					System.out.println("  - [라인 " + (i+1) + "]: " + lines[i]);
+				}
+			}
+			
+			System.out.println("\n[가능한 원인 및 해결방법]");
+			System.out.println("  1. JSON 형식이 잘못되었음 (따옴표, 쉼표, 중괄호 확인)");
+			System.out.println("  2. 요청 본문이 불완전하게 종료됨 (특히 따옴표나 괄호가 닫혀있지 않음)");
+			System.out.println("  3. Member 클래스의 필드명과 JSON 키가 일치하지 않음");
+			System.out.println("  4. Content-Type이 'application/json'이 아님");
+			System.out.println("  5. 요청 본문이 비어있거나 Null");
+			
+			System.out.println("\n========== [JWTAuthenticationFilter] 상세 스택 트레이스 ==========");
+			e.printStackTrace();
+			System.out.println("=========================================================================");
+			throw new AuthenticationException("요청 처리 중 오류가 발생했습니다: " + e.getMessage()) {};
 		}
+	}
+	
+	/**
+	 * 바이트 배열을 16진수 문자열로 변환 (디버깅용)
+	 */
+	private String bytesToHex(byte[] bytes) {
+		StringBuilder sb = new StringBuilder();
+		for (byte b : bytes) {
+			sb.append(String.format("%02x ", b));
+		}
+		return sb.toString();
 	}
 	
 	@Override

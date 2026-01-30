@@ -128,7 +128,7 @@ public class WeatherController {
 		LocalDateTime end = LocalDateTime.parse(tm2, formatter);
 		System.out.println("start : " + start);
 		System.out.println("end : " + end);
-		//List<TmsData> list = weatherRepo.findByTimeBetweenOrderByDataNoDesc(start, end);
+		//List<Weather> list = weatherRepo.findByTimeBetweenOrderByDataNoDesc(start, end);
 		List<Weather> list = weatherService.findByTimeBetween(start, end);
 		for(Weather data : list)
 		{

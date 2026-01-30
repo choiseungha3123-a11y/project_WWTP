@@ -72,7 +72,7 @@ public class MemberService {
 				.userId(userId)
 				.password("socialUser")
 				.socialAuth(socialAuth)
-				.role(Role.ROLE_MEMBER)
+				.role(Role.ROLE_VIEWER)
 				.build();
 		memberRepo.save(member);
 		return member;

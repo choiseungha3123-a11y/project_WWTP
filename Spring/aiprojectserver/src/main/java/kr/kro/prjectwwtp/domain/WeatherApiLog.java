@@ -2,13 +2,8 @@ package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonProperty.Access;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -28,22 +23,19 @@ import lombok.ToString;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-public class Member {
+public class WeatherApiLog {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private long userNo;
-	private String userId;
-	private String userName;
-	@JsonProperty(access = Access.WRITE_ONLY)
-	private String password;
-	@Enumerated(EnumType.STRING)
-	private Role role;
+	private long log_no;
+	private String logType;
+	private int originSize;
+	private int returnSize;
+	private int modifySize;
+	
+	private String requestURI;
+	private String errorMsg;
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(updatable = false)
 	@Builder.Default
-	private LocalDateTime createTime = LocalDateTime.now(); 
-	@Temporal(TemporalType.TIMESTAMP)
-	@Builder.Default
-	private LocalDateTime lastLoginTime = LocalDateTime.now();
-	private String socialAuth;
+	private LocalDateTime logTime = LocalDateTime.now();
 }

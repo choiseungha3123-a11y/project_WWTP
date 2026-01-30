@@ -21,6 +21,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import kr.kro.prjectwwtp.persistence.MemberRepository;
+import kr.kro.prjectwwtp.service.AccessLogService;
 import kr.kro.prjectwwtp.service.SessionService;
 import lombok.RequiredArgsConstructor;
 
@@ -33,6 +34,7 @@ public class SecurityConfig {
 	private final AuthenticationSuccessHandler oauth2SuccessHandler;
 	private final TokenBlacklistManager tokenBlacklistManager;
 	private final SessionService sessionService;
+	private final AccessLogService logService;
 	
 	@Bean
 	public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
@@ -42,7 +44,7 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager) throws Exception {
 		// JWT 인증 필터 생성 (로그인 처리)
-		JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(authenticationManager, tokenBlacklistManager, sessionService);
+		JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(authenticationManager, tokenBlacklistManager, sessionService, logService);
 		// 로그인 엔드포인트 지정
 		jwtAuthenticationFilter.setFilterProcessesUrl("/api/member/login");
 		
@@ -66,7 +68,7 @@ public class SecurityConfig {
 		// 접근 권한 설정
 		http.authorizeHttpRequests(auth -> auth
 			// 공개 접근 가능 (필터 적용 안 함)
-			.requestMatchers("/api/member/login").permitAll()
+			//.requestMatchers("/api/member/login").permitAll()
 			.requestMatchers("/system/login").permitAll()
 			.requestMatchers("/system/accessDenied").permitAll()
 			.requestMatchers("/v3/api-docs/**").permitAll()
