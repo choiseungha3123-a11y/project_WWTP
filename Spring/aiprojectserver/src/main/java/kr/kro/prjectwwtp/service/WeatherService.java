@@ -34,12 +34,12 @@ public class WeatherService {
 		weatherRepo.deleteAll(list);
 	}
 	
-	public List<Weather> findByTimeBetween(LocalDateTime start, LocalDateTime end) {
-		return weatherRepo.findByTimeBetween(start, end);
+	public List<Weather> findByLogTimeBetween(LocalDateTime start, LocalDateTime end) {
+		return weatherRepo.findByLogTimeBetween(start, end);
 	}
 	
-	public List<Weather> findByStnAndTimeBetween(int stn, LocalDateTime start, LocalDateTime end) {
-		return weatherRepo.findByStnAndTimeBetween(stn, start, end);
+	public List<Weather> findByStnAndLogTimeBetween(int stn, LocalDateTime start, LocalDateTime end) {
+		return weatherRepo.findByStnAndLogTimeBetween(stn, start, end);
 	}
 	
 	public void modifyWeahter(Weather data, double ta, double rn15m, double rn60m, double rn12h, double rnday, double hm, double td) {

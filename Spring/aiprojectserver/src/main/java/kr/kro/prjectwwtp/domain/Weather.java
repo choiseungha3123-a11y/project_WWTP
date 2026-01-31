@@ -29,7 +29,8 @@ public class Weather {
 	private long dataNo; // 필드명을 CamelCase로 변경
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "time", updatable = false)
-	private LocalDateTime time;
+	@Builder.Default
+	private LocalDateTime logTime = LocalDateTime.now();
 	private int stn;
 	
 	private double wd1;

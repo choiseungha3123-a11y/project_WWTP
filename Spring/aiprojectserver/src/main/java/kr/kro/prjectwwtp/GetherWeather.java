@@ -81,7 +81,7 @@ public class GetherWeather implements ApplicationRunner {
 				Weather lastData = weatherService.findFirstByStnOrderByDataNoDesc(stn);
 				LocalDateTime startTime = LocalDateTime.of(2024, 1, 1, 0, 0);
 				if (lastData != null) {
-					startTime = lastData.getTime();
+					startTime = lastData.getLogTime();
 				}
 				LocalDateTime endTime = startTime.plusDays(1);
 				String tm1 = startTime.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
@@ -164,7 +164,7 @@ public class GetherWeather implements ApplicationRunner {
 	            	double ps = Double.parseDouble(columns[16]);
 	            	double td = Double.parseDouble(columns[17]);
 	            	Weather data = Weather.builder()
-	                        .time(tm) // TM
+	                        .logTime(tm) // TM
 	                        .stn(stn)                // STN
 	                        .wd1(wd1)              // WD1
 	                        .wd2(wd2)              // WD2

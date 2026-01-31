@@ -2,10 +2,9 @@ package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
 
-import org.springframework.beans.factory.annotation.Value;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -31,9 +30,11 @@ public class AccessLog {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private long log_no;
-	@ManyToOne
-	@JoinColumn(name="user_no")
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name="userNo")
 	private Member member;
+	@Column(name="userNo", insertable = false, updatable = false)
+    private Long userNo;
 	private String userAgent;
 	private String remoteInfo;
 	private String method;

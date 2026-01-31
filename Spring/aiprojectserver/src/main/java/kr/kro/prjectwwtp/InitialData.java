@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import kr.kro.prjectwwtp.config.PasswordEncoder;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
+import kr.kro.prjectwwtp.persistence.AccessLogRepository;
 import kr.kro.prjectwwtp.persistence.MemberRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 public class InitialData implements ApplicationRunner {
 	private final MemberRepository memberRepo;
 	private PasswordEncoder encoder = new PasswordEncoder();
+	private final AccessLogRepository logRepo;
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
 		// TODO Auto-generated method stub

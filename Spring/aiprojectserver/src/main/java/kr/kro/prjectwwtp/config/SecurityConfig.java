@@ -69,19 +69,26 @@ public class SecurityConfig {
 		// 접근 권한 설정
 		http.authorizeHttpRequests(auth -> auth
 			// 공개 접근 가능 (필터 적용 안 함)
-			//.requestMatchers("/api/member/login").permitAll()
-			.requestMatchers("/system/login").permitAll()
-			.requestMatchers("/system/accessDenied").permitAll()
 			.requestMatchers("/v3/api-docs/**").permitAll()
 			.requestMatchers("/swagger-ui/**").permitAll()
 			.requestMatchers("/swagger-ui.html").permitAll()
 			.requestMatchers("/swagger-resources/**").permitAll()
-			.requestMatchers("/webjars/**").permitAll()
 			.requestMatchers("/static/**").permitAll()
+			
+			.requestMatchers("/api/member/login").permitAll()
+			.requestMatchers("/api/member/checkId").permitAll()
+			.requestMatchers("/api/weather/list").permitAll()
+			
 			// 인증 필요 - 이 경로들은 JWT 필터를 통과해야 함
-			.requestMatchers("/api/member/**").authenticated()
-			.requestMatchers("/member/**").authenticated()
+			.requestMatchers("/api/member/logout").authenticated()
+			.requestMatchers("/api/member/modifyMember").authenticated()
+			.requestMatchers("/api/member/deleteMember").authenticated()
+			.requestMatchers("/api/memo/**").authenticated()
+
 			// 관리자 권한 필요
+			.requestMatchers("/api/member/addMember").hasRole("ADMIN")
+			.requestMatchers("/api/member/listMember").hasRole("ADMIN")
+			.requestMatchers("/api/weather/modify").hasRole("ADMIN")
 			.requestMatchers("/admin/**").hasRole("ADMIN")
 			// 그 외는 허용
 			.anyRequest().permitAll());

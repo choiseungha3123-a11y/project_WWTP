@@ -1,17 +1,19 @@
 package kr.kro.prjectwwtp.controller;
 
-import java.util.List;
 import java.util.TimeZone;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -20,6 +22,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.domain.Member;
+import kr.kro.prjectwwtp.domain.Memo;
+import kr.kro.prjectwwtp.domain.PageDTO;
+import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.service.MemoService;
 import kr.kro.prjectwwtp.util.JWTUtil;
@@ -68,9 +73,11 @@ public class MemoController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@GetMapping("/sendList")
-	public ResponseEntity<Object> getMemoSendList(
-			HttpServletRequest request) {
+	@GetMapping("/list")
+	public ResponseEntity<Object> getMemoList(
+			HttpServletRequest request,
+			@RequestParam int page,
+			@RequestParam int count) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
@@ -88,34 +95,16 @@ public class MemoController {
 			res.setErrorMsg("로그인이 필요합니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		
-		
-		
-		return ResponseEntity.ok().body(res);
-	}
-	
-	@GetMapping("/recvList")
-	public ResponseEntity<Object> getMemoRecvList(
-			HttpServletRequest request) {
-		responseDTO res = responseDTO.builder()
-				.success(true)
-				.errorMsg(null)
-				.build();
-		// 토큰 추출 및 검증
-		if(JWTUtil.isExpired(request))
-		{
+		if(member.getRole() == Role.ROLE_VIEWER) {
 			res.setSuccess(false);
-			res.setErrorMsg("토큰이 만료되었습니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		Member member = JWTUtil.parseToken(request);
-		if(member == null){
-			res.setSuccess(false);
-			res.setErrorMsg("로그인이 필요합니다.");
+			res.setErrorMsg("권한이 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
 		}
 		
-		
+		Pageable pageable = PageRequest.of(page, count);
+
+		PageDTO<Memo> pageList = memoService.findByDisableMemberIsNull(member, pageable);
+		res.addData(pageList);
 		
 		return ResponseEntity.ok().body(res);
 	}
@@ -123,15 +112,14 @@ public class MemoController {
 	@Getter
 	@Setter
 	@ToString
-	static public class sendDTO {
-		private long recvUserNo;
+	static public class createDTO {
 		private String content;
 	}
 	
-	@PostMapping("/sendMemo")
-	public ResponseEntity<Object> getMemoSend(
+	@PutMapping("/create")
+	public ResponseEntity<Object> putMemoCreate(
 			HttpServletRequest request,
-			@RequestBody sendDTO req) {
+			@RequestBody createDTO req) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
@@ -149,7 +137,63 @@ public class MemoController {
 			res.setErrorMsg("로그인이 필요합니다.");
 			return ResponseEntity.ok().body(res);
 		}
+		if(member.getRole() == Role.ROLE_VIEWER) {
+			res.setSuccess(false);
+			res.setErrorMsg("권한이 올바르지 않습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		try {
+			memoService.addMemo(member, req.content);	
+		}
+		catch(Exception e) {
+			res.setSuccess(false);
+			res.setErrorMsg(e.getMessage());
+		}
 		
+		return ResponseEntity.ok().body(res);
+	}
+	
+	@Getter
+	@Setter
+	@ToString
+	static public class modifyDTO {
+		private long memoNo;
+		private String content;
+	}
+	
+	@PostMapping("/modify")
+	public ResponseEntity<Object> postMemoModify(
+			HttpServletRequest request,
+			@RequestBody modifyDTO req) {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		// 토큰 추출 및 검증
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		if(member.getRole() == Role.ROLE_VIEWER) {
+			res.setSuccess(false);
+			res.setErrorMsg("권한이 올바르지 않습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		try {
+			memoService.modifyMemo(member, req.memoNo, req.content);
+		}
+		catch(Exception e) {
+			res.setSuccess(false);
+			res.setErrorMsg(e.getMessage());
+		}
 		
 		
 		return ResponseEntity.ok().body(res);
@@ -158,14 +202,14 @@ public class MemoController {
 	@Getter
 	@Setter
 	@ToString
-	static public class recvDTO {
+	static public class disableDTO {
 		private long memoNo;
 	}
 	
-	@PostMapping("/recvMemo")
-	public ResponseEntity<Object> getMemoRecv(
+	@PostMapping("/disable")
+	public ResponseEntity<Object> postMemoDisable(
 			HttpServletRequest request,
-			@RequestBody recvDTO req) {
+			@RequestBody disableDTO req) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
@@ -183,23 +227,28 @@ public class MemoController {
 			res.setErrorMsg("로그인이 필요합니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		
+		if(member.getRole() == Role.ROLE_VIEWER) {
+			res.setSuccess(false);
+			res.setErrorMsg("권한이 올바르지 않습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		try {
+			memoService.disableMemo(member, req.memoNo);
+		}
+		catch(Exception e) {
+			res.setSuccess(false);
+			res.setErrorMsg(e.getMessage());
+		}
 		
 		
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@Getter
-	@Setter
-	@ToString
-	static public class listDTO {
-		private List<Long> memoList;
-	}
-	
-	@PostMapping("/recvMemoList")
-	public ResponseEntity<Object> getMemoListRecv(
+	@GetMapping("/oldList")
+	public ResponseEntity<Object> getMemoOldList(
 			HttpServletRequest request,
-			@RequestBody listDTO req) {
+			@RequestParam int page,
+			@RequestParam int count) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
@@ -217,66 +266,17 @@ public class MemoController {
 			res.setErrorMsg("로그인이 필요합니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		
-		
-		
-		return ResponseEntity.ok().body(res);
-	}
-	
-	@DeleteMapping("/deleteMemo")
-	public ResponseEntity<Object> getMemoDelete(
-			HttpServletRequest request,
-			@RequestBody recvDTO req) {
-		responseDTO res = responseDTO.builder()
-				.success(true)
-				.errorMsg(null)
-				.build();
-		// 토큰 추출 및 검증
-		if(JWTUtil.isExpired(request))
-		{
+		if(member.getRole() == Role.ROLE_VIEWER) {
 			res.setSuccess(false);
-			res.setErrorMsg("토큰이 만료되었습니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		Member member = JWTUtil.parseToken(request);
-		if(member == null){
-			res.setSuccess(false);
-			res.setErrorMsg("로그인이 필요합니다.");
+			res.setErrorMsg("권한이 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
 		}
 		
-		
-		
-		return ResponseEntity.ok().body(res);
-	}
-	
-	@DeleteMapping("/deleteMemoList")
-	public ResponseEntity<Object> getMemoListDelete(
-			HttpServletRequest request,
-			@RequestBody listDTO req) {
-		responseDTO res = responseDTO.builder()
-				.success(true)
-				.errorMsg(null)
-				.build();
-		// 토큰 추출 및 검증
-		if(JWTUtil.isExpired(request))
-		{
-			res.setSuccess(false);
-			res.setErrorMsg("토큰이 만료되었습니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		Member member = JWTUtil.parseToken(request);
-		if(member == null){
-			res.setSuccess(false);
-			res.setErrorMsg("로그인이 필요합니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		
-		
-		
-		return ResponseEntity.ok().body(res);
-	}
+		Pageable pageable = PageRequest.of(page, count);
 
-	
-	
+		PageDTO<Memo> pageList = memoService.findByDisableMemberIsNotNull(member, pageable);
+		res.addData(pageList);
+		
+		return ResponseEntity.ok().body(res);
+	}
 }

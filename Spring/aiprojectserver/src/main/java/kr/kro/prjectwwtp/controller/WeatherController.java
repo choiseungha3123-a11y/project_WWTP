@@ -98,7 +98,7 @@ public class WeatherController {
 		
 		public weatherDTO(Weather data) {
 			this.dataNo = data.getDataNo();
-			this.time = data.getTime().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+			this.time = data.getLogTime().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
 			this.ta = data.getTa();
 			this.rn15m = data.getRn15m();
 			this.rn60m = data.getRn60m();
@@ -129,7 +129,7 @@ public class WeatherController {
 		System.out.println("start : " + start);
 		System.out.println("end : " + end);
 		//List<Weather> list = weatherRepo.findByTimeBetweenOrderByDataNoDesc(start, end);
-		List<Weather> list = weatherService.findByTimeBetween(start, end);
+		List<Weather> list = weatherService.findByLogTimeBetween(start, end);
 		for(Weather data : list)
 		{
 			weatherDTO d = new weatherDTO(data);

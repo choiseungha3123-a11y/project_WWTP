@@ -26,10 +26,16 @@ import lombok.ToString;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-public class LoginLog {
+public class MemoLog {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private long log_no;
+	private String type;
+	private int page;
+	private int count;
+	private long memoNo;
+	private String preContent;
+	private String currentContent;
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name="userNo")
 	private Member member;

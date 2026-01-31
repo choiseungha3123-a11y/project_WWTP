@@ -91,8 +91,8 @@ public class MemberController {
 	})
 	@ApiResponse(description = "success : 성공/실패<br>dataSize : 1<br>dataList : JWTToken<br>errorMsg : success가 false 일때의 오류원인 ")
 	public ResponseEntity<Object> login(
-			@RequestBody loginDTO req,
-			HttpServletRequest request) {
+			HttpServletRequest request,
+			@RequestBody loginDTO req) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)

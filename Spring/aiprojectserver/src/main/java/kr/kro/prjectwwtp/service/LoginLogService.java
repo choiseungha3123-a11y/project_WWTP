@@ -25,7 +25,7 @@ public class LoginLogService {
 		// 로그 추가
 		logRepo.save(LoginLog.builder()
 				.member(member)
-				.loginTime(now)
+				.logTime(now)
 				.build());
 	}
 

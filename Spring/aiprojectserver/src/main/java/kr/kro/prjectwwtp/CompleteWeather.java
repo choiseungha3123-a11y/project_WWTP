@@ -63,7 +63,7 @@ public class CompleteWeather implements ApplicationRunner {
 	List<Weather> getList(int stn, LocalDateTime date) {
 		LocalDateTime start = LocalDateTime.of(date.getYear(), date.getMonth(), date.getDayOfMonth(), 0, 0);
 		LocalDateTime end = LocalDateTime.of(date.getYear(), date.getMonth(), date.getDayOfMonth(), 23, 59).with(LocalTime.MAX);
-		List<Weather> list = weatherService.findByStnAndTimeBetween(stn, start, end);
+		List<Weather> list = weatherService.findByStnAndLogTimeBetween(stn, start, end);
 		
 		return list;
 	}
@@ -114,7 +114,7 @@ public class CompleteWeather implements ApplicationRunner {
 				if(last.isBefore(now) || dataCount != 24 * 60) {
 					LocalDateTime start = LocalDateTime.of(last.getYear(), last.getMonthValue(), last.getDayOfMonth(), 0, 0);
 					LocalDateTime end = LocalDateTime.of(last.getYear(), last.getMonthValue(), last.getDayOfMonth(), 23, 59);
-					List<Weather> list = weatherService.findByStnAndTimeBetween(stn, start, end);
+					List<Weather> list = weatherService.findByStnAndLogTimeBetween(stn, start, end);
 					
 					int size = list.size();
 					if(size == 24 * 60) {
@@ -133,7 +133,7 @@ public class CompleteWeather implements ApplicationRunner {
 							List<Weather> toDelete = new ArrayList<>();
 							var uniqueMap = list.stream()
 								.collect(Collectors.toMap(
-										Weather::getTime,
+										Weather::getLogTime,
 									d -> d,
 									(existing, duplicate) -> {
 										toDelete.add(duplicate);
@@ -167,11 +167,11 @@ public class CompleteWeather implements ApplicationRunner {
 							
 							// 현재 list에 없는 데이터 찾기 (현재 list의 time 값과 비교)
 							Set<LocalDateTime> existingTimes = list.stream()
-								.map(Weather::getTime)
+								.map(Weather::getLogTime)
 								.collect(Collectors.toSet());
 							
 							List<Weather> missingData = apiList.stream()
-								.filter(data -> !existingTimes.contains(data.getTime()))
+								.filter(data -> !existingTimes.contains(data.getLogTime()))
 								.collect(Collectors.toList());
 							
 							// 빠진 데이터를 DB에 저장
@@ -235,7 +235,7 @@ public class CompleteWeather implements ApplicationRunner {
             try {
                 // API 제공 순서에 맞춰 인덱스 매핑 (기상청 nph-aws2_min 사양 기준 예시)
             	Weather data = Weather.builder()
-                        .time(LocalDateTime.parse(columns[0], formatter)) // TM
+                        .logTime(LocalDateTime.parse(columns[0], formatter)) // TM
                         .stn(Integer.parseInt(columns[1]))                // STN
                         .wd1(Double.parseDouble(columns[2]))              // WD1
                         .wd2(Double.parseDouble(columns[3]))              // WD2
