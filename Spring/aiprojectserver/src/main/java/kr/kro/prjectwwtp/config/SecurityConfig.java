@@ -89,6 +89,7 @@ public class SecurityConfig {
 			.requestMatchers("/api/member/addMember").hasRole("ADMIN")
 			.requestMatchers("/api/member/listMember").hasRole("ADMIN")
 			.requestMatchers("/api/weather/modify").hasRole("ADMIN")
+			.requestMatchers("/api/admin/**").hasRole("ADMIN")
 			.requestMatchers("/admin/**").hasRole("ADMIN")
 			// 그 외는 허용
 			.anyRequest().permitAll());
