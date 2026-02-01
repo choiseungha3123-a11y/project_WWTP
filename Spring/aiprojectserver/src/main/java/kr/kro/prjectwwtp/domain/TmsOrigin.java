@@ -30,10 +30,10 @@ public class TmsOrigin {
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "time", updatable = false)
 	private LocalDateTime tmsTime;
-	private double toc;
-	private double ph;
-	private double ss;
-	private int flux;
-	private double tn;
-	private double tp;
+	private Double toc;
+	private Double ph;
+	private Double ss;
+	private Integer flux;
+	private Double tn;
+	private Double tp;
 }

@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class AccessLogService {
-private final AccessLogRepository logRepo;
+	private final AccessLogRepository logRepo;
 	
 	public void addLog(Member member, String userAgent, String remoteInfo, String method, String requestURI, String errorMsg) {
 		Member logMember = null;
