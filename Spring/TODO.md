@@ -42,6 +42,12 @@ sudo ss -tunlp
 
 http://10.125.121.176:8081/swagger-ui/index.html
 
+80을 8080으로
+sudo iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 80 -j REDIRECT --to-port 8080
+
+sudo certbot certonly -d *.projectwwtp.kro.kr --manual --preferred-challenges dns
+https://jun-codinghistory.tistory.com/651
+
 
 
 
