@@ -123,19 +123,38 @@ export default function DashboardPage() {
           <p className="text-slate-400 mt-2 font-light">공정별 실시간 상태 요약</p>
         </div>
 
-        <div className="relative flex items-center gap-6">
-          <div 
-            onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="flex items-center gap-3 hover:bg-white/5 p-2 rounded-xl transition-all cursor-pointer border border-transparent hover:border-white/10"
-          >
-            <div className="text-right">
-              <p className="text-sm font-bold text-white">{userName}님</p>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest">{userRole.replace("ROLE_", "")}</p>
-            </div>
-            <div className="w-10 h-10 bg-linear-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-sm text-white font-bold shadow-lg">
-              {userName.substring(0, 1)}
-            </div>
-          </div>
+        <div className="relative flex items-center gap-4">
+  {/* 사용자 프로필 영역 */}
+  <div 
+    onClick={() => setIsProfileOpen(!isProfileOpen)}
+    className="flex items-center gap-3 hover:bg-white/5 p-2 rounded-xl transition-all cursor-pointer border border-transparent hover:border-white/10"
+  >
+    <div className="text-right">
+      <p className="text-sm font-bold text-white">{userName}님</p>
+      <p className="text-[10px] text-slate-500 uppercase tracking-widest">{userRole.replace("ROLE_", "")}</p>
+    </div>
+    <div className="w-10 h-10 bg-linear-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-sm text-white font-bold shadow-lg">
+      {userName.substring(0, 1)}
+    </div>
+  </div>
+
+  {/* 세로 구분선 (선택 사항) */}
+  <div className="w-px h-6 bg-white/10 mx-1" />
+
+  {/* 로그아웃 버튼 */}
+  <button 
+    onClick={handleLogout} // 로그아웃 로직 함수 연결
+    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-red-500/10 hover:text-red-400 border border-white/10 hover:border-red-500/30 transition-all group"
+  >
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      className="w-4 h-4 text-slate-400 group-hover:text-red-400 transition-colors" 
+      fill="none" viewBox="0 0 24 24" stroke="currentColor"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+    <span className="text-xs font-medium">로그아웃</span>
+  </button>
           
           {/* 드롭다운 메뉴 (기존과 동일) */}
           <AnimatePresence>
