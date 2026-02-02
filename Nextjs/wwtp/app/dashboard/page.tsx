@@ -26,7 +26,15 @@ interface Memo {
   };
 }
 
-const MetricCard = ({ title, value, unit, color, onClick }: any) => (
+interface MetricCardProps {
+  title: string;
+  value: string | number;
+  unit: string;
+  color: string;
+  onClick: () => void;
+}
+
+const MetricCard = ({ title, value, unit, color, onClick }: MetricCardProps) => (
   <motion.div
     whileHover={{ scale: 1.02, translateY: -5 }}
     whileTap={{ scale: 0.98 }}
@@ -68,7 +76,7 @@ export default function DashboardPage() {
   const [isMemoLoading, setIsMemoLoading] = useState(false);
 
   // --- 중요: 인증 헤더 생성 및 디버깅 ---
-  const getAuthHeaders = useCallback(() => {
+  const getAuthHeaders = useCallback((): HeadersInit => {
     const token = localStorage.getItem("accessToken");
     
     // 콘솔에서 토큰 존재 여부 확인용
@@ -82,7 +90,7 @@ export default function DashboardPage() {
     return {
       "Content-Type": "application/json",
       // Bearer 뒤에 반드시 공백 한 칸이 있어야 합니다.
-      "Authorization": token ? `Bearer ${cleanToken}` : "",
+      "Authorization": `Bearer ${cleanToken.trim()}`,
     };
   }, []);
 
@@ -91,8 +99,6 @@ export default function DashboardPage() {
 
     try {
       const headers = getAuthHeaders();
-      console.log("요청 헤더 확인:", headers); // 👈 여기서 Bearer 토큰이 잘 찍히는지 확인
-
       const [resActive, resOld] = await Promise.all([
         fetch("/api/memo/list?page=0&count=10", { headers }),
         fetch("/api/memo/oldList?page=0&count=10", { headers })
