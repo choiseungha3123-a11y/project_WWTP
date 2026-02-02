@@ -3,6 +3,7 @@ package kr.kro.prjectwwtp.domain;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,7 +24,7 @@ public class responseDTO {
 	private boolean success;
 	@Schema(description = "dataList의 데이터 수 : 0~", example = "0")
 	private int dataSize;
-	@Schema(description = "전달할 데이터 : null or []", example = "null")
+	@ArraySchema(schema = @Schema(description = "전달할 데이터 : null or []", example = "null || []"))
 	private List<Object> dataList;
 	@Schema(description = "success 가 false 일때의 원인", example = "정보가 올바르지 않습니다.")
 	private String errorMsg;

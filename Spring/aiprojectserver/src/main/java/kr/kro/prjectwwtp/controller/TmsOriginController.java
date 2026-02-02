@@ -13,7 +13,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.kro.prjectwwtp.domain.responseDTO;
-import kr.kro.prjectwwtp.service.TmsImportResult;
 import kr.kro.prjectwwtp.service.TmsOriginService;
 import lombok.RequiredArgsConstructor;
 
@@ -59,9 +58,8 @@ public class TmsOriginController {
 				.errorMsg(null)
 				.build();
 		try {
-			TmsImportResult stat = tmsOriginService.saveFromCsv(file);
-			res.setDataSize(stat.getSavedCount());
-			res.addData(stat);
+			int saveCount = tmsOriginService.saveFromCsv(file);
+			res.addData("saveCount : " + saveCount);
 		} catch (Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());

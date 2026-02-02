@@ -18,6 +18,13 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
@@ -74,6 +81,15 @@ public class MemoController {
 	}
 	
 	@GetMapping("/list")
+	@Operation(summary="메모 데이터 조회", description = "다른 이용자들에게 보여줄 메모 데이터를 조회합니다.")
+	@Parameters( {
+		@Parameter(name = "page", description= "조회할 페이지수", example = "0"),
+		@Parameter(name = "count", description= "페이지 별로 보여줄 메모의 수", example = "10")
+	})
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "결과", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class))),
+		@ApiResponse(responseCode = "201", description = "dataList", content = @Content(mediaType = "application/json", schema = @Schema(implementation = PageDTO.class)))
+	})
 	public ResponseEntity<Object> getMemoList(
 			HttpServletRequest request,
 			@RequestParam int page,
@@ -82,6 +98,7 @@ public class MemoController {
 				.success(true)
 				.errorMsg(null)
 				.build();
+		System.out.println("token : " + request.getHeader("Authorization"));
 		// 토큰 추출 및 검증
 		if(JWTUtil.isExpired(request))
 		{
@@ -117,9 +134,12 @@ public class MemoController {
 	}
 	
 	@PutMapping("/create")
+	@Operation(summary="메모 작성", description = "새로운 메모를 작성합니다.")
+	@ApiResponse(responseCode = "200", description = "성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> putMemoCreate(
 			HttpServletRequest request,
 			@RequestBody createDTO req) {
+		System.out.println("token : " + request.getHeader("Authorization"));
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
@@ -162,6 +182,8 @@ public class MemoController {
 	}
 	
 	@PostMapping("/modify")
+	@Operation(summary="메모 수정", description = "작성된 메모를 수정합니다.")
+	@ApiResponse(responseCode = "200", description = "성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> postMemoModify(
 			HttpServletRequest request,
 			@RequestBody modifyDTO req) {
@@ -207,6 +229,8 @@ public class MemoController {
 	}
 	
 	@PostMapping("/disable")
+	@Operation(summary="메모 비활성화", description = "작성된 메모를 비활성화합니다.")
+	@ApiResponse(responseCode = "200", description = "성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> postMemoDisable(
 			HttpServletRequest request,
 			@RequestBody disableDTO req) {
@@ -245,6 +269,15 @@ public class MemoController {
 	}
 	
 	@GetMapping("/oldList")
+	@Operation(summary="비활성화된 메모 조회", description = "비활성화된 메모 데이터를 조회합니다.")
+	@Parameters( {
+		@Parameter(name = "page", description= "조회할 페이지수", example = "0"),
+		@Parameter(name = "count", description= "페이지 별로 보여줄 메모의 수", example = "10")
+	})
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class))),
+		@ApiResponse(responseCode = "200", description = "responseDTO의 dataList에 포함된 데이터", content = @Content(mediaType = "application/json", schema = @Schema(implementation = PageDTO.class)))
+	})
 	public ResponseEntity<Object> getMemoOldList(
 			HttpServletRequest request,
 			@RequestParam int page,
