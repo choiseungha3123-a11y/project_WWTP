@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 public class WeatherAPILogService {
 private final WeatherAPILogRepository logRepo;
 	
-	public void addLog(String logType, int originSize, int returnSize, int modifySize, String requestURI, String errorMsg) {
+	public void addWeatherAPILog(String logType, int originSize, int returnSize, int modifySize, String requestURI, String errorMsg) {
 		// 로그 추가
 		logRepo.save(WeatherApiLog.builder()
 							.logType(logType)

@@ -198,7 +198,7 @@ public class GetherWeather implements ApplicationRunner {
         } catch(Exception e) {
         	errorMag = e.getMessage();
         } finally {
-			logService.addLog("Fetch", originSize,  returnSize, 0, uri, errorMag);
+			logService.addWeatherAPILog("Fetch", originSize,  returnSize, 0, uri, errorMag);
 		}
         return dataList;
     }

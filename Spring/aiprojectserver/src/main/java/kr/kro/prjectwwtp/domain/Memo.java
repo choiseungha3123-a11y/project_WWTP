@@ -2,9 +2,6 @@ package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonProperty.Access;
-
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -56,7 +53,7 @@ public class Memo{
     //private Long lastModifyUserNo;
     @ManyToOne(fetch = FetchType.LAZY)
     //@JsonProperty(access = Access.WRITE_ONLY)
-    @JoinColumn(name="diableUseNo")
+    @JoinColumn(name="diableUserNo")
     @Schema(description = "메모를 종료한 회원", example = "1~")
     private Member disableMember;
     //@Column(name="diableUseNo", insertable = false, updatable = false)

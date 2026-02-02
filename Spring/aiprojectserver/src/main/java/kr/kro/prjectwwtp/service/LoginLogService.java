@@ -16,15 +16,22 @@ public class LoginLogService {
 	private final MemberRepository memberRepo;
 	private final LoginLogRepository logRepo;
 	
-	public void addLog(Member member) {
+	public void addLoginLog(Member member, boolean success, String userId, String remoteInfo, String socialAuth, String errorMsg) {
 		// 로그인 시간 갱신
 		LocalDateTime now = LocalDateTime.now();
-		member.setLastLoginTime(now);
-		memberRepo.save(member);
+		if(member != null) {
+			member.setLastLoginTime(now);
+			memberRepo.save(member);
+		}
 		
 		// 로그 추가
 		logRepo.save(LoginLog.builder()
 				.member(member)
+				.success(success)
+				.userId(userId)
+				.remoteInfo(remoteInfo)
+				.errorMsg(errorMsg)
+				.socialAuth(socialAuth)
 				.logTime(now)
 				.build());
 	}

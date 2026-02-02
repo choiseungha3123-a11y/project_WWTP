@@ -38,6 +38,16 @@ public class LoginLog {
 	@Column(name="userNo", insertable = false, updatable = false)
 	@Schema(description = "접속 회원 고유번호", example = "0~ 0은 비회원")
     private Long userNo;
+	@Schema(description = "로그인 시도한 ID")
+	private String userId;
+	@Schema(description = "로그인 성공 여부", example = "true / false")
+	private boolean success;
+	@Schema(description = "로그인 시도한 IP 주소")
+	private String remoteInfo;
+	@Schema(description = "오류 메시지", example = "처리중 발생한 오류")
+	private String errorMsg;
+	@Schema(description = "소셜로그인 정보")
+	private String socialAuth;
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(updatable = false)
 	@Builder.Default

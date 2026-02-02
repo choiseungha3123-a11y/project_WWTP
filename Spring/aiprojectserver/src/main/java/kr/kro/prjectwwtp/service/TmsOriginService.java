@@ -151,7 +151,6 @@ public class TmsOriginService {
 	}
 	
 	public List<TmsOrigin> getTmsOriginListByDate(String dateStr) {
-		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
 		LocalDateTime start = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
 		LocalDateTime end = LocalDateTime.of(start.getYear(), start.getMonth(), start.getDayOfMonth(), 23, 59, 59);
 		List<TmsOrigin> list = tmsOriginRepo.findByTmsTimeBetween(start, end);

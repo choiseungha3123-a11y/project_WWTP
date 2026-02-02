@@ -95,45 +95,60 @@ public class MemberController {
 				.success(true)
 				.errorMsg(null)
 				.build();
-		if(req.userId == null || req.userId.length() == 0 
-				|| req.password == null || req.password.length() == 0) {
+		Member member = null;
+		boolean loginSuccess = false;
+		String userId = req.userId;
+		
+		String remoteInfo = null;
+		String errorMsg = null;
+		
+		try {
+			String remoteAddr = getRemoteAddress(request);
+			int remotePort = request.getRemotePort();
+			remoteInfo = remoteAddr + ":" + remotePort;
+			if(req.userId == null || req.userId.length() == 0 
+					|| req.password == null || req.password.length() == 0) {
+				res.setSuccess(false);
+				errorMsg = "정보가 올바르지 않습니다.";
+				res.setErrorMsg(errorMsg);
+				return ResponseEntity.ok().body(res);
+			}
+			//System.out.println("req : " + req);
+			
+			member = memberService.getByIdAndPassword(req.userId, req.password);
+			
+			if(member == null) {
+				res.setSuccess(false);
+				errorMsg = "회원 정보가 존재하지 않습니다. ID와 비밀번호를 확인해주세요.";
+				res.setErrorMsg(errorMsg);
+				return ResponseEntity.ok().body(res);
+			}
+			
+			// 기존 토큰 무효화 (다른 기기에서의 로그인을 무효화)
+			tokenBlacklistManager.invalidateToken(req.userId);
+			
+			// 토큰 생성
+			String token = JWTUtil.getJWT(member);
+			//System.out.println("token : " + token);
+			
+			// 새 토큰 등록
+			String userAgent = request.getHeader("User-Agent");
+			if (userAgent == null) {
+				userAgent = "Unknown";
+			}
+			
+			tokenBlacklistManager.registerNewToken(req.userId, token, userAgent, remoteInfo);
+			loginSuccess = true;
+			res.addData(token);
+		}catch (Exception e) {
 			res.setSuccess(false);
-			res.setErrorMsg("정보가 올바르지 않습니다.");
-			return ResponseEntity.ok().body(res);
+			errorMsg = e.getMessage();
+		}finally {
+			// 접속 로그 기록
+			logService.addLoginLog(member, loginSuccess, userId, remoteInfo, null, errorMsg);
 		}
-		//System.out.println("req : " + req);
-		
-		Member member = memberService.getByIdAndPassword(req.userId, req.password);
-		
-		if(member == null) {
-			res.setSuccess(false);
-			res.setErrorMsg("회원 정보가 존재하지 않습니다. ID와 비밀번호를 확인해주세요.");
-			return ResponseEntity.ok().body(res);
-		}
-		
-		// 접속 로그 기록
-		logService.addLog(member);
-		
-		// 기존 토큰 무효화 (다른 기기에서의 로그인을 무효화)
-		tokenBlacklistManager.invalidateToken(req.userId);
-		
-		// 토큰 생성
-		String token = JWTUtil.getJWT(member);
-		//System.out.println("token : " + token);
-		
-		// 새 토큰 등록
-		String userAgent = request.getHeader("User-Agent");
-		if (userAgent == null) {
-			userAgent = "Unknown";
-		}
-		String remoteAddr = getRemoteAddress(request);
-		int remotePort = request.getRemotePort();
-		String remoteInfo = remoteAddr + ":" + remotePort;
-		
-		tokenBlacklistManager.registerNewToken(req.userId, token, userAgent, remoteInfo);
-		
-		res.addData(token);
 		return ResponseEntity.ok().body(res);
+		
 	}
 	
 	@PostMapping("/logout")

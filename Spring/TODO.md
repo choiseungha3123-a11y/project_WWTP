@@ -59,12 +59,12 @@ http://10.125.121.176:8081/swagger-ui/index.html
 		- 가공데이터만 수정 가능하며, 수정 이력또한 기록
 
 
-
-	로그인 실패 관련 이력 처리
-
 	조회 로그
 	이상 조회 탐지(별도 테이블로 관리)
 	DB에 TMS 실시간 데이터 테이블과, 예측 데이터 테이블 구성
+
+	SecurityConfig에 설정이 필요한 페이지
+		- accessDenied, logout, JWT Token expired 
 
 
 
@@ -104,3 +104,4 @@ http://10.125.121.176:8081/swagger-ui/index.html
 		다만 DB에 이미 저장된 값이 있는지 확인하였을때는 2분 정도의 시간이 소비됨
 -2026-02-02	Member API 명칭 변경
 -2026-02-02	swagger UI 용 어노테이션 추가 정리
+-2026-02-02	로그인 실패 이력 처리 추가

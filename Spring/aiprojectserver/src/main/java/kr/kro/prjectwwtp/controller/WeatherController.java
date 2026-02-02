@@ -20,7 +20,6 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -28,10 +27,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
-import kr.kro.prjectwwtp.controller.MemoController.memoCreateDTO;
 import kr.kro.prjectwwtp.domain.Member;
-import kr.kro.prjectwwtp.domain.Memo;
-import kr.kro.prjectwwtp.domain.PageDTO;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.Weather;
 import kr.kro.prjectwwtp.domain.responseDTO;

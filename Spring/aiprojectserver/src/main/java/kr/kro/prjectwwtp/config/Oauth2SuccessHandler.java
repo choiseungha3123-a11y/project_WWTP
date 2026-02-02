@@ -36,67 +36,76 @@ public class Oauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler{
 	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
 			Authentication authentication) throws IOException, ServletException {
 		// TODO Auto-generated method stub
-		Map<String, String> map = getUseInfo(authentication);
-
-		String provider = map.get("provider");
-		String name = map.get("name");
-		String email = map.get("email");
+		Member member = null;
+		boolean loginSuccess = false;
+		String userId = null;
 		
-		String userId = name + "@" + provider;
-		String socialAuth = name + "@" + provider + "@" + email;
-		
-		System.out.println("OAuth2 인증 : " + socialAuth);
-		
-		
-		Member member = memberService.findBySocialAuth(socialAuth);
-		
-		if(member != null) {
-			// 기존 로그인 유저
-		} else {
-			// 신규 가입
-			member = memberService.addSocialMember(socialAuth, userId, name);
-		}
-		
-		// 기존 세션 만료 (동시 로그인 차단)
-		System.out.println("[Oauth2SuccessHandler] Expiring previous sessions for user: " + member.getUserId());
-		sessionService.expireUserSessions(member.getUserId());
-		
-		// 로그인 기록 추가
-		logService.addLog(member);
-
-		// JWT 생성
-		String token = JWTUtil.getJWT(member);
-		
-		// 브라우저/기기 정보 추출
-		String userAgent = request.getHeader("User-Agent");
-		if (userAgent == null) {
-			userAgent = "Unknown";
-		}
-		String remoteAddr = getRemoteAddress(request);
-		int remotePort = request.getRemotePort();
-		String remoteInfo = remoteAddr + ":" + remotePort;
-		
-		System.out.println("[Oauth2SuccessHandler] User Agent: " + userAgent);
-		System.out.println("[Oauth2SuccessHandler] Remote IP:PORT: " + remoteInfo);
-		
-		// 새로운 세션 등록
-		System.out.println("[Oauth2SuccessHandler] Registering new session for user: " + member.getUserId());
-		sessionService.registerNewSession(member.getUserId(), token, userAgent, remoteInfo);
-		
-		//System.out.println("token : " + token);
-		// Cookie에 jwt 추가
-		Cookie cookie = new Cookie("jwtToken", token.replaceAll(JWTUtil.prefix, ""));
-		cookie.setHttpOnly(true);	// JS에서 접근 못 하게
-		cookie.setSecure(false);	// HTTPS에서만 동작
-		cookie.setPath("/");
-		cookie.setMaxAge(60 * 60);		// 60초 * 60 = 1시간
-		response.addCookie(cookie);
+		String remoteInfo = null;
+		String socialAuth = null;
+		String errorMsg = null;
 		
 		try {
+			Map<String, String> map = getUseInfo(authentication);
+	
+			String provider = map.get("provider");
+			String name = map.get("name");
+			String email = map.get("email");
+			
+			userId = name + "@" + provider;
+			socialAuth = name + "@" + provider + "@" + email;
+			
+			System.out.println("OAuth2 인증 : " + socialAuth);
+			
+			
+			member = memberService.findBySocialAuth(socialAuth);
+			
+			if(member != null) {
+				// 기존 로그인 유저
+			} else {
+				// 신규 가입
+				member = memberService.addSocialMember(socialAuth, userId, name);
+			}
+			
+			// 기존 세션 만료 (동시 로그인 차단)
+			System.out.println("[Oauth2SuccessHandler] Expiring previous sessions for user: " + member.getUserId());
+			sessionService.expireUserSessions(member.getUserId());
+	
+			// JWT 생성
+			String token = JWTUtil.getJWT(member);
+			
+			// 브라우저/기기 정보 추출
+			String userAgent = request.getHeader("User-Agent");
+			if (userAgent == null) {
+				userAgent = "Unknown";
+			}
+			String remoteAddr = getRemoteAddress(request);
+			int remotePort = request.getRemotePort();
+			remoteInfo = remoteAddr + ":" + remotePort;
+			
+			System.out.println("[Oauth2SuccessHandler] User Agent: " + userAgent);
+			System.out.println("[Oauth2SuccessHandler] Remote IP:PORT: " + remoteInfo);
+			
+			// 새로운 세션 등록
+			System.out.println("[Oauth2SuccessHandler] Registering new session for user: " + member.getUserId());
+			sessionService.registerNewSession(member.getUserId(), token, userAgent, remoteInfo);
+			
+			//System.out.println("token : " + token);
+			// Cookie에 jwt 추가
+			Cookie cookie = new Cookie("jwtToken", token.replaceAll(JWTUtil.prefix, ""));
+			cookie.setHttpOnly(true);	// JS에서 접근 못 하게
+			cookie.setSecure(false);	// HTTPS에서만 동작
+			cookie.setPath("/");
+			cookie.setMaxAge(60 * 60);		// 60초 * 60 = 1시간
+			response.addCookie(cookie);
+		
+			loginSuccess = true;
 			// 로그인 후 초기 페이지
 			response.sendRedirect(redirectURI);
 		}catch(IOException e) {
-			e.printStackTrace();
+			errorMsg = e.getMessage();
+		}finally {
+			// 로그인 기록 추가
+			logService.addLoginLog(member, loginSuccess, userId, remoteInfo, socialAuth, errorMsg);
 		}
 	}
 

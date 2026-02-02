@@ -23,6 +23,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import kr.kro.prjectwwtp.persistence.MemberRepository;
 import kr.kro.prjectwwtp.service.AccessLogService;
+import kr.kro.prjectwwtp.service.LoginLogService;
 import kr.kro.prjectwwtp.service.SessionService;
 import lombok.RequiredArgsConstructor;
 
@@ -36,6 +37,7 @@ public class SecurityConfig {
 	private final TokenBlacklistManager tokenBlacklistManager;
 	private final SessionService sessionService;
 	private final AccessLogService logService;
+	private final LoginLogService loginService;
 	
 	@Bean
 	public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
@@ -45,7 +47,7 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager) throws Exception {
 		// JWT 인증 필터 생성 (로그인 처리)
-		JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(authenticationManager, tokenBlacklistManager, sessionService, logService);
+		JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(authenticationManager, tokenBlacklistManager, sessionService, logService, loginService);
 		// 로그인 엔드포인트 지정
 		jwtAuthenticationFilter.setFilterProcessesUrl("/api/member/login");
 		
@@ -83,11 +85,12 @@ public class SecurityConfig {
 			.requestMatchers("/api/member/logout").authenticated()
 			.requestMatchers("/api/member/modify").authenticated()
 			.requestMatchers("/api/member/delete").authenticated()
-			.requestMatchers("/api/memo/**").authenticated()
 
 			// 관리자 권한 필요
-			.requestMatchers("/api/member/create").hasRole("ADMIN")
 			.requestMatchers("/api/member/list").hasRole("ADMIN")
+			.requestMatchers("/api/member/create").hasRole("ADMIN")
+			.requestMatchers("/api/memo/**").hasAnyRole("MEMBER", "ADMIN")
+			.requestMatchers("/api/tmsOrigin/**").hasRole("ADMIN")
 			.requestMatchers("/api/weather/modify").hasRole("ADMIN")
 			.requestMatchers("/api/admin/**").hasRole("ADMIN")
 			.requestMatchers("/admin/**").hasRole("ADMIN")
