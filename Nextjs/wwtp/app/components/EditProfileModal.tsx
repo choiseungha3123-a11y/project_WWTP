@@ -51,7 +51,7 @@ export default function EditProfileModal({
       console.log(
         'userNo :', currentUser.userNo,
       );
-      const response = await fetch(`/api/member/modifyMember`, {
+      const response = await fetch(`/api/member/modify`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "Authorization": `${localStorage.getItem("accessToken")}` },
         body: JSON.stringify({

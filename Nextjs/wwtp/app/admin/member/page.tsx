@@ -23,7 +23,7 @@ export default function MemberManagementPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/member/listMember", { 
+      const response = await fetch("/api/member/list", { 
         headers: { 
           "Authorization": `${localStorage.getItem('accessToken')}` 
         }
@@ -56,7 +56,7 @@ export default function MemberManagementPage() {
     if (!confirm(`${userId}님의 비밀번호를 '${newPassword}'로 초기화하시겠습니까?`)) return;
 
     try {
-      const res = await fetch("/api/member/modifyMember", {
+      const res = await fetch("/api/member/modify", {
         method: "PATCH", 
         headers: {
           "Content-Type": "application/json",
@@ -85,7 +85,7 @@ export default function MemberManagementPage() {
     if (!confirm(`${userId}(${userNo}) 사원을 삭제하시겠습니까?`)) return;
     
     try {
-      const res = await fetch("/api/member/deleteMember", {
+      const res = await fetch("/api/member/delete", {
         method: "DELETE",
         headers: { 
           "Content-Type": "application/json",

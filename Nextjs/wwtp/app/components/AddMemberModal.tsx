@@ -55,7 +55,7 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
 
     setLoading(true);
     try {
-      const response = await fetch("/api/member/addMember", { 
+      const response = await fetch("/api/member/create", { 
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
