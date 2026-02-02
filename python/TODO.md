@@ -11,8 +11,8 @@
     - [X] 올바른 전처리 순서 적용 (정합→보간→이상치→리샘플링→피처→분할→스케일링→선택)
 
 - [X] 탐색적 데이터 분석(EDA)
-    - [X] 데이터 시각화 - Learning curves, R² comparison, boxplot, timeseries
-    - [X] 다변량 상관 분석 - Feature importance 분석 (피처 선택에 활용)
+    - [X] 데이터 시각화
+    - [X] 다변량 상관 분석
 
 # 2. 머신러닝
 - [X] 베이스 라인 (V1 완료)
@@ -39,7 +39,7 @@
     - [X] 피처 선택 (중요도 기반)
     - [X] 스케일링 (StandardScaler)
     - [X] TMS 모델 그룹화 (modelA, modelB, modelC)
-    - [X] 데이터 누수 방지 (실시간 예측 시나리오)
+    - [X] 데이터 누수 방지
     - [X] 도메인 특화 피처 (강수, 기상, TMS 상호작용)
     - [X] Learning Curve 시각화
     - [X] ModelA 특화 특성 추가 (100개 이상)
