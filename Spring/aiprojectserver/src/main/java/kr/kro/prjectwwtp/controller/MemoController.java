@@ -20,7 +20,6 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -82,13 +81,13 @@ public class MemoController {
 	
 	@GetMapping("/list")
 	@Operation(summary="메모 데이터 조회", description = "다른 이용자들에게 보여줄 메모 데이터를 조회합니다.")
-	@Parameters( {
-		@Parameter(name = "page", description= "조회할 페이지수", example = "0"),
-		@Parameter(name = "count", description= "페이지 별로 보여줄 메모의 수", example = "10")
-	})
+	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
+	@Parameter(name = "page", description= "조회할 페이지수", example = "0")
+	@Parameter(name = "count", description= "페이지 별로 보여줄 메모의 수", example = "10")
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "결과", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class))),
-		@ApiResponse(responseCode = "201", description = "dataList", content = @Content(mediaType = "application/json", schema = @Schema(implementation = PageDTO.class)))
+		@ApiResponse(responseCode = "201", description = "dataList[0]", content = @Content(mediaType = "application/json", schema = @Schema(implementation = PageDTO.class))),
+		@ApiResponse(responseCode = "202", description = "dataList[0].items[]", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Memo.class)))
 	})
 	public ResponseEntity<Object> getMemoList(
 			HttpServletRequest request,
@@ -129,16 +128,19 @@ public class MemoController {
 	@Getter
 	@Setter
 	@ToString
-	static public class createDTO {
+	static public class memoCreateDTO {
+		@Schema(name = "content", description = "메모 내용", example = "신규 메모")
 		private String content;
 	}
 	
 	@PutMapping("/create")
 	@Operation(summary="메모 작성", description = "새로운 메모를 작성합니다.")
-	@ApiResponse(responseCode = "200", description = "성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
+	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
+	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = memoCreateDTO.class))
+	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> putMemoCreate(
 			HttpServletRequest request,
-			@RequestBody createDTO req) {
+			@RequestBody memoCreateDTO req) {
 		System.out.println("token : " + request.getHeader("Authorization"));
 		responseDTO res = responseDTO.builder()
 				.success(true)
@@ -176,17 +178,21 @@ public class MemoController {
 	@Getter
 	@Setter
 	@ToString
-	static public class modifyDTO {
+	static public class memoModifyDTO {
+		@Schema(name = "memoNo", description = "메모 고유번호", example = "1~")
 		private long memoNo;
+		@Schema(name = "content", description = "수정 메모 내용", example = "수정 메모")
 		private String content;
 	}
 	
 	@PostMapping("/modify")
 	@Operation(summary="메모 수정", description = "작성된 메모를 수정합니다.")
-	@ApiResponse(responseCode = "200", description = "성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
+	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
+	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = memoModifyDTO.class))
+	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> postMemoModify(
 			HttpServletRequest request,
-			@RequestBody modifyDTO req) {
+			@RequestBody memoModifyDTO req) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
@@ -224,16 +230,19 @@ public class MemoController {
 	@Getter
 	@Setter
 	@ToString
-	static public class disableDTO {
+	static public class memoDisableDTO {
+		@Schema(name = "memoNo", description = "메모 고유번호", example = "1~")
 		private long memoNo;
 	}
 	
 	@PostMapping("/disable")
 	@Operation(summary="메모 비활성화", description = "작성된 메모를 비활성화합니다.")
-	@ApiResponse(responseCode = "200", description = "성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
+	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
+	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = memoDisableDTO.class))
+	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> postMemoDisable(
 			HttpServletRequest request,
-			@RequestBody disableDTO req) {
+			@RequestBody memoDisableDTO req) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
@@ -270,13 +279,13 @@ public class MemoController {
 	
 	@GetMapping("/oldList")
 	@Operation(summary="비활성화된 메모 조회", description = "비활성화된 메모 데이터를 조회합니다.")
-	@Parameters( {
-		@Parameter(name = "page", description= "조회할 페이지수", example = "0"),
-		@Parameter(name = "count", description= "페이지 별로 보여줄 메모의 수", example = "10")
-	})
+	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
+	@Parameter(name = "page", description= "조회할 페이지수", example = "0")
+	@Parameter(name = "count", description= "페이지 별로 보여줄 메모의 수", example = "10")
 	@ApiResponses({
-		@ApiResponse(responseCode = "200", description = "성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class))),
-		@ApiResponse(responseCode = "200", description = "responseDTO의 dataList에 포함된 데이터", content = @Content(mediaType = "application/json", schema = @Schema(implementation = PageDTO.class)))
+		@ApiResponse(responseCode = "200", description = "결과", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class))),
+		@ApiResponse(responseCode = "201", description = "dataList[0]", content = @Content(mediaType = "application/json", schema = @Schema(implementation = PageDTO.class))),
+		@ApiResponse(responseCode = "202", description = "dataList[0].items[]", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Memo.class)))
 	})
 	public ResponseEntity<Object> getMemoOldList(
 			HttpServletRequest request,

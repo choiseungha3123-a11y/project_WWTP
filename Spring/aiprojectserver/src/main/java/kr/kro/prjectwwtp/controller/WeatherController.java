@@ -24,10 +24,14 @@ import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
+import kr.kro.prjectwwtp.controller.MemoController.memoCreateDTO;
 import kr.kro.prjectwwtp.domain.Member;
+import kr.kro.prjectwwtp.domain.Memo;
+import kr.kro.prjectwwtp.domain.PageDTO;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.Weather;
 import kr.kro.prjectwwtp.domain.responseDTO;
@@ -86,14 +90,23 @@ public class WeatherController {
 	@NoArgsConstructor
 	@AllArgsConstructor
 	static public class weatherDTO {
+		@Schema(description = "고유번호", example = "1~")
 		long dataNo;
+		@Schema(description = "데이터의 기록 시간", example = "2026-01-30T15:30:00")
 		String time;
+		@Schema(description = "1분 평균 기온 (C)")
 		double ta;
+		@Schema(description = "15분 누적 강수량 (mm)")
 		double rn15m;
+		@Schema(description = "60분 누적 강수량 (mm)")
 		double rn60m;
+		@Schema(description = "12시간 누적 강수량 (mm)")
 		double rn12h;
+		@Schema(description = "일 누적 강수량 (mm)")
 		double rnday;
+		@Schema(description = "1분 평균 상대습도 (%)")
 		double hm;
+		@Schema(description = "이슬점온도 (C)")
 		double td; 
 		
 		public weatherDTO(Weather data) {
@@ -111,11 +124,12 @@ public class WeatherController {
 	
 	@GetMapping("/list")
 	@Operation(summary="날씨 데이터 조회", description = "DB에 저장된 기상청 날씨 정보 조회")
-	@Parameters( {
-		@Parameter(name = "tm1", description= "조회시작날짜(yyyyMMddHHmm)", example = "202401010000"),
-		@Parameter(name = "tm2", description= "조회종료날짜(yyyyMMddHHmm)", example = "202401012359")
+	@Parameter(name = "tm1", description= "조회시작날짜(yyyyMMddHHmm)", example = "202401010000")
+	@Parameter(name = "tm2", description= "조회종료날짜(yyyyMMddHHmm)", example = "202401012359")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "결과", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class))),
+		@ApiResponse(responseCode = "201", description = "dataList[]", content = @Content(mediaType = "application/json", schema = @Schema(implementation = weatherDTO.class)))
 	})
-	@ApiResponse(description = "", content = @Content(schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> getWeatherList(
 			@RequestParam String tm1,
 			@RequestParam String tm2) {
@@ -140,17 +154,9 @@ public class WeatherController {
 	
 	@PatchMapping("/modify")
 	@Operation(summary="날씨 데이터 조회", description = "DB에 저장된 기상청 날씨 정보 조회")
-	@Parameters( {
-		@Parameter(name = "dataNo", description= "고유번호(long)", example = ""),
-		@Parameter(name = "ta", description= "1분 평균 기온(double)", example = ""),
-		@Parameter(name = "rn15m", description= "15분 누적 강수량(double)", example = ""),
-		@Parameter(name = "rn60m", description= "60분 누적 강수량(double)", example = ""),
-		@Parameter(name = "rn12h", description= "12시간 누적 강수량(double)", example = ""),
-		@Parameter(name = "rnday", description= "일 누적 강수량(double)", example = ""),
-		@Parameter(name = "hm", description= "1분 평균 상대습도(double)", example = ""),
-		@Parameter(name = "td", description= "이슬점온도(double)", example = ""),
-	})
-	@ApiResponse(description = "success : 성공/실패<br>dataSize : 0<br>dataList : NULL<br>errorMsg : success가 false 일때의 오류원인 ")
+	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
+	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = weatherDTO.class))
+	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> modifyWeatherData(
 			HttpServletRequest request,
 			@RequestBody weatherDTO req) {

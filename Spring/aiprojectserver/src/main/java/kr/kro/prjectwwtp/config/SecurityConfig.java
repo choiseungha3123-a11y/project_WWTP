@@ -81,13 +81,13 @@ public class SecurityConfig {
 			
 			// 인증 필요 - 이 경로들은 JWT 필터를 통과해야 함
 			.requestMatchers("/api/member/logout").authenticated()
-			.requestMatchers("/api/member/modifyMember").authenticated()
-			.requestMatchers("/api/member/deleteMember").authenticated()
+			.requestMatchers("/api/member/modify").authenticated()
+			.requestMatchers("/api/member/delete").authenticated()
 			.requestMatchers("/api/memo/**").authenticated()
 
 			// 관리자 권한 필요
-			.requestMatchers("/api/member/addMember").hasRole("ADMIN")
-			.requestMatchers("/api/member/listMember").hasRole("ADMIN")
+			.requestMatchers("/api/member/create").hasRole("ADMIN")
+			.requestMatchers("/api/member/list").hasRole("ADMIN")
 			.requestMatchers("/api/weather/modify").hasRole("ADMIN")
 			.requestMatchers("/api/admin/**").hasRole("ADMIN")
 			.requestMatchers("/admin/**").hasRole("ADMIN")

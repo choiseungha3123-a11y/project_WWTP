@@ -151,7 +151,7 @@ public class CompleteWeather implements ApplicationRunner {
 						catch(Exception e) {
 							errorMag = e.getMessage();
 						}finally {
-							logService.addLog("DeleteDuplicateWeatherAPI", originSize,  0, modifySize, uri, errorMag);
+							logService.addLog("DeleteDuplicate", originSize,  0, modifySize, uri, errorMag);
 						}
 					} else {
 						// 결측 발견
@@ -186,7 +186,7 @@ public class CompleteWeather implements ApplicationRunner {
 						} catch(Exception e) {
 							errorMag = e.getMessage();
 						} finally {
-							logService.addLog("AddNotEnoughWeatherAPI", originSize,  0, modifySize, uri, errorMag);
+							logService.addLog("AddNotEnough", originSize,  0, modifySize, uri, errorMag);
 						}
 					}
 				}

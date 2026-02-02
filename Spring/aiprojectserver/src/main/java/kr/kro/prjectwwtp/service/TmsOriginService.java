@@ -2,6 +2,7 @@ package kr.kro.prjectwwtp.service;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -147,6 +148,15 @@ public class TmsOriginService {
 		} catch (Exception e) {
 			throw new IllegalArgumentException("날짜 형식이 올바르지 않습니다: " + s);
 		}
+	}
+	
+	public List<TmsOrigin> getTmsOriginListByDate(String dateStr) {
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+		LocalDateTime start = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
+		LocalDateTime end = LocalDateTime.of(start.getYear(), start.getMonth(), start.getDayOfMonth(), 23, 59, 59);
+		List<TmsOrigin> list = tmsOriginRepo.findByTmsTimeBetween(start, end);
+		System.out.println("size : " + list.size());
+		return list;
 	}
 
 }

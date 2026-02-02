@@ -20,7 +20,6 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -78,21 +77,20 @@ public class MemberController {
 	@Getter
 	@Setter
 	@ToString
-	static public class loginDTO {
+	static public class memberLoginDTO {
+		@Schema(name = "userId", description = "등록된 사용자 ID", example = "member")
 		private String userId;
+		@Schema(name = "password", description = "비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.", example = "member1234")
 		private String password;
 	}
 	
 	@PostMapping("/login")
 	@Operation(summary="로그인 시도", description = "userid/password를 통해 로그인을 시도")
-	@Parameters( {
-		@Parameter(name = "userId", description= "등록된 사용자 ID"),
-		@Parameter(name = "password", description= "등록된 비밀번호")
-	})
-	@ApiResponse(description = "success : 성공/실패<br>dataSize : 1<br>dataList : JWTToken<br>errorMsg : success가 false 일때의 오류원인 ")
+	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = memberLoginDTO.class))
+	@ApiResponse(description = "dataList[0]에 jwtToken을 사용해야합니다.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> login(
 			HttpServletRequest request,
-			@RequestBody loginDTO req) {
+			@RequestBody memberLoginDTO req) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
@@ -140,7 +138,8 @@ public class MemberController {
 	
 	@PostMapping("/logout")
 	@Operation(summary="로그아웃", description = "사용자 로그아웃 처리")
-	@ApiResponse(description = "success : 성공/실패<br>errorMsg : 오류 메시지")
+	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
+	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> logout(HttpServletRequest request) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
@@ -177,9 +176,11 @@ public class MemberController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@GetMapping("/listMember")
+	@GetMapping("/list")
 	@Operation(summary="맴버 리스트 조회", description = "등록된 맴버 전체 리스트 조회")
-	@ApiResponse(description = "success : 성공/실패<br>dataSize : dataList에 들어 있는 값들의 개수<br>dataList : 결과값배열<br>errorMsg : success가 false 일때의 오류원인 ", content = @Content(schema = @Schema(implementation = Member.class)))
+	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
+	@ApiResponse(responseCode = "200", description = "결과", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
+	@ApiResponse(responseCode = "201", description = "dataList[]", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Member.class)))
 	public ResponseEntity<Object> listMember(
 			HttpServletRequest request) {
 		responseDTO res = responseDTO.builder()
@@ -211,19 +212,10 @@ public class MemberController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@Getter
-	@Setter
-	@ToString
-	static public class checkDTO {
-		private String userId;
-	}
-	
 	@GetMapping("/checkId")
 	@Operation(summary="ID 중복 체크", description = "ID 중복체크")
-	@Parameters( {
-		@Parameter(name = "userId", description = "확인할 사용자 ID"),
-	})
-	@ApiResponse(description = "success : 성공/실패<br>dataSize : 0<br>dataList : NULL<br>errorMsg : success가 false 일때의 오류원인 ")
+	@Parameter(name = "userId", description = "확인할 사용자 ID")
+	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> checkId(@RequestParam String userId) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
@@ -247,9 +239,12 @@ public class MemberController {
 	@Getter
 	@Setter
 	@ToString
-	static public class addDTO {
+	static public class memberCreateDTO {
+		@Schema(name = "userId", description = "등록할 사용자 ID", example = "member")
 		private String userId;
+		@Schema(name = "password", description = "비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.", example = "member1234")
 		private String password;
+		@Schema(name = "userName", description = "등록할 사용자명", example = "member")
 		private String userName;
 	}
 	
@@ -257,17 +252,14 @@ public class MemberController {
 		return password.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{10,20}$");
 	}
 	
-	@PutMapping("/addMember")
-	@Operation(summary="맴버 추가", description = "userid/password/role값을 맴버에 추가")
-	@Parameters( {
-		@Parameter(name = "userId", description = "등록할 사용자 ID"),
-		@Parameter(name = "password", description = "등록할 비밀번호"),
-		@Parameter(name = "userName", description = "등록할 유저명"),
-	})
-	@ApiResponse(description = "success : 성공/실패<br>dataSize : 0<br>dataList : NULL<br>errorMsg : success가 false 일때의 오류원인 ")
-	public ResponseEntity<Object> addMember(
+	@PutMapping("/create")
+	@Operation(summary="맴버 추가", description = "userid/password/userName값을 맴버에 추가")
+	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
+	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = memberCreateDTO.class))
+	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
+	public ResponseEntity<Object> createMember(
 			HttpServletRequest request,
-			@RequestBody addDTO req
+			@RequestBody memberCreateDTO req
 			) {
 		//System.out.println("req : " + req);
 		responseDTO res = responseDTO.builder()
@@ -317,27 +309,27 @@ public class MemberController {
 	@Getter
 	@Setter
 	@ToString
-	static public class modifyDTO {
+	static public class memberModifyDTO {
+		@Schema(name = "userNo", description = "등록된 사용자 고유번호", example = "1~")
 		private long userNo;
+		@Schema(name = "userId", description = "변경할 사용자 ID", example = "member")
 		private String userId;
+		@Schema(name = "password", description = "비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.", example = "member1234")
 		private String password;
+		@Schema(name = "userName", description = "변경할 사용자명", example = "member")
 		private String userName;
+		@Schema(name = "role", description = "변경할 사용자 권한", example = "ROLE_VIEWER")
 		private Role role;
 	}
 		
-	@PatchMapping("/modifyMember")
+	@PatchMapping("/modify")
 	@Operation(summary="맴버 정보 변경", description = "userNo를 이용해서 userId,password,role을 변경")
-	@Parameters( {
-		@Parameter(name = "userNo", description= "변경할 사용자 고유번호"),
-		@Parameter(name = "userId", description= "변경할 사용자 ID"),
-		@Parameter(name = "password", description= "변경할 비밀번호"),
-		@Parameter(name = "userName", description = "변경할 유저명"),
-		@Parameter(name = "role", description = "변경할 이용자 권한", example = "ROLE_MEMBER")
-	})
-	@ApiResponse(description = "success : 성공/실패<br>dataSize : 0<br>dataList : NULL<br>errorMsg : success가 false 일때의 오류원인 ")
+	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
+	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = memberModifyDTO.class))
+	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> modifyMember(
 			HttpServletRequest request,
-			@RequestBody modifyDTO req
+			@RequestBody memberModifyDTO req
 			) {
 		//System.out.println("req : " + req);
 		responseDTO res = responseDTO.builder()
@@ -406,21 +398,21 @@ public class MemberController {
 	@Getter
 	@Setter
 	@ToString
-	static public class deleteDTO {
+	static public class memberDeleteDTO {
+		@Schema(name = "userNo", description = "삭제할 사용자 고유번호", example = "1~")
 		private long userNo;
+		@Schema(name = "userId", description = "삭제할 사용자 ID", example = "member")
 		private String userId;
 	}
 	
-	@DeleteMapping("/deleteMember")
+	@DeleteMapping("/delete")
 	@Operation(summary="맴버 정보 삭제", description = "userNo/userId를 이용해서 회원정보를 삭제")
-	@Parameters( {
-		@Parameter(name = "userNo", description= "변경할 사용자 고유번호"),
-		@Parameter(name = "userId", description= "변경할 사용자 ID")
-	})
-	@ApiResponse(description = "success : 성공/실패<br>dataSize : 0<br>dataList : NULL<br>errorMsg : success가 false 일때의 오류원인 ")
+	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
+	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = memberDeleteDTO.class))
+	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> deleteMember(
 			HttpServletRequest request,
-			@RequestBody deleteDTO req) {
+			@RequestBody memberDeleteDTO req) {
 		//System.out.println("req : " + req);
 		responseDTO res = responseDTO.builder()
 				.success(true)

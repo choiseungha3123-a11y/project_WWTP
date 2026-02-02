@@ -61,7 +61,6 @@ http://10.125.121.176:8081/swagger-ui/index.html
 
 
 	로그인 실패 관련 이력 처리
-	Member API 명칭 수정
 
 	조회 로그
 	이상 조회 탐지(별도 테이블로 관리)
@@ -103,3 +102,5 @@ http://10.125.121.176:8081/swagger-ui/index.html
 		3000개 단위로 나눠서 처리
 		JPA를 통한 saveAll을 대신해서 PreparedStatement를 통한 insert 쿼리를 구성해서 실행시 1분 이내
 		다만 DB에 이미 저장된 값이 있는지 확인하였을때는 2분 정도의 시간이 소비됨
+-2026-02-02	Member API 명칭 변경
+-2026-02-02	swagger UI 용 어노테이션 추가 정리

@@ -12,6 +12,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.PostConstruct;
 import kr.kro.prjectwwtp.domain.responseDTO;
@@ -59,6 +64,9 @@ public class PredictController {
 	}
 	
 	@GetMapping("/predict")
+	@Operation(summary="요약", description = "설명")
+	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = String.class))
+	@ApiResponse(description = "결과 설명", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> getPredict() {
 		responseDTO res = responseDTO.builder()
 				.success(true)
