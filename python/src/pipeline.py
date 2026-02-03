@@ -306,7 +306,18 @@ def run_pipeline(
     continuity = check_continuity(df_hourly.dropna(how="all"), freq=resample_rule)
 
     # 지도학습 데이터셋 X, y 생성
-    X, y = make_supervised_dataset(df_feat, target_cols=target_cols, exclude_cols=exclude_cols, dropna=True)
+    max_lag = max(feature_cfg.lag_hours) if feature_cfg.lag_hours else 24
+    max_roll = max(feature_cfg.roll_hours) if feature_cfg.roll_hours else 24
+    max_window = max(max_lag, max_roll)
+    
+    X, y = make_supervised_dataset(
+        df_feat, 
+        target_cols=target_cols, 
+        exclude_cols=exclude_cols, 
+        dropna=True,
+        drop_initial_nan_only=True,
+        max_lag_window=max_window
+    )
     print(f"데이터셋 크기: {len(X)} 샘플, {X.shape[1]} 피처")
     
     # 입력 피처 정보 출력
@@ -721,7 +732,18 @@ def run_improved_pipeline(
     )
     
     # 지도학습 데이터셋 생성 (dropna로 완전한 행만 사용)
-    X, y = make_supervised_dataset(df_feat, target_cols=target_cols, exclude_cols=exclude_cols, dropna=True)
+    max_lag = max(feature_cfg.lag_hours) if feature_cfg.lag_hours else 24
+    max_roll = max(feature_cfg.roll_hours) if feature_cfg.roll_hours else 24
+    max_window = max(max_lag, max_roll)
+    
+    X, y = make_supervised_dataset(
+        df_feat, 
+        target_cols=target_cols, 
+        exclude_cols=exclude_cols, 
+        dropna=True,
+        drop_initial_nan_only=True,
+        max_lag_window=max_window
+    )
     print(f"데이터셋 크기: {len(X)} 샘플, {X.shape[1]} 피처")
     
     # 입력 피처 정보 출력
@@ -907,9 +929,8 @@ def run_sliding_window_pipeline(
     stride : int
         윈도우 이동 간격 (기본: 1 = 매 시간마다)
     use_3d_models : bool
-        3D 입력을 지원하는 모델 사용 여부 (LSTM 등)
+        3D 입력을 지원하는 모델 사용 여부 (현재 미지원)
         False: 평탄화해서 일반 ML 모델 사용
-        True: 3D 그대로 LSTM/RNN 사용
     save_results : bool
         결과 저장 여부 (기본: True)
     save_predictions : bool
@@ -992,8 +1013,34 @@ def run_sliding_window_pipeline(
     )
     
     # 지도학습 데이터셋 생성
-    X, y = make_supervised_dataset(df_feat, target_cols=target_cols, exclude_cols=exclude_cols, dropna=True)
-    print(f"전처리 완료: {len(X)} 샘플, {X.shape[1]} 피처")
+    print(f"\n[5.5/10] 지도학습 데이터셋 생성 중...")
+    print(f"  전처리 완료 데이터: {len(df_feat)} 샘플, {len(df_feat.columns)} 컬럼")
+    
+    # 최대 윈도우 크기 계산 (lag + rolling)
+    max_lag = max(feature_cfg.lag_hours) if feature_cfg.lag_hours else 24
+    max_roll = max(feature_cfg.roll_hours) if feature_cfg.roll_hours else 24
+    max_window = max(max_lag, max_roll)
+    
+    print(f"  최대 윈도우 크기: {max_window}시간 (lag={max_lag}, roll={max_roll})")
+    
+    X, y = make_supervised_dataset(
+        df_feat, 
+        target_cols=target_cols, 
+        exclude_cols=exclude_cols, 
+        dropna=True,
+        drop_initial_nan_only=True,  # 초반 NaN만 제거
+        max_lag_window=max_window
+    )
+    
+    if len(X) == 0:
+        print("\n❌ 에러: 모든 데이터가 제거되었습니다!")
+        print("\n가능한 원인:")
+        print("  1. 원본 데이터가 너무 적음")
+        print("  2. 결측치 보간이 제대로 되지 않음")
+        print("  3. 이상치 처리로 너무 많은 값이 NaN으로 변환됨")
+        raise ValueError("데이터셋이 비어있습니다. 전처리 과정을 확인하세요.")
+    
+    print(f"\n전처리 완료: {len(X)} 샘플, {X.shape[1]} 피처")
     
     # ========================================
     # 6단계: Sliding Window 생성
@@ -1002,6 +1049,17 @@ def run_sliding_window_pipeline(
     print(f"  윈도우 크기: {window_size} 시간 스텝")
     print(f"  예측 horizon: {horizon} 스텝 후")
     print(f"  윈도우 이동 간격: {stride} 스텝")
+    print(f"  입력 데이터: {X.shape}")
+    print(f"  타겟 데이터: {y.shape}")
+    
+    # 윈도우 생성 가능 여부 확인
+    min_required_samples = window_size + horizon
+    if len(X) < min_required_samples:
+        raise ValueError(
+            f"데이터가 부족합니다. "
+            f"필요: {min_required_samples}개 (window_size={window_size} + horizon={horizon}), "
+            f"실제: {len(X)}개"
+        )
     
     X_seq, y_seq = create_sliding_windows(
         X, y, 
@@ -1009,6 +1067,8 @@ def run_sliding_window_pipeline(
         horizon=horizon, 
         stride=stride
     )
+    
+    print(f"  생성된 윈도우: {len(X_seq)}개")
     
     print_window_info(X_seq, y_seq, window_size)
     
@@ -1034,10 +1094,85 @@ def run_sliding_window_pipeline(
     print(f"  Test:  {len(X_test_seq)} 윈도우")
     
     # ========================================
+    # 7.5단계: 피처 선택 (평탄화 전) - 메모리 절약
+    # ========================================
+    print(f"\n[7.5/10] 피처 선택 (평탄화 전)...")
+    print(f"  현재 특성 수: {X_seq.shape[2]}개")
+    print(f"  평탄화 시 예상 특성 수: {X_seq.shape[2] * window_size:,}개")
+    
+    # 메모리 체크
+    estimated_size_gb = (X_train_seq.shape[0] * X_train_seq.shape[1] * X_train_seq.shape[2] * 8) / (1024**3)
+    print(f"  예상 메모리 사용량: {estimated_size_gb:.2f} GB")
+    
+    # 메모리가 너무 크면 피처 선택 먼저 수행
+    if estimated_size_gb > 5 or (X_seq.shape[2] * window_size) > 50000:
+        print(f"\n⚠️  메모리 절약을 위해 피처 선택을 먼저 수행합니다")
+        
+        # 각 시간 스텝의 마지막 값만 사용하여 피처 중요도 계산
+        X_last_timestep = X_seq[:, -1, :]  # (n_samples, n_features)
+        y_for_selection = y_seq
+        
+        # DataFrame으로 변환
+        X_last_df = pd.DataFrame(X_last_timestep, columns=X.columns)
+        y_df = pd.DataFrame(y_for_selection, columns=target_cols)
+        
+        # 피처 선택 (Train 데이터만 사용)
+        X_train_last = X_last_df[:train_size]
+        y_train_for_sel = y_df[:train_size]
+        
+        # 최대 선택 특성 수 계산 (평탄화 후 메모리 고려)
+        max_features_for_memory = min(n_top_features, 100)  # 최대 100개
+        
+        print(f"  선택할 특성 수: {max_features_for_memory}개")
+        
+        from src.feature_selection import select_top_features
+        selected_features = select_top_features(
+            X_train_last, 
+            y_train_for_sel,
+            n_features=max_features_for_memory,
+            random_state=random_state
+        )
+        
+        print(f"  선택된 특성: {len(selected_features)}개")
+        
+        # 선택된 특성의 인덱스 찾기
+        selected_indices = [X.columns.get_loc(feat) for feat in selected_features]
+        
+        # 3D 배열에서 선택된 특성만 추출
+        X_train_seq = X_train_seq[:, :, selected_indices]
+        X_valid_seq = X_valid_seq[:, :, selected_indices]
+        X_test_seq = X_test_seq[:, :, selected_indices]
+        
+        # 선택된 특성 이름 업데이트
+        X_columns_selected = [X.columns[i] for i in selected_indices]
+        
+        print(f"  축소 후 shape: {X_train_seq.shape}")
+        print(f"  평탄화 후 예상 특성 수: {len(selected_features) * window_size:,}개")
+        
+        # 메모리 재계산
+        estimated_size_gb = (X_train_seq.shape[0] * X_train_seq.shape[1] * X_train_seq.shape[2] * 8) / (1024**3)
+        print(f"  축소 후 예상 메모리: {estimated_size_gb:.2f} GB")
+    else:
+        X_columns_selected = X.columns.tolist()
+    
+    # ========================================
     # 8단계: 평탄화 (일반 ML 모델용)
     # ========================================
     if not use_3d_models:
         print("\n[8/10] 윈도우 평탄화 중 (ML 모델용)...")
+        
+        # 메모리 체크 (최종)
+        if estimated_size_gb > 10:
+            print(f"\n❌ 에러: 여전히 메모리가 부족합니다 ({estimated_size_gb:.2f} GB)")
+            print("\n추가 해결 방법:")
+            print("  1. window_size 줄이기: --window-size 6")
+            print("  2. stride 늘리기: --stride 2")
+            print("  3. 피처 수 더 줄이기: --n-features 30")
+            raise MemoryError(
+                f"메모리 부족: {estimated_size_gb:.2f} GB 필요. "
+                f"window_size를 줄이거나 stride를 늘리세요."
+            )
+        
         X_train_flat = flatten_windows_for_ml(X_train_seq)
         X_valid_flat = flatten_windows_for_ml(X_valid_seq)
         X_test_flat = flatten_windows_for_ml(X_test_seq)
@@ -1045,9 +1180,9 @@ def run_sliding_window_pipeline(
         print(f"  평탄화 전: {X_train_seq.shape}")
         print(f"  평탄화 후: {X_train_flat.shape}")
         
-        # 특성 이름 생성
+        # 특성 이름 생성 (선택된 특성만)
         feature_names = create_feature_names_for_flattened_windows(
-            X.columns.tolist(), 
+            X_columns_selected, 
             window_size
         )
         
@@ -1061,14 +1196,8 @@ def run_sliding_window_pipeline(
         y_valid_df = pd.DataFrame(y_valid, columns=target_cols)
         y_test_df = pd.DataFrame(y_test, columns=target_cols)
     else:
-        print("\n[8/10] 3D 형태 유지 (LSTM/RNN용)...")
-        # 3D 모델용은 평탄화하지 않음
-        X_train_df = X_train_seq
-        X_valid_df = X_valid_seq
-        X_test_df = X_test_seq
-        y_train_df = pd.DataFrame(y_train, columns=target_cols)
-        y_valid_df = pd.DataFrame(y_valid, columns=target_cols)
-        y_test_df = pd.DataFrame(y_test, columns=target_cols)
+        print("\n[8/10] 3D 모델은 현재 지원되지 않습니다...")
+        raise NotImplementedError("3D 모델 지원이 제거되었습니다. use_3d_models=False로 설정하세요.")
     
     # ========================================
     # 9단계: 스케일링 (평탄화된 데이터)
@@ -1080,24 +1209,34 @@ def run_sliding_window_pipeline(
         )
         
         # ========================================
-        # 10단계: 피처 선택
+        # 10단계: 추가 피처 선택 (평탄화 후)
         # ========================================
-        print(f"\n[10/10] 특성 선택 중 (상위 {n_top_features}개)...")
-        top_features = select_top_features(
-            X_train_scaled, y_train_df, 
-            n_features=min(n_top_features, X_train_scaled.shape[1]), 
-            random_state=random_state
-        )
-        
-        X_train_selected = X_train_scaled[top_features]
-        X_valid_selected = X_valid_scaled[top_features]
-        X_test_selected = X_test_scaled[top_features]
-        
-        splits_final = {
-            "train": (X_train_selected, y_train_df),
-            "valid": (X_valid_selected, y_valid_df),
-            "test": (X_test_selected, y_test_df)
-        }
+        # 이미 피처 선택을 했으면 스킵
+        if 'selected_features' in locals():
+            print(f"\n[10/10] 피처 선택 이미 완료 (평탄화 전에 수행됨)")
+            splits_final = {
+                "train": (X_train_scaled, y_train_df),
+                "valid": (X_valid_scaled, y_valid_df),
+                "test": (X_test_scaled, y_test_df)
+            }
+            top_features = X_train_scaled.columns.tolist()
+        else:
+            print(f"\n[10/10] 특성 선택 중 (상위 {n_top_features}개)...")
+            top_features = select_top_features(
+                X_train_scaled, y_train_df, 
+                n_features=min(n_top_features, X_train_scaled.shape[1]), 
+                random_state=random_state
+            )
+            
+            X_train_selected = X_train_scaled[top_features]
+            X_valid_selected = X_valid_scaled[top_features]
+            X_test_selected = X_test_scaled[top_features]
+            
+            splits_final = {
+                "train": (X_train_selected, y_train_df),
+                "valid": (X_valid_selected, y_valid_df),
+                "test": (X_test_selected, y_test_df)
+            }
     else:
         # 3D 모델은 스케일링/피처 선택 생략 (별도 처리 필요)
         print("\n[9-10/10] 3D 모델은 스케일링/피처 선택 생략...")
@@ -1146,7 +1285,7 @@ def run_sliding_window_pipeline(
         print(f"{'='*60}")
         print(metric_table.to_string(index=False))
     else:
-        print("\n3D 모델 학습은 별도 LSTM 파이프라인을 사용하세요.")
+        print("\n3D 모델은 현재 지원되지 않습니다.")
         results = None
         fitted_models = None
         metric_table = None
@@ -1198,483 +1337,6 @@ def run_sliding_window_pipeline(
 
 
 # ============================================================================
-# LSTM 파이프라인
+# 딥러닝 파이프라인은 제거되었습니다
 # ============================================================================
-
-def run_lstm_pipeline(
-    dfs,
-    mode,
-    window_size=24,
-    horizon=1,
-    stride=1,
-    time_col_map=None,
-    resample_rule="1h",
-    n_top_features=50,
-    cv_splits=3,
-    n_trials=50,
-    random_state=42,
-    save_dir="results/DL",
-    save_results=True,
-    save_predictions=True,
-    save_sequences=True,
-    save_model=True,
-    sequence_format="npz",
-    # LSTM 하이퍼파라미터
-    hidden_size=64,
-    num_layers=2,
-    dropout=0.2,
-    batch_size=32,
-    learning_rate=0.001,
-    num_epochs=100,
-    patience=10,
-    weight_decay=0.0001,
-    grad_clip=1.0,
-    verbose=True
-):
-    """
-    LSTM 딥러닝 파이프라인 실행
-    
-    Sliding Window 생성 후 LSTM 모델로 학습
-    
-    Parameters:
-    -----------
-    dfs : dict
-        데이터프레임 딕셔너리 (flow, tms, aws 등)
-    mode : str
-        예측 모드 (flow, tms, modelA, modelB, modelC)
-    window_size : int
-        과거 몇 개의 시간 스텝을 볼 것인지
-    horizon : int
-        미래 몇 스텝 후를 예측할 것인지
-    stride : int
-        윈도우 이동 간격
-    time_col_map : dict
-        각 데이터프레임의 시간 컬럼 매핑
-    resample_rule : str
-        리샘플링 규칙 (예: '1h', '30min')
-    n_top_features : int
-        선택할 상위 특성 개수
-    cv_splits : int
-        TimeSeriesSplit 분할 수
-    n_trials : int
-        Optuna 시도 횟수 (피처 선택용)
-    random_state : int
-        랜덤 시드
-    save_dir : str
-        결과 저장 디렉토리
-    save_results : bool
-        결과 저장 여부
-    save_predictions : bool
-        예측값 저장 여부
-    save_sequences : bool
-        시퀀스 데이터 저장 여부
-    save_model : bool
-        모델 저장 여부
-    sequence_format : str
-        시퀀스 저장 형식 (npz, pickle, csv)
-    hidden_size : int
-        LSTM 은닉층 유닛 수
-    num_layers : int
-        LSTM 레이어 수
-    dropout : float
-        드롭아웃 비율
-    batch_size : int
-        배치 크기
-    learning_rate : float
-        학습률
-    num_epochs : int
-        최대 에포크 수
-    patience : int
-        조기 종료 patience
-    weight_decay : float
-        L2 정규화 계수
-    grad_clip : float
-        그래디언트 클리핑 값
-    verbose : bool
-        학습 과정 출력 여부
-        
-    Returns:
-    --------
-    dict
-        파이프라인 결과
-    """
-    from src.models_dl import LSTMWrapper
-    from src.metrics import compute_metrics
-    import pandas as pd
-    import numpy as np
-    
-    print("=" * 80)
-    print("LSTM 딥러닝 파이프라인 시작")
-    print("=" * 80)
-    print(f"모드: {mode}")
-    print(f"Window Size: {window_size}, Horizon: {horizon}, Stride: {stride}")
-    print(f"LSTM 설정: hidden_size={hidden_size}, num_layers={num_layers}, dropout={dropout}")
-    print("=" * 80)
-    
-    # ========================================
-    # 1-6단계: Sliding Window 생성까지는 동일
-    # ========================================
-    print("\n[1-6/11] 데이터 전처리 및 Sliding Window 생성...")
-    
-    # 필요한 모듈 import
-    from src.preprocess import (
-        drop_missing_rows, 
-        resample_hourly, 
-        impute_missing_with_strategy, 
-        detect_and_handle_outliers,
-        ImputationConfig,
-        OutlierConfig
-    )
-    from src.features import build_features, FeatureConfig
-    from src.split import SplitConfig
-    from src.io import set_datetime_index, merge_sources_on_time
-    from src.sliding_window import create_sliding_windows, split_windowed_data, flatten_windows_for_ml, create_feature_names_for_flattened_windows
-    
-    # get_target_cols와 get_exclude_features는 이미 pipeline.py에 정의되어 있음
-    target_cols = get_target_cols(mode)
-    
-    # 1단계: 시간축 정합
-    dfs_indexed = {}
-    for name, df in dfs.items():
-        if df is None or len(df) == 0:
-            dfs_indexed[name] = df
-            continue
-        
-        if isinstance(df.index, pd.DatetimeIndex):
-            dfs_indexed[name] = df.sort_index()
-        else:
-            time_col = time_col_map.get(name) if time_col_map else None
-            if time_col and time_col in df.columns:
-                dfs_indexed[name] = set_datetime_index(df, time_col)
-            else:
-                dfs_indexed[name] = df
-    
-    # 2단계: 데이터 병합
-    df_merged = merge_sources_on_time(dfs_indexed, how="outer")
-    
-    # 3단계: 결측치 보간
-    imputation_cfg = ImputationConfig()
-    df_imputed = impute_missing_with_strategy(df_merged, freq=resample_rule, config=imputation_cfg)
-    
-    # 4단계: 이상치 처리
-    outlier_cfg = OutlierConfig()
-    df_outlier = detect_and_handle_outliers(df_imputed, config=outlier_cfg, add_mask=True)
-    
-    # 5단계: 리샘플링
-    df_resampled = resample_hourly(df_outlier, rule=resample_rule, agg="mean")
-    
-    # 6단계: 파생 특성 생성
-    feature_cfg = FeatureConfig()
-    exclude_cols = get_exclude_features(mode, target_cols)
-    df_feat = build_features(
-        df_hourly=df_resampled,
-        target_cols=target_cols,
-        exclude_cols=exclude_cols,
-        feature_base_cols=None,
-        mode=mode,
-        cfg=feature_cfg
-    )
-    
-    # 7단계: 타겟 분리
-    X = df_feat.drop(columns=target_cols, errors="ignore")
-    y = df_feat[target_cols]
-    
-    # datetime 타입 컬럼 제거 (RandomForest가 학습할 수 없음)
-    datetime_cols = X.select_dtypes(include=['datetime64']).columns.tolist()
-    if datetime_cols:
-        print(f"  Datetime 컬럼 제거: {datetime_cols}")
-        X = X.drop(columns=datetime_cols)
-    
-    # ⭐ NaN 제거 (Sliding Window 생성 전에 필수!)
-    print(f"\n전처리 전 크기:")
-    print(f"  특성 크기: {X.shape}")
-    print(f"  타겟 크기: {y.shape}")
-    
-    # NaN이 있는 행 제거
-    valid_mask = X.notna().all(axis=1) & y.notna().all(axis=1)
-    X_clean = X[valid_mask]
-    y_clean = y[valid_mask]
-    
-    print(f"\nNaN 제거 후:")
-    print(f"  특성 크기: {X_clean.shape} (제거: {X.shape[0] - X_clean.shape[0]}행)")
-    print(f"  타겟 크기: {y_clean.shape}")
-    print(f"  NaN 비율: {(1 - len(X_clean)/len(X))*100:.1f}%")
-    
-    # ========================================
-    # 8단계: Sliding Window 생성
-    # ========================================
-    print(f"\n[7/11] Sliding Window 생성 중...")
-    print(f"  Window Size: {window_size}, Horizon: {horizon}, Stride: {stride}")
-    
-    X_seq, y_seq = create_sliding_windows(
-        X_clean.values, y_clean.values,
-        window_size=window_size,
-        horizon=horizon,
-        stride=stride
-    )
-    
-    print(f"  생성된 윈도우 수: {len(X_seq)}")
-    print(f"  X_seq 크기: {X_seq.shape}")  # (n_windows, window_size, n_features)
-    print(f"  y_seq 크기: {y_seq.shape}")  # (n_windows, n_targets)
-    
-    # ========================================
-    # 9단계: 데이터 분할
-    # ========================================
-    print(f"\n[8/11] 데이터 분할 중...")
-    
-    split_cfg = SplitConfig(train_ratio=0.6, valid_ratio=0.2, test_ratio=0.2)
-    splits = split_windowed_data(
-        X_seq, y_seq, 
-        train_ratio=split_cfg.train_ratio,
-        valid_ratio=split_cfg.valid_ratio,
-        test_ratio=split_cfg.test_ratio
-    )
-    
-    X_train_seq, y_train_seq = splits["train"]
-    X_valid_seq, y_valid_seq = splits["valid"]
-    X_test_seq, y_test_seq = splits["test"]
-    
-    print(f"  Train: {X_train_seq.shape[0]} 윈도우")
-    print(f"  Valid: {X_valid_seq.shape[0]} 윈도우")
-    print(f"  Test:  {X_test_seq.shape[0]} 윈도우")
-    
-    # ========================================
-    # 10단계: 피처 선택 (평탄화 후)
-    # ========================================
-    skip_reshape = False  # reshape 건너뛰기 플래그
-    
-    if n_top_features > 0 and n_top_features < X_clean.shape[1]:
-        print(f"\n[9/11] 피처 선택 중 (상위 {n_top_features}개)...")
-        
-        # 평탄화
-        X_train_flat = flatten_windows_for_ml(X_train_seq)
-        
-        # 특성 이름 생성
-        feature_names_flat = create_feature_names_for_flattened_windows(X_clean.columns.tolist(), window_size)
-        
-        # 피처 선택
-        from src.feature_selection import select_top_features
-        
-        # DataFrame으로 변환 (select_top_features는 DataFrame을 받음)
-        X_train_flat_df = pd.DataFrame(X_train_flat, columns=feature_names_flat)
-        y_train_df = pd.DataFrame(y_train_seq, columns=target_cols)
-        
-        top_features = select_top_features(
-            X_train_flat_df, 
-            y_train_df,
-            n_features=min(n_top_features, len(feature_names_flat)),
-            random_state=random_state
-        )
-        
-        print(f"  선택된 특성: {len(top_features)}개")
-        
-        # 전체 데이터를 평탄화
-        X_train_flat_all = flatten_windows_for_ml(X_train_seq)
-        X_valid_flat_all = flatten_windows_for_ml(X_valid_seq)
-        X_test_flat_all = flatten_windows_for_ml(X_test_seq)
-        
-        # 선택된 특성만 사용
-        X_train_flat_df_all = pd.DataFrame(X_train_flat_all, columns=feature_names_flat)
-        X_valid_flat_df = pd.DataFrame(X_valid_flat_all, columns=feature_names_flat)
-        X_test_flat_df = pd.DataFrame(X_test_flat_all, columns=feature_names_flat)
-        
-        X_train_selected = X_train_flat_df_all[top_features]
-        X_valid_selected = X_valid_flat_df[top_features]
-        X_test_selected = X_test_flat_df[top_features]
-        
-        # 다시 3D로 reshape (LSTM 입력용)
-        # 선택된 특성 수가 window_size의 배수가 아닐 수 있으므로 조정
-        n_features_selected = len(top_features)
-        
-        # 각 타임스텝당 특성 수 계산
-        if n_features_selected >= window_size:
-            # 특성이 충분히 많으면 window_size로 나눔
-            n_features_per_timestep = n_features_selected // window_size
-            n_features_to_use = n_features_per_timestep * window_size
-            
-            # 사용할 특성만 선택 (나머지는 버림)
-            X_train_selected = X_train_selected.iloc[:, :n_features_to_use]
-            X_valid_selected = X_valid_selected.iloc[:, :n_features_to_use]
-            X_test_selected = X_test_selected.iloc[:, :n_features_to_use]
-            
-            print(f"  특성 조정: {n_features_selected} → {n_features_to_use}개 사용")
-        else:
-            # 특성이 적으면 각 타임스텝에 1개씩 배치하고 나머지는 0으로 패딩
-            print(f"  ⚠️  경고: 선택된 특성({n_features_selected})이 윈도우 크기({window_size})보다 적습니다.")
-            print(f"  피처 선택을 건너뛰고 전체 특성을 사용합니다.")
-            
-            # 피처 선택 건너뛰기
-            X_train_3d = X_train_seq
-            X_valid_3d = X_valid_seq
-            X_test_3d = X_test_seq
-            
-            print(f"  3D 데이터 크기:")
-            print(f"    Train: {X_train_3d.shape}")
-            print(f"    Valid: {X_valid_3d.shape}")
-            print(f"    Test:  {X_test_3d.shape}")
-            
-            # 다음 단계로 건너뛰기
-            skip_reshape = True
-        
-        if not skip_reshape:
-            X_train_3d = X_train_selected.values.reshape(X_train_seq.shape[0], window_size, n_features_per_timestep)
-            X_valid_3d = X_valid_selected.values.reshape(X_valid_seq.shape[0], window_size, n_features_per_timestep)
-            X_test_3d = X_test_selected.values.reshape(X_test_seq.shape[0], window_size, n_features_per_timestep)
-            
-            print(f"  3D reshape 완료:")
-            print(f"    Train: {X_train_3d.shape}")
-            print(f"    Valid: {X_valid_3d.shape}")
-            print(f"    Test:  {X_test_3d.shape}")
-    else:
-        print(f"\n[9/11] 피처 선택 건너뛰기 (전체 특성 사용)")
-        X_train_3d = X_train_seq
-        X_valid_3d = X_valid_seq
-        X_test_3d = X_test_seq
-    
-    # ========================================
-    # 11단계: LSTM 모델 학습
-    # ========================================
-    print(f"\n[10/11] LSTM 모델 학습 중...")
-    
-    lstm_model = LSTMWrapper(
-        hidden_size=hidden_size,
-        num_layers=num_layers,
-        dropout=dropout,
-        batch_size=batch_size,
-        learning_rate=learning_rate,
-        num_epochs=num_epochs,
-        patience=patience,
-        weight_decay=weight_decay,
-        grad_clip=grad_clip,
-        random_state=random_state,
-        verbose=verbose
-    )
-    
-    # 학습 (검증 데이터 포함)
-    lstm_model.fit(X_train_3d, y_train_seq, X_val=X_valid_3d, y_val=y_valid_seq)
-    
-    # ========================================
-    # 12단계: 평가
-    # ========================================
-    print(f"\n[11/11] 모델 평가 중...")
-    
-    # 예측
-    y_train_pred = lstm_model.predict(X_train_3d)
-    y_valid_pred = lstm_model.predict(X_valid_3d)
-    y_test_pred = lstm_model.predict(X_test_3d)
-    
-    # 평가 지표 계산
-    train_metrics = compute_metrics(y_train_seq, y_train_pred)
-    valid_metrics = compute_metrics(y_valid_seq, y_valid_pred)
-    test_metrics = compute_metrics(y_test_seq, y_test_pred)
-    
-    print(f"\n{'='*60}")
-    print("평가 결과")
-    print(f"{'='*60}")
-    print(f"\nTrain:")
-    print(f"  R²:   {train_metrics['R2_mean']:.4f}")
-    print(f"  RMSE: {train_metrics['RMSE_mean']:.2f}")
-    print(f"  MAPE: {train_metrics['MAPE_mean(%)']:.2f}%")
-    
-    print(f"\nValid:")
-    print(f"  R²:   {valid_metrics['R2_mean']:.4f}")
-    print(f"  RMSE: {valid_metrics['RMSE_mean']:.2f}")
-    print(f"  MAPE: {valid_metrics['MAPE_mean(%)']:.2f}%")
-    
-    print(f"\nTest:")
-    print(f"  R²:   {test_metrics['R2_mean']:.4f}")
-    print(f"  RMSE: {test_metrics['RMSE_mean']:.2f}")
-    print(f"  MAPE: {test_metrics['MAPE_mean(%)']:.2f}%")
-    
-    # 결과 딕셔너리 생성
-    results = {
-        "LSTM": {
-            "train": train_metrics,
-            "valid": valid_metrics,
-            "test": test_metrics
-        }
-    }
-    
-    # 메트릭 테이블 생성
-    metric_table = pd.DataFrame({
-        "model": ["LSTM"],
-        "R2_mean": [test_metrics["R2_mean"]],
-        "RMSE_mean": [test_metrics["RMSE_mean"]],
-        "MAPE_mean(%)": [test_metrics["MAPE_mean(%)"]]
-    })
-    
-    print(f"\n{'='*60}")
-    print("최종 결과 (Test Set)")
-    print(f"{'='*60}")
-    print(metric_table.to_string(index=False))
-    
-    # ========================================
-    # 결과 저장
-    # ========================================
-    # LSTM은 3D 데이터를 사용하므로 splits_final을 3D로 유지
-    splits_final_3d = {
-        "train": (X_train_3d, y_train_seq),
-        "valid": (X_valid_3d, y_valid_seq),
-        "test": (X_test_3d, y_test_seq)
-    }
-    
-    fitted_models = {"LSTM": lstm_model}
-    
-    saved_files = None
-    if save_results:
-        from src.save_results import save_all_results
-        
-        # LSTM은 예측값 저장을 건너뛰고 시퀀스와 모델만 저장
-        saved_files = save_all_results(
-            {
-                "mode": mode,
-                "target_cols": target_cols,
-                "window_size": window_size,
-                "horizon": horizon,
-                "stride": stride,
-                "X_original": X_clean.values,
-                "y_original": y_clean.values,
-                "X_seq": X_seq,
-                "y_seq": y_seq,
-                "splits": splits_final_3d,
-                "top_features": top_features if 'top_features' in locals() else None,
-                "scaler": None,  # LSTM은 내부에서 스케일링
-                "results": results,
-                "metric_table": metric_table,
-                "fitted_models": fitted_models
-            },
-            save_dir=save_dir,
-            save_predictions_flag=False,  # LSTM은 예측값 저장 건너뛰기 (3D 데이터 문제)
-            save_sequences_flag=save_sequences,
-            save_model_flag=save_model,
-            sequence_format=sequence_format
-        )
-    
-    return {
-        "mode": mode,
-        "target_cols": target_cols,
-        "window_size": window_size,
-        "horizon": horizon,
-        "stride": stride,
-        "df_resampled": df_resampled,
-        "df_features": df_feat,
-        "X_original": X_clean.values,
-        "y_original": y_clean.values,
-        "X_seq": X_seq,
-        "y_seq": y_seq,
-        "X_train_3d": X_train_3d,
-        "X_valid_3d": X_valid_3d,
-        "X_test_3d": X_test_3d,
-        "y_train": y_train_seq,
-        "y_valid": y_valid_seq,
-        "y_test": y_test_seq,
-        "splits": splits_final_3d,
-        "top_features": top_features if 'top_features' in locals() else None,
-        "lstm_model": lstm_model,
-        "results": results,
-        "metric_table": metric_table,
-        "fitted_models": fitted_models,
-        "history": lstm_model.history_,
-        "saved_files": saved_files
-    }
 

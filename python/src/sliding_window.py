@@ -140,7 +140,6 @@ def flatten_windows_for_ml(X_seq: np.ndarray) -> np.ndarray:
     """
     3D 윈도우 데이터를 2D로 평탄화 (ML 모델용)
     
-    LSTM/RNN은 3D 입력 (samples, timesteps, features)을 사용하지만,
     일반 ML 모델(RF, XGBoost 등)은 2D 입력 (samples, features)이 필요합니다.
     
     이 함수는 (samples, window_size, n_features)를 
@@ -275,6 +274,22 @@ def print_window_info(X_seq: np.ndarray, y_seq: np.ndarray, window_size: int):
     window_size : int
         윈도우 크기
     """
+    # X_seq가 비어있거나 잘못된 형태인지 확인
+    if X_seq is None or len(X_seq) == 0:
+        print(f"\n{'='*60}")
+        print("⚠️  경고: 윈도우가 생성되지 않았습니다!")
+        print(f"{'='*60}")
+        return
+    
+    # shape 확인
+    if X_seq.ndim != 3:
+        print(f"\n{'='*60}")
+        print(f"⚠️  경고: X_seq의 차원이 잘못되었습니다!")
+        print(f"예상: 3D (samples, window_size, features)")
+        print(f"실제: {X_seq.ndim}D, shape={X_seq.shape}")
+        print(f"{'='*60}")
+        return
+    
     n_samples, actual_window, n_features = X_seq.shape
     n_targets = y_seq.shape[1] if y_seq.ndim > 1 else 1
     
@@ -288,6 +303,7 @@ def print_window_info(X_seq: np.ndarray, y_seq: np.ndarray, window_size: int):
     print(f"입력 shape: {X_seq.shape}")
     print(f"타겟 shape: {y_seq.shape}")
     print(f"{'='*60}")
+
 
 
 # ============================================================================

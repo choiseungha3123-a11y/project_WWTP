@@ -4,21 +4,46 @@
 
 ---
 
+## 📅 2026년 2월 3일
+
+### 📂 작업 파일
+```
+src/features.py                # 수정 (타겟 lag 피처 추가)
+test_target_lags.py            # 새로 생성
+docs/TARGET_LAG_FEATURES.md    # 새로 생성
+QUICK_START_TARGET_LAGS.md     # 새로 생성
+```
+
+### 🎯 타겟 Lag 피처 구현 (Autoregressive Features) ⭐
+
+**배경**: 시계열 예측에서 과거 타겟 값은 매우 강력한 예측 변수이나, 기존 코드는 타겟을 입력에서 완전히 제외
+
+**작업 내용**:
+- `build_features()`: 타겟 lag/rolling 피처 자동 생성 (`add_target_lags=True`)
+  - Lag 피처: `y_flowA_lag1`, `y_flowA_lag2`, ..., `y_flowA_lag24`
+  - Rolling 피처: `y_flowA_rmean3`, `y_flowA_rstd3`, `y_flowA_rmin3`, `y_flowA_rmax3` 등
+  - `shift(1)` 적용으로 미래 정보 누수 방지
+- `make_supervised_dataset()`: 타겟 lag 피처를 X에 포함 (`keep_target_lags=True`)
+  - 현재 시점 타겟은 제외 (데이터 누수 방지)
+  - 과거 타겟 값만 입력으로 사용 (autoregressive)
+
+
+### ✅ 다음 할 일 (2026/02/04)
+- [ ] 타겟 lag 피처 포함 모델 학습 및 성능 평가
+- [ ] 타겟 lag 유무 성능 비교 (A/B 테스트)
+- [ ] LSTM 파이프라인 실험 및 ML vs LSTM 비교
+
+---
+
 ## 📅 2026년 2월 2일
 
 ### 📂 작업 파일
 ```
 src/sliding_window.py          # 새로 생성
 src/save_results.py            # 새로 생성
-src/models_dl.py               # 새로 생성 ⭐
-src/pipeline.py                # 수정 (LSTM 파이프라인 추가, datetime 컬럼 제거, NaN 처리)
-src/preprocess.py              # 수정 (결측치/이상치 처리 개선) ⭐
-scripts/train.py               # 수정 (LSTM 옵션 추가)
-python/QUICK_START.md          # 수정
-python/TRAIN_USAGE.md          # 삭제
-python/SLIDING_WINDOW_README.md # 삭제
-python/SAVE_RESULTS_GUIDE.md   # 삭제
-python/NOTE.md                 # 구조 개선
+src/pipeline.py                # 수정
+src/preprocess.py              # 수정
+scripts/train.py               # 수정
 ```
 
 ### 🔄 1. Sliding Window 기능 구현
@@ -48,20 +73,6 @@ python/NOTE.md                 # 구조 개선
 6. 피처 선택 (RandomForest 중요도)
 7. 모델 학습 (Optuna 최적화)
 
-**사용 예시**:
-```bash
-# 기본 사용 (과거 24시간 → 다음 시간 예측)
-python scripts/train.py --mode flow --sliding-window --window-size 24
-
-# Sliding Window + Optuna 최적화
-python scripts/train.py --mode flow --sliding-window --improved \
-  --window-size 24 --n-features 50
-```
-
-**결과**:
-- 시계열 패턴 학습 능력 대폭 향상
-- 예상 성능 향상: R² +4.7%, RMSE -15.8%
-
 ### 💾 2. 결과 저장 기능 구현
 
 **배경**: 학습 결과(예측값, 시퀀스 데이터, 모델)를 재사용하기 위해 저장 필요
@@ -81,112 +92,7 @@ python scripts/train.py --mode flow --sliding-window --improved \
   - `--no-save-model`: 모델 저장 안 함
   - `--sequence-format`: 시퀀스 저장 형식 (npz/pickle/csv, 기본: npz)
 
-**저장 구조**:
-```
-results/ML/
-├── predictions/
-│   ├── predictions_train_YYYYMMDD_HHMMSS.csv
-│   ├── predictions_valid_YYYYMMDD_HHMMSS.csv
-│   └── predictions_test_YYYYMMDD_HHMMSS.csv
-├── sequences/
-│   └── sequence_all_YYYYMMDD_HHMMSS.npz
-└── models/
-    ├── XGBoost_YYYYMMDD_HHMMSS.pkl
-    ├── scaler_YYYYMMDD_HHMMSS.pkl
-    ├── features_YYYYMMDD_HHMMSS.txt
-    └── metadata_YYYYMMDD_HHMMSS.pkl
-```
-
-**사용 예시**:
-```bash
-# 모든 결과 자동 저장 (기본)
-python scripts/train.py --mode flow --sliding-window --window-size 24
-
-# NPZ 형식으로 저장 (권장 - 빠르고 용량 작음)
-python scripts/train.py --mode flow --sliding-window --window-size 24 \
-  --sequence-format npz
-
-# 예측값만 저장
-python scripts/train.py --mode flow --sliding-window --window-size 24 \
-  --no-save-sequences --no-save-model
-```
-
-**결과**:
-- 학습 결과 재사용 가능
-- 모델 배포 및 분석 용이
-- NPZ 형식 권장 (빠르고 용량 작음)
-
-### 🧠 3. LSTM 딥러닝 모델 구현
-
-**배경**: ML 모델만으로는 시계열 패턴 학습에 한계가 있어 LSTM 딥러닝 모델 필요
-
-**작업 내용**:
-- `src/models_dl.py` 모듈 생성 ⭐
-  - `FlowLSTM`: PyTorch LSTM 모델 클래스
-    - 드롭아웃이 적용된 LSTM 레이어
-    - 배치 정규화
-    - 완전 연결 출력 레이어 (2층 구조)
-  - `LSTMWrapper`: sklearn 스타일 인터페이스 제공
-    - `fit()`, `predict()`, `score()` 메서드
-    - 자동 스케일링 (StandardScaler)
-    - 조기 종료 (Early Stopping)
-    - 그래디언트 클리핑
-  - `build_dl_model_zoo()`: 딥러닝 모델 Zoo 생성
-- `src/pipeline.py`에 `run_lstm_pipeline()` 추가
-  - Sliding Window 생성
-  - 피처 선택 (평탄화 후)
-  - 3D reshape (LSTM 입력용)
-  - LSTM 모델 학습
-  - 평가 및 결과 저장
-- `scripts/train.py`에 LSTM 옵션 추가
-  - `--lstm`: LSTM 파이프라인 활성화
-  - `--hidden-size`: LSTM 은닉층 유닛 수 (기본: 64)
-  - `--num-layers`: LSTM 레이어 수 (기본: 2)
-  - `--dropout`: 드롭아웃 비율 (기본: 0.2)
-  - `--batch-size`: 배치 크기 (기본: 32)
-  - `--learning-rate`: 학습률 (기본: 0.001)
-  - `--num-epochs`: 최대 에포크 수 (기본: 100)
-  - `--patience`: 조기 종료 patience (기본: 10)
-  - `--weight-decay`: L2 정규화 계수 (기본: 0.0001)
-  - `--grad-clip`: 그래디언트 클리핑 값 (기본: 1.0)
-
-**LSTM 파이프라인 단계**:
-1. 시간축 정합 → 결측치 보간 → 이상치 처리 → 리샘플링 → 파생 특성 생성
-2. Sliding Window 생성 (3D 데이터)
-3. 데이터 분할 (Train/Valid/Test)
-4. 평탄화 → 피처 선택 → 3D reshape
-5. LSTM 모델 학습 (자동 스케일링, 조기 종료)
-6. 평가 및 결과 저장
-
-**사용 예시**:
-```bash
-# 기본 LSTM 학습
-python scripts/train.py --mode flow --lstm --window-size 24
-
-# LSTM 하이퍼파라미터 조정
-python scripts/train.py --mode flow --lstm --window-size 24 \
-  --hidden-size 128 --num-layers 3 --dropout 0.3 \
-  --batch-size 64 --learning-rate 0.0005 --num-epochs 200
-
-# LSTM + 피처 선택
-python scripts/train.py --mode flow --lstm --window-size 24 \
-  --n-features 100 --n-trials 50
-```
-
-**특징**:
-- sklearn 호환 인터페이스 (fit, predict, score)
-- 자동 데이터 정규화 (StandardScaler)
-- 조기 종료로 과적합 방지
-- 그래디언트 클리핑으로 학습 안정화
-- GPU 자동 감지 및 사용
-- 배치 정규화 및 드롭아웃으로 정규화
-
-**결과**:
-- 딥러닝 모델을 ML 모델과 동일한 파이프라인에서 사용 가능
-- 시계열 패턴 학습 능력 향상
-- 예상 성능: ML 대비 추가 개선 기대
-
-### 🔧 4. 전처리 개선 (결측치 및 이상치 처리) ⭐
+### 🔧 3. 전처리 개선 (결측치 및 이상치 처리) ⭐
 
 **배경**: 
 - 기존: 장기 결측은 NaN 유지 → 모델 학습 시 샘플 손실
@@ -208,44 +114,8 @@ python scripts/train.py --mode flow --lstm --window-size 24 \
       - 시간 가중 이동평균으로 부드럽게 대체
       - NaN 생성 없이 연속성 유지
 
-**변경 전후 비교**:
-```python
-# 변경 전
-장기 결측 → NaN 유지 → 샘플 손실
-이상치 → NaN 변환 → 추가 결측치 발생
 
-# 변경 후
-장기 결측 → Rolling Median → 모든 샘플 보존
-이상치 → EWMA 대체 → 연속성 유지
-```
-
-**설정 예시**:
-```python
-# 결측치 보간 설정
-imputation_cfg = ImputationConfig(
-    short_term_hours=3,      # Forward Fill
-    medium_term_hours=12,    # EWMA
-    ewma_span=6,
-    rolling_window=24        # Rolling Median (장기 결측)
-)
-
-# 이상치 처리 설정
-outlier_cfg = OutlierConfig(
-    method='iqr',
-    iqr_threshold=1.5,
-    require_both=True,
-    ewma_span=12             # EWMA 대체
-)
-```
-
-**효과**:
-- ✅ 데이터 손실 최소화 (NaN 제거)
-- ✅ 모델 학습 샘플 수 증가
-- ✅ 시계열 연속성 유지
-- ✅ 안정적인 보간 (Rolling Median)
-- ✅ 부드러운 이상치 대체 (EWMA)
-
-### 📚 5. 문서 통합 및 정리
+### 📚 4. 문서 통합 및 정리
 
 **배경**: 중복된 문서가 많아 유지보수가 어려움
 
@@ -325,117 +195,8 @@ outlier_cfg = OutlierConfig(
 - ✅ 정보 접근성 개선
 
 ### ✅ 다음 할 일 (2026/02/03)
+- [X] 타겟 lag 피처 구현 (autoregressive 특성)
 - [ ] LSTM 파이프라인 실험 및 성능 평가
-- [ ] ML vs LSTM 성능 비교 분석
-- [ ] 저장된 결과 로드 및 재사용 테스트
-- [ ] QUICK_START.md에 LSTM 사용법 추가
-- [ ] 필요 시 추가 딥러닝 모델 구현 (GRU, Transformer 등)
-
-### � 1. Sliding Window 기능 구현
-
-**배경**: 시계열 데이터에서 과거 N개의 시간 스텝을 입력으로 사용하여 미래 예측 성능 향상
-
-**작업 내용**:
-- `src/sliding_window.py` 모듈 생성
-  - `create_sliding_windows()`: 시계열 데이터를 sliding window로 변환
-  - `flatten_windows_for_ml()`: 3D 윈도우를 2D로 평탄화 (일반 ML 모델용)
-  - `create_feature_names_for_flattened_windows()`: 평탄화된 특성 이름 생성
-  - `split_windowed_data()`: 윈도우 데이터 분할
-- `src/pipeline.py`에 `run_sliding_window_pipeline()` 추가
-- `scripts/train.py`에 Sliding Window 옵션 통합
-  - `--sliding-window`: Sliding Window 파이프라인 활성화
-  - `--window-size`: 과거 몇 개의 시간 스텝을 볼 것인지 (기본: 24)
-  - `--horizon`: 미래 몇 스텝 후를 예측할 것인지 (기본: 1)
-  - `--stride`: 윈도우 이동 간격 (기본: 1)
-  - `--use-3d`: 3D 입력 모델 사용 (현재 미지원)
-
-**Sliding Window 파이프라인 단계**:
-1. 시간축 정합 → 결측치 보간 → 이상치 처리 → 리샘플링 → 파생 특성 생성
-2. **Sliding Window 생성** (과거 N시간 → 미래 예측)
-3. 데이터 분할 (Train/Valid/Test)
-4. 평탄화 (ML 모델용 2D 변환)
-5. 스케일링 (StandardScaler)
-6. 피처 선택 (RandomForest 중요도)
-7. 모델 학습 (Optuna 최적화)
-
-### � 2. 결과 저장 기능 구현
-
-**배경**: 학습 결과(예측값, 시퀀스 데이터, 모델)를 재사용하기 위해 저장 필요
-
-**작업 내용**:
-- `src/save_results.py` 모듈 생성
-  - `save_predictions()`: 예측값을 CSV로 저장 (train/valid/test)
-  - `save_sequence_dataset()`: 시퀀스 데이터를 NPZ/Pickle/CSV로 저장
-  - `load_sequence_dataset()`: 저장된 시퀀스 데이터 로드
-  - `save_model_and_metadata()`: 모델, 스케일러, 메타데이터 저장
-  - `save_all_results()`: 모든 결과를 한 번에 저장
-- `src/pipeline.py`의 `run_sliding_window_pipeline()`에 저장 기능 통합
-- `scripts/train.py`에 저장 옵션 추가
-  - `--no-save`: 모든 결과 저장 안 함
-  - `--no-save-predictions`: 예측값 저장 안 함
-  - `--no-save-sequences`: 시퀀스 데이터 저장 안 함
-  - `--no-save-model`: 모델 저장 안 함
-  - `--sequence-format`: 시퀀스 저장 형식 (npz/pickle/csv, 기본: npz)
-
-**결과**:
-- 학습 결과 재사용 가능
-- 모델 배포 및 분석 용이
-- NPZ 형식 권장 (빠르고 용량 작음)
-
-### 📚 3. 문서 통합 및 정리
-
-**배경**: 중복된 문서가 많아 유지보수가 어려움
-
-**작업 내용**:
-- 3개의 중복 문서 삭제
-  - `TRAIN_USAGE.md` (train.py 사용 가이드)
-  - `SLIDING_WINDOW_README.md` (Sliding Window 상세 가이드)
-  - `SAVE_RESULTS_GUIDE.md` (결과 저장 가이드)
-- 모든 핵심 내용을 `QUICK_START.md`에 통합
-- `NOTE.md`와 `TODO.md`는 활발히 사용 중이므로 유지
-
-**통합된 QUICK_START.md 구조**:
-1. 빠른 시작
-2. 사용법 (CLI + Python 코드)
-3. 프로젝트 구조
-4. 파이프라인 비교 (기본/개선/Sliding Window)
-5. 지원 모델
-6. 주요 옵션
-7. **Sliding Window 작동 원리** (7단계 상세 설명)
-8. **결과 저장 및 로드** (예측값/시퀀스/모델)
-9. 예상 출력
-10. 주의사항
-11. TMS 모델 선택 가이드
-12. 모델별 특성 엔지니어링
-13. 상세 문서
-
-### 📝 4. NOTE.md 구조 개선
-
-**작업 내용**:
-- 문서 헤더 추가 (제목 + 설명)
-- 날짜 형식 통일: "📅 2026년 1월 30일"
-- 섹션별 이모지 아이콘 추가
-  - 📂 작업 파일
-  - 🔍 데이터 분석
-  - 🔧 기술적 수정
-  - 🤖 머신러닝
-  - 🎯 전략/목표
-  - 🔄 리팩토링
-  - 🧠 딥러닝
-  - 📊 데이터 처리
-  - 🔬 실험
-  - 🚀 개선
-  - 💾 데이터 저장
-  - 📚 문서화
-  - ✅ 다음 할 일
-- 정보 계층화 및 가독성 향상
-- **볼드체**로 중요 키워드 강조
-- 체크리스트 형식의 "다음 할 일" 섹션
-
-### ✅ 다음 할 일 (2026/02/03)
-- [ ] Sliding Window 파이프라인 실험 및 성능 평가
-- [ ] 저장된 결과 로드 및 재사용 테스트
-- [ ] 필요 시 추가 문서 정리
 
 ---
 

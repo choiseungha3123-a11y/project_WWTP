@@ -38,7 +38,7 @@ def calculate_rolling_std(df, cols, windows, suffix_pattern="{col}_std_{hours}H"
         for hours in windows:
             window = hours * 4  # 15분 단위
             col_name = suffix_pattern.format(col=col, hours=hours)
-            out[col_name] = out[col].rolling(window, min_periods=max(2, window // 10)).std()
+            out[col_name] = out[col].rolling(window, min_periods=max(1, min(2, window // 10))).std()
     return out
 
 
@@ -68,8 +68,8 @@ def calculate_spike_flags(df, cols, window_hours=24, threshold=2.0, eps=1e-6):
     for col in cols:
         if col not in out.columns:
             continue
-        col_mean = out[col].rolling(window, min_periods=max(5, window // 10)).mean()
-        col_std = out[col].rolling(window, min_periods=max(5, window // 10)).std()
+        col_mean = out[col].rolling(window, min_periods=max(1, min(5, window // 10))).mean()
+        col_std = out[col].rolling(window, min_periods=max(1, min(5, window // 10))).std()
         z_score = (out[col] - col_mean) / (col_std + eps)
         out[f"{col}_spike_z2"] = (z_score > threshold).astype(np.int8)
     
@@ -351,8 +351,6 @@ def add_weather_features(df, station_ids=["368", "541", "569"], eps=1e-6, mode="
 
 def add_tms_interaction_features(df, available_tms_cols, mode="flow", eps=1e-6):
     """
-    TMS 지표 간 상호작용 피처 생성
-    (예측 대상이 아닌 TMS 지표들 간의 상호작용)
     
     ModelA 전용 특성:
     - 부하 관련: TOC_proxy_load, SS_proxy_load
@@ -374,23 +372,6 @@ def add_tms_interaction_features(df, available_tms_cols, mode="flow", eps=1e-6):
     - 온도 상호작용: TA×TN, TA×TOC
     """
     out = df.copy()
-    
-    # 기본 상호작용 (모든 TMS 모델)
-    # pH x FLUX 상호작용
-    if "PH_VU" in available_tms_cols and "FLUX_VU" in available_tms_cols:
-        out["PHxFLUX"] = out["PH_VU"] * out["FLUX_VU"]
-    
-    # 영양염 부하 (FLUX x (TN + TP))
-    if all(c in available_tms_cols for c in ["FLUX_VU", "TN_VU", "TP_VU"]):
-        out["load_proxy_NP"] = out["FLUX_VU"] * (out["TN_VU"] + out["TP_VU"])
-    
-    # 유기물 부하 (FLUX x TOC)
-    if "FLUX_VU" in available_tms_cols and "TOC_VU" in available_tms_cols:
-        out["load_proxy_TOC"] = out["FLUX_VU"] * out["TOC_VU"]
-    
-    # TN/TP 비율
-    if "TN_VU" in available_tms_cols and "TP_VU" in available_tms_cols:
-        out["TN_TP_ratio"] = out["TN_VU"] / (out["TP_VU"] + eps)
     
     # ModelA 전용 특성
     if mode == "modela":
@@ -425,8 +406,8 @@ def add_tms_interaction_features(df, available_tms_cols, mode="flow", eps=1e-6):
         if "TP_VU" in available_tms_cols:
             # TP_spike_flag (z-score > 2)
             window = 24 * 4  # 24시간 (15분 단위)
-            tp_mean = out["TP_VU"].rolling(window, min_periods=max(5, window // 10)).mean()
-            tp_std = out["TP_VU"].rolling(window, min_periods=max(5, window // 10)).std()
+            tp_mean = out["TP_VU"].rolling(window, min_periods=max(1, min(5, window // 10))).mean()
+            tp_std = out["TP_VU"].rolling(window, min_periods=max(1, min(5, window // 10))).std()
             z_score = (out["TP_VU"] - tp_mean) / (tp_std + eps)
             out["TP_spike_flag"] = (z_score > 2.0).astype(np.int8)
         
@@ -663,18 +644,18 @@ def add_level_flow_features(df, eps=1e-6):
         
         for w in windows:
             # 평균
-            out[f"{col}_rmean{w}"] = col_shifted.rolling(window=w, min_periods=max(1, w // 2)).mean()
+            out[f"{col}_rmean{w}"] = col_shifted.rolling(window=w, min_periods=min(max(1, w // 2), w)).mean()
             
             # 표준편차
-            out[f"{col}_rstd{w}"] = col_shifted.rolling(window=w, min_periods=max(2, w // 2)).std()
+            out[f"{col}_rstd{w}"] = col_shifted.rolling(window=w, min_periods=min(max(2, w // 2), w)).std()
             
             # 최소/최대
-            out[f"{col}_rmin{w}"] = col_shifted.rolling(window=w, min_periods=max(1, w // 2)).min()
-            out[f"{col}_rmax{w}"] = col_shifted.rolling(window=w, min_periods=max(1, w // 2)).max()
+            out[f"{col}_rmin{w}"] = col_shifted.rolling(window=w, min_periods=min(max(1, w // 2), w)).min()
+            out[f"{col}_rmax{w}"] = col_shifted.rolling(window=w, min_periods=min(max(1, w // 2), w)).max()
             
             # IQR (Q90 - Q10)
-            q90 = col_shifted.rolling(window=w, min_periods=max(1, w // 2)).quantile(0.9)
-            q10 = col_shifted.rolling(window=w, min_periods=max(1, w // 2)).quantile(0.1)
+            q90 = col_shifted.rolling(window=w, min_periods=min(max(1, w // 2), w)).quantile(0.9)
+            q10 = col_shifted.rolling(window=w, min_periods=min(max(1, w // 2), w)).quantile(0.1)
             out[f"{col}_rIQR{w}"] = q90 - q10
             
             # 추세 (선형회귀 기울기)
@@ -696,7 +677,7 @@ def add_level_flow_features(df, eps=1e-6):
                 slope = np.polyfit(x_idx, y_clean, 1)[0]
                 return slope
             
-            out[f"{col}_rslope{w}"] = col_shifted.rolling(window=w, min_periods=max(2, w // 2)).apply(calc_slope, raw=False)
+            out[f"{col}_rslope{w}"] = col_shifted.rolling(window=w, min_periods=min(max(2, w // 2), w)).apply(calc_slope, raw=False)
     
     return out
 
@@ -840,7 +821,8 @@ def add_model_specific_features(df, mode, available_tms_cols):
 # 데이터셋 생성
 # ========================================
 
-def make_supervised_dataset(df, target_cols, exclude_cols=None, dropna=True):
+def make_supervised_dataset(df, target_cols, exclude_cols=None, dropna=True, keep_target_lags=True, 
+                           drop_initial_nan_only=True, max_lag_window=24):
     """
     지도학습용 X, y 데이터셋 생성
     
@@ -855,6 +837,14 @@ def make_supervised_dataset(df, target_cols, exclude_cols=None, dropna=True):
         TMS 모델의 경우 예측 대상만 제외하고 나머지 TMS 지표는 입력으로 사용
     dropna : bool
         결측치가 있는 행 제거 여부
+    keep_target_lags : bool
+        타겟 변수의 lag/rolling 피처를 입력으로 유지할지 여부 (기본값: True)
+        True면 현재 시점 타겟만 제외하고 과거 값은 입력으로 사용 (autoregressive)
+    drop_initial_nan_only : bool
+        True면 초반 NaN 행만 제거 (파생 특성으로 인한 NaN)
+        False면 모든 NaN 행 제거 (기존 동작)
+    max_lag_window : int
+        최대 lag/rolling 윈도우 크기 (초반 제거할 행 수 결정)
         
     Returns:
     --------
@@ -871,14 +861,58 @@ def make_supervised_dataset(df, target_cols, exclude_cols=None, dropna=True):
         exclude_cols = target_cols
     
     # X 생성: exclude_cols에 있는 컬럼만 제외
-    X = df.drop(columns=exclude_cols, errors='ignore').copy()
+    # 단, keep_target_lags=True이면 타겟의 lag/rolling 피처는 유지
+    if keep_target_lags:
+        # 현재 시점 타겟만 제외하고, lag/rolling 피처는 유지
+        cols_to_exclude = []
+        for col in exclude_cols:
+            if col in df.columns:
+                cols_to_exclude.append(col)
+        
+        X = df.drop(columns=cols_to_exclude, errors='ignore').copy()
+        
+        # 타겟 lag/rolling 피처가 있는지 확인하고 로그 출력
+        target_lag_features = [c for c in X.columns 
+                              if any(f"{target}_lag" in c or f"{target}_rmean" in c or 
+                                    f"{target}_rstd" in c or f"{target}_rmin" in c or 
+                                    f"{target}_rmax" in c 
+                                    for target in target_cols)]
+        
+        if target_lag_features:
+            print(f"\n[INFO] 타겟 lag/rolling 피처 {len(target_lag_features)}개가 입력으로 사용됩니다")
+            print(f"[INFO] 예시: {target_lag_features[:5]}")
+    else:
+        # 타겟 관련 모든 피처 제외 (기존 동작)
+        X = df.drop(columns=exclude_cols, errors='ignore').copy()
     
     # 숫자형 컬럼만 선택
     X = X.select_dtypes(include=[np.number])
 
     if dropna:
-        keep = X.notna().all(axis=1) & y.notna().all(axis=1)
-        return X.loc[keep], y.loc[keep]
+        if drop_initial_nan_only:
+            # 초반 NaN만 제거 (파생 특성으로 인한 NaN)
+            # 최대 윈도우 크기만큼의 초반 행 제거
+            print(f"\n[INFO] 초반 {max_lag_window}행 제거 (파생 특성 NaN)")
+            
+            # 초반 행 제거
+            X_trimmed = X.iloc[max_lag_window:].copy()
+            y_trimmed = y.iloc[max_lag_window:].copy()
+            
+            # 남은 NaN 확인 (정보만 출력)
+            remaining_nan_X = X_trimmed.isna().sum().sum()
+            remaining_nan_y = y_trimmed.isna().sum().sum()
+            
+            if remaining_nan_X > 0 or remaining_nan_y > 0:
+                print(f"[WARNING] 초반 제거 후에도 NaN 존재: X={remaining_nan_X}, y={remaining_nan_y}")
+                print(f"[INFO] NaN은 그대로 유지됩니다 (모델이 처리)")
+            
+            print(f"[INFO] 최종 데이터: {len(X_trimmed)} 샘플 (원본: {len(X)} → 제거: {len(X) - len(X_trimmed)})")
+            
+            return X_trimmed, y_trimmed
+        else:
+            # 모든 NaN 행 제거 (기존 동작)
+            keep = X.notna().all(axis=1) & y.notna().all(axis=1)
+            return X.loc[keep], y.loc[keep]
     
     return X, y
 
@@ -904,7 +938,7 @@ class FeatureConfig:
 
 
 def build_features(df_hourly, target_cols, exclude_cols=None, feature_base_cols=None, 
-                   mode="flow", cfg=FeatureConfig()):
+                   mode="flow", cfg=FeatureConfig(), add_target_lags=True):
     """
     전체 피처 생성 파이프라인
     
@@ -923,6 +957,9 @@ def build_features(df_hourly, target_cols, exclude_cols=None, feature_base_cols=
         모델 모드 (flow, modelA, modelB, modelC, tms)
     cfg : FeatureConfig
         피처 생성 설정
+    add_target_lags : bool
+        타겟 변수의 과거 값(lag)을 입력 피처로 추가할지 여부 (기본값: True)
+        autoregressive 특성으로 예측 성능 향상에 도움
         
     Returns:
     --------
@@ -963,6 +1000,48 @@ def build_features(df_hourly, target_cols, exclude_cols=None, feature_base_cols=
     # 4) lag/rolling 피처 생성 (예측 대상 및 마스크 제외)
     out = add_lag_features(out, base_cols=feature_base_cols, lags=cfg.lag_hours)
     out = add_rolling_features(out, base_cols=feature_base_cols, windows=cfg.roll_hours)
+    
+    # 5) 타겟 변수의 과거 값(lag) 추가 (autoregressive 특성)
+    # 현재 시점(t)의 타겟은 제외하고, 과거 시점(t-1, t-2, ...)만 입력으로 사용
+    if add_target_lags:
+        # 타겟 변수가 데이터프레임에 존재하는지 확인
+        available_targets = [c for c in target_cols if c in out.columns]
+        
+        if available_targets:
+            print(f"\n[INFO] 타겟 변수의 과거 값(lag) 추가 중: {available_targets}")
+            
+            # 타겟 lag 피처 생성 (현재 시점 제외, 과거만)
+            # lag=1부터 시작 (t-1, t-2, ...) - 데이터 누수 방지
+            out = add_lag_features(out, base_cols=available_targets, lags=cfg.lag_hours)
+            
+            # 타겟 rolling 피처도 추가 (shift(1) 적용하여 미래 정보 누수 방지)
+            for target_col in available_targets:
+                if target_col not in out.columns:
+                    continue
+                
+                # shift(1)로 미래 정보 누수 방지
+                target_shifted = out[target_col].shift(1)
+                
+                for w in cfg.roll_hours:
+                    # 평균
+                    out[f"{target_col}_rmean{w}"] = target_shifted.rolling(
+                        window=w, min_periods=min(max(1, w // 2), w)
+                    ).mean()
+                    
+                    # 표준편차
+                    out[f"{target_col}_rstd{w}"] = target_shifted.rolling(
+                        window=w, min_periods=min(max(2, w // 2), w)
+                    ).std()
+                    
+                    # 최소/최대
+                    out[f"{target_col}_rmin{w}"] = target_shifted.rolling(
+                        window=w, min_periods=min(max(1, w // 2), w)
+                    ).min()
+                    out[f"{target_col}_rmax{w}"] = target_shifted.rolling(
+                        window=w, min_periods=min(max(1, w // 2), w)
+                    ).max()
+            
+            print(f"[INFO] 타겟 lag/rolling 피처 생성 완료")
     
     return out
 

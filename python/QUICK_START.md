@@ -393,7 +393,7 @@ scripts/
 - `--window-size`: 과거 몇 개의 시간 스텝을 볼 것인지 (기본: 24시간)
 - `--horizon`: 미래 몇 스텝 후를 예측할 것인지 (기본: 1 = 다음 시간)
 - `--stride`: 윈도우 이동 간격 (기본: 1 = 매 시간마다)
-- `--use-3d`: 3D 입력 모델 사용 (LSTM 등, 현재 미지원)
+- `--use-3d`: 3D 입력 모델 사용 (현재 미지원)
 
 ### 결과 저장 옵션
 - `--no-save`: 모든 결과 저장 안 함
@@ -689,7 +689,6 @@ python scripts/train.py --mode modelC --improved  # FLUX+PH 예측, TOC/SS/TN/TP
 
 ### 시계열 예측
 - [Time Series Forecasting with Sliding Windows](https://machinelearningmastery.com/time-series-forecasting-supervised-learning/)
-- [Understanding LSTM Input Shape](https://machinelearningmastery.com/reshape-input-data-long-short-term-memory-networks-keras/)
 
 ### 하이퍼파라미터 최적화
 - [Optuna Documentation](https://optuna.readthedocs.io/)
@@ -1011,7 +1010,7 @@ Sliding Window 방식:
 #### 3단계: 평탄화 (ML 모델용)
 
 ```python
-# LSTM/RNN은 3D 입력 사용, 일반 ML 모델은 2D 필요
+# 일반 ML 모델은 2D 입력 필요
 
 3D 윈도우 데이터:
   (9,976 윈도우, 24 시간, 100 특성)

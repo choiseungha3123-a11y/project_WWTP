@@ -69,8 +69,6 @@ def build_argparser():
                    help="개선된 파이프라인 사용 (Optuna, 피처 선택, Scaling)")
     p.add_argument("--sliding-window", action="store_true",
                    help="Sliding Window 파이프라인 사용 (과거 N시간 → 미래 예측)")
-    p.add_argument("--lstm", action="store_true",
-                   help="LSTM 딥러닝 파이프라인 사용 (Sliding Window + LSTM)")
     
     # 기본 파이프라인 전용
     p.add_argument("--how", default="outer", choices=["inner", "outer", "left", "right"],
@@ -92,33 +90,13 @@ def build_argparser():
     
     # Sliding Window 전용
     p.add_argument("--window-size", type=int, default=24,
-                   help="과거 몇 개의 시간 스텝을 볼 것인지 (Sliding Window/LSTM, 기본: 24시간)")
+                   help="과거 몇 개의 시간 스텝을 볼 것인지 (Sliding Window, 기본: 24시간)")
     p.add_argument("--horizon", type=int, default=1,
-                   help="미래 몇 스텝 후를 예측할 것인지 (Sliding Window/LSTM, 기본: 1 = 다음 시간)")
+                   help="미래 몇 스텝 후를 예측할 것인지 (Sliding Window, 기본: 1 = 다음 시간)")
     p.add_argument("--stride", type=int, default=1,
-                   help="윈도우 이동 간격 (Sliding Window/LSTM, 기본: 1 = 매 시간마다)")
+                   help="윈도우 이동 간격 (Sliding Window, 기본: 1 = 매 시간마다)")
     p.add_argument("--use-3d", action="store_true",
-                   help="3D 입력 모델 사용 (LSTM 등, Sliding Window, 현재는 미지원)")
-    
-    # LSTM 전용
-    p.add_argument("--hidden-size", type=int, default=64,
-                   help="LSTM 은닉층 유닛 수 (LSTM, 기본: 64)")
-    p.add_argument("--num-layers", type=int, default=2,
-                   help="LSTM 레이어 수 (LSTM, 기본: 2)")
-    p.add_argument("--dropout", type=float, default=0.2,
-                   help="드롭아웃 비율 (LSTM, 기본: 0.2)")
-    p.add_argument("--batch-size", type=int, default=32,
-                   help="배치 크기 (LSTM, 기본: 32)")
-    p.add_argument("--learning-rate", type=float, default=0.001,
-                   help="학습률 (LSTM, 기본: 0.001)")
-    p.add_argument("--num-epochs", type=int, default=100,
-                   help="최대 에포크 수 (LSTM, 기본: 100)")
-    p.add_argument("--patience", type=int, default=10,
-                   help="조기 종료 patience (LSTM, 기본: 10)")
-    p.add_argument("--weight-decay", type=float, default=0.0001,
-                   help="L2 정규화 계수 (LSTM, 기본: 0.0001)")
-    p.add_argument("--grad-clip", type=float, default=1.0,
-                   help="그래디언트 클리핑 값 (LSTM, 기본: 1.0)")
+                   help="3D 입력 모델 사용 (Sliding Window, 현재는 미지원)")
     
     # 결과 저장 옵션
     p.add_argument("--no-save", action="store_true",
@@ -140,9 +118,7 @@ def main():
     args = build_argparser().parse_args()
 
     # 파이프라인 타입 결정
-    if args.lstm:
-        pipeline_type = "LSTM 딥러닝 파이프라인"
-    elif args.sliding_window:
+    if args.sliding_window:
         pipeline_type = "Sliding Window 파이프라인"
         if args.improved:
             pipeline_type += " (개선)"
@@ -158,15 +134,12 @@ def main():
     print(f"데이터 경로: {args.data_root}")
     print(f"리샘플링: {args.resample}")
     
-    if args.sliding_window or args.lstm:
+    if args.sliding_window:
         print(f"윈도우 크기: {args.window_size} 시간 스텝")
         print(f"예측 horizon: {args.horizon} 스텝 후")
         print(f"윈도우 이동 간격: {args.stride} 스텝")
     
-    if args.lstm:
-        print(f"LSTM 설정: hidden_size={args.hidden_size}, num_layers={args.num_layers}, dropout={args.dropout}")
-    
-    if args.improved or args.sliding_window or args.lstm:
+    if args.improved or args.sliding_window:
         print(f"피처 선택: 상위 {args.n_features}개")
         print(f"교차 검증: {args.cv_splits} splits")
         print(f"Optuna 시도: {args.n_trials} trials")
@@ -189,69 +162,7 @@ def main():
     )
 
     # 3. 파이프라인 실행
-    if args.lstm:
-        # ========================================
-        # LSTM 딥러닝 파이프라인
-        # ========================================
-        print("[3/8] LSTM 딥러닝 파이프라인 실행 중...")
-        
-        from src.pipeline import run_lstm_pipeline
-        
-        out = run_lstm_pipeline(
-            dfs,
-            mode=args.mode,
-            window_size=args.window_size,
-            horizon=args.horizon,
-            stride=args.stride,
-            time_col_map=time_col_map,
-            resample_rule=args.resample,
-            n_top_features=args.n_features,
-            cv_splits=args.cv_splits,
-            n_trials=args.n_trials,
-            random_state=args.random_state,
-            save_dir=args.save_dir if args.save_dir != "results/ML" else "results/DL",
-            save_results=not args.no_save,
-            save_predictions=not args.no_save_predictions,
-            save_sequences=not args.no_save_sequences,
-            save_model=not args.no_save_model,
-            sequence_format=args.sequence_format,
-            # LSTM 하이퍼파라미터
-            hidden_size=args.hidden_size,
-            num_layers=args.num_layers,
-            dropout=args.dropout,
-            batch_size=args.batch_size,
-            learning_rate=args.learning_rate,
-            num_epochs=args.num_epochs,
-            patience=args.patience,
-            weight_decay=args.weight_decay,
-            grad_clip=args.grad_clip,
-            verbose=True
-        )
-        
-        # LSTM 결과 출력
-        print("\n" + "=" * 60)
-        print("LSTM 학습 정보")
-        print("=" * 60)
-        print(f"원본 데이터: {len(out['X_original'])} 샘플")
-        print(f"윈도우 생성 후: {len(out['X_seq'])} 윈도우")
-        print(f"감소율: {(1 - len(out['X_seq'])/len(out['X_original']))*100:.1f}%")
-        print(f"  (윈도우 크기 {args.window_size} + horizon {args.horizon} 때문)")
-        
-        if out.get("top_features"):
-            print("\n" + "=" * 60)
-            print("선택된 피처")
-            print("=" * 60)
-            print(f"총 {len(out['top_features'])}개 피처 선택됨")
-            print(f"상위 10개: {out['top_features'][:10]}")
-        
-        if out.get("history"):
-            print("\n" + "=" * 60)
-            print("학습 히스토리")
-            print("=" * 60)
-            print(f"최종 에포크: {len(out['history']['train_losses'])}")
-            print(f"최고 검증 손실: {out['history']['best_val_loss']:.6f}")
-        
-    elif args.sliding_window:
+    if args.sliding_window:
         # ========================================
         # Sliding Window 파이프라인
         # ========================================
@@ -259,7 +170,6 @@ def main():
         
         if args.use_3d:
             print("\n⚠️  3D 모델은 현재 지원하지 않습니다.")
-            print("LSTM 모델을 사용하려면 python/notebook/DL/flow_lstm_model.py를 실행하세요.")
             return
         
         out = run_sliding_window_pipeline(
