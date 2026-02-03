@@ -1,175 +1,522 @@
 package kr.kro.prjectwwtp.imputation;
 
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
-import kr.kro.prjectwwtp.domain.TmsOrigin;
-import kr.kro.prjectwwtp.service.TmsOriginService;
-import tech.tablesaw.api.*;
-import tech.tablesaw.selection.Selection;
-
+/**
+ * 결측치 및 이상치 처리 통합 클래스
+ * 
+ * 파이썬 코드를 Java로 변환:
+ * - ImputationConfig: 결측치 보간 설정
+ * - OutlierConfig: 이상치 탐지 설정
+ * - ImputationStrategy: 결측치 보간 전략 (forwardFill, backwardFill, EWMA, rolling median)
+ * - OutlierDetector: 이상치 탐지 (도메인 기반, 통계 기반)
+ * - OutlierHandler: 이상치 처리 (EWMA로 대체)
+ */
 public class TmsDataProcessor {
-	public Table processTmsData(List<TmsOrigin> originList, LocalDateTime targetDate, ImputationConfig config) {
-        // 1. 기초 테이블 생성 (1분 단위 1440개 행 준비)
-        Table table = Table.create("TMS_Data");
-        DateTimeColumn timeCol = DateTimeColumn.create("tmsTime");
-        DoubleColumn tocCol = DoubleColumn.create("toc");
-        DoubleColumn phCol = DoubleColumn.create("ph");
-        DoubleColumn ssCol = DoubleColumn.create("ss");
-        DoubleColumn fluxCol = DoubleColumn.create("flux");
-        DoubleColumn tnCol = DoubleColumn.create("tn");
-        DoubleColumn tpCol = DoubleColumn.create("tp");
 
-        // 1,440개 타임슬롯 초기화 (결측치 상태)
-        LocalDateTime current = targetDate.truncatedTo(ChronoUnit.DAYS);
-        for (int i = 0; i < 1440; i++) {
-            timeCol.append(current);
-            tocCol.append(Double.NaN);
-            phCol.append(Double.NaN);
-            ssCol.append(Double.NaN);
-            fluxCol.append(Double.NaN);
-            tnCol.append(Double.NaN);
-            tpCol.append(Double.NaN);
-            current = current.plusMinutes(1);
-        }
-        table.addColumns(timeCol, tocCol, phCol, ssCol, fluxCol, tnCol, tpCol);
+	// ==================== 설정 클래스 ====================
 
-        // 2. 원본 데이터를 생성된 테이블에 매핑
-        for (TmsOrigin origin : originList) {
-            int minuteOfDay = origin.getTmsTime().getHour() * 60 + origin.getTmsTime().getMinute();
-            if (minuteOfDay < 1440) {
-                table.doubleColumn("toc").set(minuteOfDay, origin.getToc());
-                table.doubleColumn("ph").set(minuteOfDay, origin.getPh());
-                table.doubleColumn("ss").set(minuteOfDay, origin.getSs());
-                table.doubleColumn("flux").set(minuteOfDay, origin.getFlux());
-                table.doubleColumn("tn").set(minuteOfDay, origin.getTn());
-                table.doubleColumn("tp").set(minuteOfDay, origin.getTp());
-            }
-        }
+	/**
+	 * 결측치 보간 설정
+	 */
+	public static class ImputationConfig {
+		/** 단기 결측 범위 (시간) */
+		public int shortTermHours = 3;
+		
+		/** 중기 결측 범위 (시간) */
+		public int mediumTermHours = 12;
+		
+		/** EWMA 스팬 (시간 단위) */
+		public int ewmaSpan = 6;
+		
+		/** Rolling median 윈도우 (시간 단위, 장기 결측용) */
+		public int rollingWindow = 24;
 
-        // 3. 전략적 보간 수행 (1h = 60min 기준 계산) [cite: 4]
-        double freqHours = 1.0 / 60.0; 
-        return applyImputationStrategy(table, freqHours, config);
-    }
+		public ImputationConfig() {}
 
-    private Table applyImputationStrategy(Table df, double freqHours, ImputationConfig config) {
-        Table dfOut = df.copy();
+		public ImputationConfig(int shortTermHours, int mediumTermHours, int ewmaSpan, int rollingWindow) {
+			this.shortTermHours = shortTermHours;
+			this.mediumTermHours = mediumTermHours;
+			this.ewmaSpan = ewmaSpan;
+			this.rollingWindow = rollingWindow;
+		}
+	}
 
-        for (String colName : new String[]{"toc", "ph", "ss", "flux", "tn", "tp"}) { // 수치형 컬럼 반복 [cite: 5]
-            DoubleColumn series = dfOut.doubleColumn(colName);
-            
-            // Step 1: Forward Fill (단기 결측) [cite: 6]
-            int limitShort = (int) (config.getShortTermHours() / freqHours);
-            fillForward(series, limitShort);
+	/**
+	 * 이상치 탐지 설정
+	 */
+	public static class OutlierConfig {
+		/** 이상치 탐지 방법: 'iqr' 또는 'zscore' */
+		public String method = "iqr";
+		
+		/** IQR 배수 (기본: 1.5) */
+		public double iqrThreshold = 1.5;
+		
+		/** Z-score 임계값 (기본: 3.0) */
+		public double zscoreThreshold = 3.0;
+		
+		/** 도메인+통계 둘 다 이상치여야 처리할지 여부 */
+		public boolean requireBoth = true;
+		
+		/** 이상치 대체용 EWMA 스팬 */
+		public int ewmaSpan = 12;
 
-            // Step 2: EWMA (중기 결측) [cite: 7, 8, 9]
-            // Tablesaw에서 EWMA와 Rolling Median은 루프를 통해 구간 길이를 계산하여 적용합니다.
-            applyMediumAndLongTerm(series, freqHours, config);
-        }
-        return dfOut;
-    }
+		public OutlierConfig() {}
 
-    private void fillForward(DoubleColumn col, int limit) {
-        int n = col.size();
-        
-        for (int i = 1; i < n; i++) {
-            // 1. 현재 값이 실질적인 결측치(NaN 또는 null)인지 확인
-            if (TmsOriginService.isMissing(col, i)) {
-                
-                // 2. 직전 값(i-1)은 유효한 데이터인지 확인 (채워줄 근거가 있는지)
-                if (!TmsOriginService.isMissing(col, i - 1)) {
-                    double fillValue = col.get(i - 1);
-                    int gapCount = 0;
+		public OutlierConfig(String method, double iqrThreshold, double zscoreThreshold, boolean requireBoth, int ewmaSpan) {
+			this.method = method;
+			this.iqrThreshold = iqrThreshold;
+			this.zscoreThreshold = zscoreThreshold;
+			this.requireBoth = requireBoth;
+			this.ewmaSpan = ewmaSpan;
+		}
+	}
 
-                    // 3. 결측 구간의 시작점부터 limit 만큼 순회하며 채우기
-                    // j < n: 전체 길이를 벗어나지 않음
-                    // gapCount < limit: 설정한 시간(3시간 등)만큼만 채움
-                    for (int j = i; j < n && gapCount < limit; j++) {
-                        if (TmsOriginService.isMissing(col, j)) {
-                            col.set(j, fillValue);
-                            gapCount++;
-                        } else {
-                            // 결측 구간이 limit에 도달하기 전에 실제 데이터를 만나면 중단
-                            break;
-                        }
-                    }
-                    
-                    // 4. 처리한 구간만큼 인덱스 점프 (성능 최적화 및 중복 처리 방지)
-                    if (gapCount > 0) {
-                        i += (gapCount - 1);
-                    }
-                }
-            }
-        }
-    }
+	// ==================== 결측치 보간 전략 ====================
 
-    // 결측 구간의 길이를 파악하여 중기는 EWMA, 장기는 Rolling Median 적용 [cite: 7, 10]
-    // 구체적인 구현은 구간별 인덱스를 추출하여 Tablesaw의 window 기능을 활용합니다.
-    private void applyMediumAndLongTerm(DoubleColumn col, double freqHours, ImputationConfig config) {
-        int n = col.size();
-        int limitShort = (int) (config.getShortTermHours() / freqHours);
-        int limitMedium = (int) (config.getMediumTermHours() / freqHours);
-        
-        // 미리 전체 범위에 대한 보간 컬럼들을 생성 (isMissing 대응 완료된 버전들)
-        DoubleColumn ewmaSeries = TmsOriginService.applyEWMA(col, config.getEwmaSpan());
-        DoubleColumn rollingMedianSeries = applyRollingMedian(col, (int) (config.getRollingWindow() / freqHours));
+	/**
+	 * 전략적 결측치 보간
+	 * 
+	 * 전략:
+	 * - 단기 결측 (1-3시간): Forward Fill
+	 * - 중기 결측 (4-12시간): EWMA (시간 가중 이동평균, 과거 데이터만 사용)
+	 * - 장기 결측 (12시간+): Rolling Median (중앙값 기반)
+	 * 
+	 * @param data 결측치가 있는 배열 (NaN으로 표현)
+	 * @param config 보간 설정
+	 * @return 보간된 배열
+	 */
+	public static double[] imputeMissingWithStrategy(double[] data, ImputationConfig config) {
+		double[] result = Arrays.copyOf(data, data.length);
+		int shortMinutes = config.shortTermHours * 60;
+		int mediumMinutes = config.mediumTermHours * 60;
+		int rollingMinutes = config.rollingWindow * 60;
+		
+		// 1단계: Forward Fill (단기 결측, limit=short_term_hours)
+		forwardFill(result, shortMinutes);
+		
+		// 2단계: EWMA (중기 결측, 단기 < 길이 <= 중기)
+		boolean[] stillMissing = new boolean[result.length];
+		for (int i = 0; i < result.length; i++) {
+			stillMissing[i] = Double.isNaN(result[i]);
+		}
+		
+		if (anyTrue(stillMissing)) {
+			double[] ewmaValues = applyEWMA(result, config.ewmaSpan);
+			int[] groupLengths = getConsecutiveMissingLengths(result);
+			
+			for (int i = 0; i < result.length; i++) {
+				if (Double.isNaN(result[i]) && groupLengths[i] > shortMinutes && groupLengths[i] <= mediumMinutes && !Double.isNaN(ewmaValues[i])) {
+					result[i] = ewmaValues[i];
+				}
+			}
+		}
+		
+		// 3단계: Rolling Median (장기 결측, center=True로 앞뒤 데이터 모두 사용)
+		// min_periods=1: 1개 값만 있어도 중앙값 계산
+		boolean[] stillMissingLong = new boolean[result.length];
+		for (int i = 0; i < result.length; i++) {
+			stillMissingLong[i] = Double.isNaN(result[i]);
+		}
+		
+		if (anyTrue(stillMissingLong)) {
+			int half = Math.max(1, rollingMinutes / 2);
+			for (int i = 0; i < result.length; i++) {
+				if (Double.isNaN(result[i])) {
+					int start = Math.max(0, i - half);
+					int end = Math.min(result.length - 1, i + half);
+					// min_periods=1: 최소 1개 값이 있으면 중앙값 계산
+					double median = getMedianMinPeriods(result, start, end, 1);
+					if (!Double.isNaN(median)) {
+						result[i] = median;
+					}
+				}
+			}
+		}
+		
+		// 4단계: 최후의 수단 - 선형 보간 (극도의 결측만 처리)
+		// 모든 앞 단계에서도 채워지지지 않은 NaN 값에 대해 선형 보간
+		boolean[] stillMissingFinal = new boolean[result.length];
+		for (int i = 0; i < result.length; i++) {
+			stillMissingFinal[i] = Double.isNaN(result[i]);
+		}
+		
+		if (anyTrue(stillMissingFinal)) {
+			linearInterpolation(result);
+		}
+		
+		return result;
+	}
 
-        int i = 0;
-        while (i < n) {
-            // 1. 결측치(NaN/null) 시작 지점 찾기
-            if (TmsOriginService.isMissing(col, i)) {
-                int start = i;
-                // 2. 연속된 결측 구간의 끝 찾기 (isMissing 활용)
-                while (i < n && TmsOriginService.isMissing(col, i)) {
-                    i++;
-                }
-                int gapLength = i - start;
+	/**
+	 * Forward Fill: 과거 값으로 채우기
+	 * 
+	 * @param data 배열
+	 * @param limitMinutes 채우기 제한 분 단위
+	 */
+	public static void forwardFill(double[] data, int limitMinutes) {
+		double lastVal = Double.NaN;
+		int lastIdx = -100000;
+		for (int i = 0; i < data.length; i++) {
+			if (!Double.isNaN(data[i])) {
+				lastVal = data[i];
+				lastIdx = i;
+			} else if (!Double.isNaN(lastVal) && (i - lastIdx) <= limitMinutes) {
+				data[i] = lastVal;
+			}
+		}
+	}
 
-                // 3. 구간 길이에 따른 전략 적용
-                if (gapLength > limitShort && gapLength <= limitMedium) {
-                    // 중기 결측 (예: 4~12시간): EWMA 적용
-                    for (int j = start; j < i; j++) {
-                        col.set(j, ewmaSeries.get(j));
-                    }
-                } else if (gapLength > limitMedium) {
-                    // 장기 결측 (예: 12시간 이상): Rolling Median 적용
-                    for (int j = start; j < i; j++) {
-                        col.set(j, rollingMedianSeries.get(j));
-                    }
-                }
-            } else {
-                i++;
-            }
-        }
-    }
-    
-    // Rolling Median 구현 (중앙값 기반 안정적 보간)
-    // 파이썬의 series.rolling(window=window, center=True).median() 로직
-    private DoubleColumn applyRollingMedian(DoubleColumn col, int windowSize) {
-        DoubleColumn result = col.copy();
-        int halfWindow = windowSize / 2;
-        int n = col.size();
+	/**
+	 * EWMA (Exponentially Weighted Moving Average) 적용
+	 * 시간 가중 이동평균으로 중기 결측 보간
+	 * 
+	 * @param data 배열
+	 * @param span 스팬 (분 단위)
+	 * @return EWMA 값들
+	 */
+	public static double[] applyEWMA(double[] data, int span) {
+		double[] result = Arrays.copyOf(data, data.length);
+		double alpha = 2.0 / (span + 1.0);
+		Double lastEma = null;
+		
+		for (int i = 0; i < result.length; i++) {
+			if (!Double.isNaN(result[i])) {
+				double current = result[i];
+				lastEma = (lastEma == null) ? current : (alpha * current + (1 - alpha) * lastEma);
+			} else if (lastEma != null) {
+				result[i] = lastEma;
+			}
+		}
+		
+		return result;
+	}
 
-        for (int i = 0; i < n; i++) {
-            // 1. 현재 값이 결측치(NaN/Null)인지 통합 체크
-            if (TmsOriginService.isMissing(col, i)) {
-                int start = Math.max(0, i - halfWindow);
-                int end = Math.min(n - 1, i + halfWindow);
-                
-                // 2. 해당 윈도우 범위의 행 번호(Selection) 추출
-                Selection range = Selection.withRange(start, end + 1);
-                
-                // 3. 해당 범위 내에서 유효한 값(isMissing이 아닌 값)들만 필터링
-                // Tablesaw의 where().removeMissing()은 내부적으로 NaN을 걸러냅니다.
-                DoubleColumn windowValues = col.where(range).removeMissing();
-                
-                // 4. 유효한 데이터가 하나라도 있다면 중앙값 계산 후 할당
-                if (!windowValues.isEmpty()) {
-                    result.set(i, windowValues.median());
-                }
-            }
-        }
-        return result;
-    }
+	/**
+	 * 연속된 결측 구간의 길이 계산
+	 * 
+	 * @param data 배열
+	 * @return 각 위치의 결측 구간 길이
+	 */
+	public static int[] getConsecutiveMissingLengths(double[] data) {
+		int[] lengths = new int[data.length];
+		for (int i = 0; i < data.length; i++) {
+			if (Double.isNaN(data[i])) {
+				int j = i;
+				while (j < data.length && Double.isNaN(data[j])) {
+					j++;
+				}
+				int len = j - i;
+				for (int k = i; k < j; k++) {
+					lengths[k] = len;
+				}
+				i = j - 1;
+			}
+		}
+		return lengths;
+	}
+
+	/**
+	 * 중앙값(Median) 계산
+	 * 
+	 * @param data 배열
+	 * @param start 시작 인덱스
+	 * @param end 종료 인덱스
+	 * @return 중앙값
+	 */
+	public static double getMedian(double[] data, int start, int end) {
+		List<Double> values = new ArrayList<>();
+		for (int i = start; i <= end; i++) {
+			if (!Double.isNaN(data[i])) {
+				values.add(data[i]);
+			}
+		}
+		if (values.isEmpty()) return Double.NaN;
+		Collections.sort(values);
+		int mid = values.size() / 2;
+		if (values.size() % 2 == 1) {
+			return values.get(mid);
+		} else {
+			return (values.get(mid - 1) + values.get(mid)) / 2.0;
+		}
+	}
+
+	/**
+	 * 중앙값(Median) 계산 with min_periods
+	 * 파이썬의 rolling(min_periods=1)과 동일
+	 * 최소 min_periods개의 유효한 값이 있으면 중앙값 계산
+	 * 
+	 * @param data 배열
+	 * @param start 시작 인덱스
+	 * @param end 종료 인덱스
+	 * @param minPeriods 최소 필요 값의 개수
+	 * @return 중앙값 (min_periods 미만이면 NaN)
+	 */
+	public static double getMedianMinPeriods(double[] data, int start, int end, int minPeriods) {
+		List<Double> values = new ArrayList<>();
+		for (int i = start; i <= end; i++) {
+			if (!Double.isNaN(data[i])) {
+				values.add(data[i]);
+			}
+		}
+		// min_periods 개 미만이면 NaN 반환
+		if (values.size() < minPeriods) return Double.NaN;
+		if (values.isEmpty()) return Double.NaN;
+		
+		Collections.sort(values);
+		int mid = values.size() / 2;
+		if (values.size() % 2 == 1) {
+			return values.get(mid);
+		} else {
+			return (values.get(mid - 1) + values.get(mid)) / 2.0;
+		}
+	}
+
+	/**
+	 * 백분위수(Quantile) 계산
+	 * 
+	 * @param sorted 정렬된 배열
+	 * @param p 백분위수 (0~1)
+	 * @return 백분위수 값
+	 */
+	public static double quantile(double[] sorted, double p) {
+		if (sorted.length == 0) return Double.NaN;
+		double idx = p * (sorted.length - 1);
+		int lo = (int) Math.floor(idx);
+		int hi = (int) Math.ceil(idx);
+		if (lo == hi) return sorted[lo];
+		double w = idx - lo;
+		return sorted[lo] * (1 - w) + sorted[hi] * w;
+	}
+
+	// ==================== 이상치 탐지 및 처리 ====================
+
+	/**
+	 * 이상치 탐지 및 처리 (EWMA로 대체)
+	 * 
+	 * 전략:
+	 * - 도메인 지식 + 통계적 방법 병행
+	 * - require_both=true: 둘 다 이상치여야 처리 (보수적)
+	 * - require_both=false: 둘 중 하나만 이상치여도 처리 (공격적)
+	 * - 이상치는 EWMA로 대체
+	 * 
+	 * @param data 배열
+	 * @param colName 컬럼명
+	 * @param config 이상치 탐지 설정
+	 * @return 이상치가 EWMA로 대체된 배열
+	 */
+	public static double[] detectAndHandleOutliers(double[] data, String colName, OutlierConfig config) {
+		double[] result = Arrays.copyOf(data, data.length);
+		
+		// 도메인 이상치 탐지
+		boolean[] domainOutliers = detectOutliersDomain(data, colName);
+		
+		// 통계 이상치 탐지
+		boolean[] statOutliers = detectOutliersStatistical(data, config.method, config.iqrThreshold, config.zscoreThreshold);
+		
+		// 최종 이상치 결정
+		boolean[] finalOutliers = new boolean[data.length];
+		boolean anyOutlier = false;
+		for (int i = 0; i < data.length; i++) {
+			finalOutliers[i] = config.requireBoth ? (domainOutliers[i] & statOutliers[i]) : (domainOutliers[i] | statOutliers[i]);
+			if (finalOutliers[i]) anyOutlier = true;
+		}
+		
+		if (!anyOutlier) return result;
+		
+		// 이상치를 NaN으로 변환
+		double[] clean = Arrays.copyOf(result, result.length);
+		for (int i = 0; i < clean.length; i++) {
+			if (finalOutliers[i]) {
+				clean[i] = Double.NaN;
+			}
+		}
+		
+		// EWMA로 대체
+		double[] ewmaValues = applyEWMA(clean, config.ewmaSpan);
+		for (int i = 0; i < result.length; i++) {
+			if (finalOutliers[i] && !Double.isNaN(ewmaValues[i])) {
+				result[i] = ewmaValues[i];
+			}
+		}
+		
+		return result;
+	}
+
+	/**
+	 * 도메인 지식 기반 이상치 탐지
+	 * 
+	 * @param data 배열
+	 * @param colName 컬럼명
+	 * @return 이상치 마스크 (true = 이상치)
+	 */
+	public static boolean[] detectOutliersDomain(double[] data, String colName) {
+		boolean[] outliers = new boolean[data.length];
+		double lower = Double.NEGATIVE_INFINITY;
+		double upper = Double.POSITIVE_INFINITY;
+		boolean useRule = false;
+		
+		String name = colName.toLowerCase();
+		if (name.contains("toc")) { 
+			lower = 0; upper = 250; useRule = true; 
+		} else if (name.contains("ph")) { 
+			lower = 0; upper = 14; useRule = true; 
+		} else if (name.contains("ss")) { 
+			lower = 0; upper = 100; useRule = true; 
+		} else if (name.contains("tn")) { 
+			lower = 0; upper = 100; useRule = true; 
+		} else if (name.contains("tp")) { 
+			lower = 0; upper = 20; useRule = true; 
+		} else if (name.contains("ta")) { 
+			lower = -30; upper = 45; useRule = true; 
+		} else if (name.contains("hm")) { 
+			lower = 0; upper = 100; useRule = true; 
+		} else if (name.contains("td")) { 
+			lower = -40; upper = 35; useRule = true; 
+		} else if (name.contains("rn") || name.contains("rain")) { 
+			// 강수량: 음수 또는 300mm 초과
+			lower = 0; upper = 300; useRule = true; 
+		} else if (name.contains("flux") || name.contains("flow") || name.contains("q_in")) { 
+			// 유량: 음수는 항상 이상치
+			lower = 0; useRule = true; 
+		} else { 
+			lower = 0; upper = 1e6; useRule = true; 
+		}
+		
+		for (int i = 0; i < data.length; i++) {
+			if (Double.isNaN(data[i])) {
+				outliers[i] = false;
+			} else {
+				outliers[i] = useRule && ((data[i] < lower) || (data[i] > upper));
+			}
+		}
+		
+		return outliers;
+	}
+
+	/**
+	 * 통계 기반 이상치 탐지
+	 * 
+	 * @param data 배열
+	 * @param method 'iqr' 또는 'zscore'
+	 * @param iqrThreshold IQR 배수
+	 * @param zscoreThreshold Z-score 임계값
+	 * @return 이상치 마스크 (true = 이상치)
+	 */
+	public static boolean[] detectOutliersStatistical(double[] data, String method, double iqrThreshold, double zscoreThreshold) {
+		boolean[] outliers = new boolean[data.length];
+		
+		// 유효한 값들 수집
+		List<Double> validValues = new ArrayList<>();
+		for (int i = 0; i < data.length; i++) {
+			if (!Double.isNaN(data[i])) {
+				validValues.add(data[i]);
+			}
+		}
+		
+		if (validValues.isEmpty()) return outliers;
+		
+		double[] sorted = new double[validValues.size()];
+		for (int i = 0; i < validValues.size(); i++) {
+			sorted[i] = validValues.get(i);
+		}
+		Arrays.sort(sorted);
+		
+		if ("iqr".equalsIgnoreCase(method)) {
+			double q1 = quantile(sorted, 0.25);
+			double q3 = quantile(sorted, 0.75);
+			double iqr = q3 - q1;
+			double lowerBound = q1 - iqrThreshold * iqr;
+			double upperBound = q3 + iqrThreshold * iqr;
+			
+			for (int i = 0; i < data.length; i++) {
+				if (Double.isNaN(data[i])) {
+					outliers[i] = false;
+				} else {
+					outliers[i] = (data[i] < lowerBound) || (data[i] > upperBound);
+				}
+			}
+		} else if ("zscore".equalsIgnoreCase(method)) {
+			double mean = 0;
+			for (double v : sorted) mean += v;
+			mean /= sorted.length;
+			
+			double variance = 0;
+			for (double v : sorted) variance += (v - mean) * (v - mean);
+			double sd = Math.sqrt(variance / sorted.length);
+			
+			for (int i = 0; i < data.length; i++) {
+				if (Double.isNaN(data[i])) {
+					outliers[i] = false;
+				} else {
+					double z = sd == 0 ? 0 : Math.abs((data[i] - mean) / sd);
+					outliers[i] = z > zscoreThreshold;
+				}
+			}
+		}
+		
+		return outliers;
+	}
+
+	/**
+	 * 선형 보간 (Linear Interpolation)
+	 * 극도의 결측 (모든 방법에도 채워지지지 않은 NaN)을 처리
+	 * 
+	 * @param data 배열
+	 */
+	public static void linearInterpolation(double[] data) {
+		for (int i = 0; i < data.length; i++) {
+			if (!Double.isNaN(data[i])) continue;
+			
+			// 이전 유효한 값 찾기
+			int prevIdx = -1;
+			for (int j = i - 1; j >= 0; j--) {
+				if (!Double.isNaN(data[j])) {
+					prevIdx = j;
+					break;
+				}
+			}
+			
+			// 다음 유효한 값 찾기
+			int nextIdx = -1;
+			for (int j = i + 1; j < data.length; j++) {
+				if (!Double.isNaN(data[j])) {
+					nextIdx = j;
+					break;
+				}
+			}
+			
+			// 선형 보간
+			if (prevIdx != -1 && nextIdx != -1) {
+				// 이전과 다음 값 사이에서 선형 보간
+				double prevVal = data[prevIdx];
+				double nextVal = data[nextIdx];
+				double ratio = (double) (i - prevIdx) / (nextIdx - prevIdx);
+				data[i] = prevVal + ratio * (nextVal - prevVal);
+			} else if (prevIdx != -1) {
+				// 이전 값만 있는 경우
+				data[i] = data[prevIdx];
+			} else if (nextIdx != -1) {
+				// 다음 값만 있는 경우
+				data[i] = data[nextIdx];
+			}
+			// else: 값이 없으면 NaN 유지 (극도의 경우)
+		}
+	}
+
+	/**
+	 * 배열에 true 값이 있는지 확인
+	 * 
+	 * @param arr 배열
+	 * @return true 값이 있으면 true
+	 */
+	private static boolean anyTrue(boolean[] arr) {
+		for (boolean b : arr) {
+			if (b) return true;
+		}
+		return false;
+	}
 }

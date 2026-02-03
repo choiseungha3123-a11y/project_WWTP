@@ -6,7 +6,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,17 +17,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import kr.kro.prjectwwtp.domain.TmsLog;
 import kr.kro.prjectwwtp.domain.TmsOrigin;
-import kr.kro.prjectwwtp.imputation.ImputationConfig;
-import kr.kro.prjectwwtp.imputation.OutlierConfig;
-import kr.kro.prjectwwtp.imputation.OutlierHandler;
 import kr.kro.prjectwwtp.imputation.TmsDataProcessor;
+import kr.kro.prjectwwtp.imputation.TmsDataProcessor.ImputationConfig;
+import kr.kro.prjectwwtp.imputation.TmsDataProcessor.OutlierConfig;
 import kr.kro.prjectwwtp.persistence.TmsLogRepository;
 import kr.kro.prjectwwtp.persistence.TmsOriginInsertRepository;
 import kr.kro.prjectwwtp.persistence.TmsOriginRepository;
 import lombok.RequiredArgsConstructor;
-import tech.tablesaw.api.DoubleColumn;
-import tech.tablesaw.api.Row;
-import tech.tablesaw.api.Table;
 
 @Service
 @RequiredArgsConstructor
@@ -166,136 +165,139 @@ public class TmsOriginService {
 	}
 	
 	public List<TmsOrigin> imputate(String dateStr) {
-		// 1. 샘플 데이터 준비
 		LocalDateTime start = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
 		LocalDateTime end = LocalDateTime.of(start.getYear(), start.getMonth(), start.getDayOfMonth(), 23, 59, 59);
 		List<TmsOrigin> origin = tmsOriginRepo.findByTmsTimeBetween(start, end);
 		
-		// 2. 설정 객체 생성
-		ImputationConfig impConfig = ImputationConfig.builder()
-                .shortTermHours(3)    // 3시간 이내 FFill [cite: 1, 6]
-                .mediumTermHours(12)  // 12시간 이내 EWMA [cite: 1, 8]
-                .ewmaSpan(6)
-                .rollingWindow(24)
-                .build();
+		System.out.println("[imputate] origin size=" + origin.size());
 		
-		OutlierConfig outConfig = OutlierConfig.builder()
-                .method("iqr")        // IQR 통계 방식 사용 [cite: 12, 23]
-                .iqrThreshold(1.5)
-                .requireBoth(true)    // 도메인과 통계 모두 이상치일 때만 처리 (보수적) [cite: 12, 27]
-                .ewmaSpan(12)
-                .build();
+		// 1분 단위로 1440개 행 생성
+		Map<LocalDateTime, TmsOrigin> dataMap = new HashMap<>();
+		for (TmsOrigin tms : origin) {
+			dataMap.put(tms.getTmsTime(), tms);
+		}
 		
-		// 3. 전처리 인스턴스 생성
-		TmsDataProcessor preprocessor = new TmsDataProcessor();
-        OutlierHandler handler = new OutlierHandler();
-        
-        try {
-        	// STEP 1: 1분 단위 테이블 생성 및 결측치 보간
-            // 전략적 보간 실행 (Forward Fill -> EWMA -> Rolling Median)
-            Table imputedTable = preprocessor.processTmsData(origin, start, impConfig);
-            System.out.println("결측치 보간 완료: " + imputedTable.rowCount() + "행 생성");
-            
-            // STEP 2: 이상치 탐지 및 EWMA 대체
-            // 도메인 규칙과 통계적 방법을 병행하여 이상치 처리
-            Table finalTable = handler.detectAndHandleOutliers(imputedTable, outConfig, true);
-            System.out.println("이상치 처리 완료");
-            
-			// 5. 최종 데이터 활용 (CSV 저장 등)
-            
-            List<TmsOrigin> list = convertTableToList(finalTable);
-			return list;
-            
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-		return null;
+		List<LocalDateTime> times = new ArrayList<>();
+		for (int i = 0; i < 1440; i++) {
+			times.add(start.plusMinutes(i));
+		}
+		
+		// 1440개 행으로 DataFrame 구성 (NaN으로 초기화)
+		double[] toc = new double[1440];
+		double[] ph = new double[1440];
+		double[] ss = new double[1440];
+		int[] flux = new int[1440];
+		double[] tn = new double[1440];
+		double[] tp = new double[1440];
+		
+		Arrays.fill(toc, Double.NaN);
+		Arrays.fill(ph, Double.NaN);
+		Arrays.fill(ss, Double.NaN);
+		Arrays.fill(flux, Integer.MIN_VALUE);
+		Arrays.fill(tn, Double.NaN);
+		Arrays.fill(tp, Double.NaN);
+		
+		// origin 데이터 채우기
+		for (int i = 0; i < 1440; i++) {
+			LocalDateTime t = times.get(i);
+			TmsOrigin orig = dataMap.get(t);
+			if (orig != null) {
+				if (orig.getToc() != null) toc[i] = orig.getToc();
+				if (orig.getPh() != null) ph[i] = orig.getPh();
+				if (orig.getSs() != null) ss[i] = orig.getSs();
+				if (orig.getFlux() != null) flux[i] = orig.getFlux();
+				if (orig.getTn() != null) tn[i] = orig.getTn();
+				if (orig.getTp() != null) tp[i] = orig.getTp();
+			}
+		}
+		
+		System.out.println("[imputate] after reindex rows=1440");
+		
+		// 2) 결측치 보간
+		ImputationConfig impConfig = new ImputationConfig();
+		toc = TmsDataProcessor.imputeMissingWithStrategy(toc, impConfig);
+		ph = TmsDataProcessor.imputeMissingWithStrategy(ph, impConfig);
+		ss = TmsDataProcessor.imputeMissingWithStrategy(ss, impConfig);
+		tn = TmsDataProcessor.imputeMissingWithStrategy(tn, impConfig);
+		tp = TmsDataProcessor.imputeMissingWithStrategy(tp, impConfig);
+		
+		System.out.println("[imputate] after imputation rows=1440");
+		
+		// 3) 이상치 탐지 및 처리
+		OutlierConfig outConfig = new OutlierConfig();
+		toc = TmsDataProcessor.detectAndHandleOutliers(toc, "toc", outConfig);
+		ph = TmsDataProcessor.detectAndHandleOutliers(ph, "ph", outConfig);
+		ss = TmsDataProcessor.detectAndHandleOutliers(ss, "ss", outConfig);
+		tn = TmsDataProcessor.detectAndHandleOutliers(tn, "tn", outConfig);
+		tp = TmsDataProcessor.detectAndHandleOutliers(tp, "tp", outConfig);
+		
+		System.out.println("[imputate] after outlier handling rows=1440");
+		
+		// 4) List<TmsOrigin>으로 변환
+		List<TmsOrigin> result = new ArrayList<>();
+		for (int i = 0; i < 1440; i++) {
+			TmsOrigin t = new TmsOrigin();
+			t.setTmsTime(times.get(i));
+			t.setToc(Double.isNaN(toc[i]) ? null : toc[i]);
+			t.setPh(Double.isNaN(ph[i]) ? null : ph[i]);
+			t.setSs(Double.isNaN(ss[i]) ? null : ss[i]);
+			t.setFlux(flux[i] == Integer.MIN_VALUE ? null : flux[i]);
+			t.setTn(Double.isNaN(tn[i]) ? null : tn[i]);
+			t.setTp(Double.isNaN(tp[i]) ? null : tp[i]);
+			result.add(t);
+		}
+		
+		System.out.println("[imputate] final result size=" + result.size());
+		checkNullValues(result);
+		return result;
 	}
 	
-	static public List<TmsOrigin> convertTableToList(Table table) {
-	    List<TmsOrigin> resultList = new ArrayList<>();
-
-	    // 테이블의 각 행을 순회
-	    for (Row row : table) {
-	        TmsOrigin tms = new TmsOrigin();
-	        
-	        // 1. 시간 매핑 (DateTimeColumn -> LocalDateTime)
-	        tms.setTmsTime(row.getDateTime("tmsTime"));
-
-	        // 2. 수치 데이터 매핑 (DoubleColumn -> Double)
-	        // Tablesaw의 row.getDouble()은 값이 NaN일 때 매우 작은 수나 특이값을 반환할 수 있으므로 
-	        // 직접 컬럼에서 인덱스로 접근하거나 NaN 체크를 해주는 것이 좋습니다.
-	        if(getNullableDouble(row, "toc") == null)
-	        	continue;
-	        tms.setToc(getNullableDouble(row, "toc"));
-	        tms.setPh(getNullableDouble(row, "ph"));
-	        tms.setSs(getNullableDouble(row, "ss"));
-	        tms.setFlux(getNullableInt(row, "flux"));
-	        tms.setTn(getNullableDouble(row, "tn"));
-	        tms.setTp(getNullableDouble(row, "tp"));
-
-	        resultList.add(tms);
-	    }
-	    
-	    return resultList;
+	/**
+	 * TmsOrigin 리스트의 NULL 값 분석
+	 * 각 필드별 NULL 개수와 비율을 출력
+	 * 
+	 * @param list TmsOrigin 리스트
+	 */
+	private void checkNullValues(List<TmsOrigin> list) {
+		if (list == null || list.isEmpty()) {
+			System.out.println("[NULL Check] 리스트가 비어있습니다");
+			return;
+		}
+		
+		int totalRows = list.size();
+		int tocNullCount = 0;
+		int phNullCount = 0;
+		int ssNullCount = 0;
+		int fluxNullCount = 0;
+		int tnNullCount = 0;
+		int tpNullCount = 0;
+		
+		// NULL 값 개수 계산
+		for (TmsOrigin tms : list) {
+			if (tms.getToc() == null) tocNullCount++;
+			if (tms.getPh() == null) phNullCount++;
+			if (tms.getSs() == null) ssNullCount++;
+			if (tms.getFlux() == null) fluxNullCount++;
+			if (tms.getTn() == null) tnNullCount++;
+			if (tms.getTp() == null) tpNullCount++;
+		}
+		
+		// 결과 출력
+		System.out.println("=== TmsOrigin NULL 값 분석 ===");
+		System.out.println("총 행 수: " + totalRows);
+		System.out.println();
+		System.out.printf("toc   - NULL: %4d / %4d (%.2f%%)%n", tocNullCount, totalRows, (double) tocNullCount / totalRows * 100);
+		System.out.printf("ph    - NULL: %4d / %4d (%.2f%%)%n", phNullCount, totalRows, (double) phNullCount / totalRows * 100);
+		System.out.printf("ss    - NULL: %4d / %4d (%.2f%%)%n", ssNullCount, totalRows, (double) ssNullCount / totalRows * 100);
+		System.out.printf("flux  - NULL: %4d / %4d (%.2f%%)%n", fluxNullCount, totalRows, (double) fluxNullCount / totalRows * 100);
+		System.out.printf("tn    - NULL: %4d / %4d (%.2f%%)%n", tnNullCount, totalRows, (double) tnNullCount / totalRows * 100);
+		System.out.printf("tp    - NULL: %4d / %4d (%.2f%%)%n", tpNullCount, totalRows, (double) tpNullCount / totalRows * 100);
+		System.out.println();
+		
+		// 전체 NULL 개수
+		int totalNulls = tocNullCount + phNullCount + ssNullCount + fluxNullCount + tnNullCount + tpNullCount;
+		int totalFields = totalRows * 6;
+		System.out.printf("전체 NULL: %d / %d (%.2f%%)%n", totalNulls, totalFields, (double) totalNulls / totalFields * 100);
+		System.out.println("==============================");
 	}
-	
-	static public Double getNullableDouble(Row row, String columnName) {
-	    if (row.isMissing(columnName)) {
-	        return null;
-	    }
-	    double value = row.getDouble(columnName);
-	    return Double.isNaN(value) ? null : value;
-	}
-	
-	static public Integer getNullableInt(Row row, String columnName) {
-	    if (row.isMissing(columnName)) {
-	        return null;
-	    }
-	    int value = (int) row.getDouble(columnName);
-	    return Double.isNaN(value) ? null : value;
-	}
-    
-    // Tablesaw 컬럼의 특정 인덱스가 결측치(NaN)인지 또는 실제 null인지 통합 체크
-	static public boolean isMissing(DoubleColumn col, int index) {
-        // Tablesaw의 DoubleColumn은 내부적으로 null을 NaN으로 처리하지만,
-        // 데이터 소스에 따라 발생할 수 있는 모든 null 케이스를 방어합니다.
-        return col.isMissing(index) || Double.isNaN(col.get(index));
-    }
-	
-	// 지수 이동 평균(EWMA)을 계산하여 결측치를 보간합니다.
-    // 파이썬의 series.ewm(span=span).mean()과 유사하게 동작합니다.
-	static public DoubleColumn applyEWMA(DoubleColumn col, int span) {
-	    DoubleColumn result = col.copy();
-	    double alpha = 2.0 / (span + 1.0);
-	    Double lastEma = null; // 초기 EMA 값을 객체형으로 관리하여 null 체크 가능하게 함
-
-	    for (int i = 0; i < result.size(); i++) {
-	        // 1. 현재 행의 값이 결측치(NaN/Null)인지 체크
-	        if (!isMissing(result, i)) {
-	            // [유효한 데이터인 경우]
-	            double currentVal = result.get(i);
-	            
-	            if (lastEma == null) {
-	                // 첫 번째 유효한 값으로 EMA 초기화
-	                lastEma = currentVal;
-	            } else {
-	                // EMA 업데이트 수식 적용: EMA_t = α * X_t + (1 - α) * EMA_{t-1}
-	                lastEma = alpha * currentVal + (1 - alpha) * lastEma;
-	            }
-	        } else {
-	            // [결측치(NaN/Null)인 경우]
-	            // 계산된 이전 EMA 값이 존재한다면 그 값으로 결측치를 채움
-	            if (lastEma != null) {
-	                result.set(i, lastEma);
-	                
-	                // 보간된 값을 바탕으로 다음 단계 EMA 추세 유지 (옵션)
-	                // 파이썬의 ewm().mean()과 유사하게 동작하도록 추세 가중치를 유지함
-	                lastEma = alpha * lastEma + (1 - alpha) * lastEma; 
-	            }
-	        }
-	    }
-	    return result;
-	}
-
 }
