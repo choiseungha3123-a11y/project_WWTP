@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Info, AlertCircle } from "lucide-react";
+import { Info } from "lucide-react";
 
 export default function Row4RiskDetail() {
   // 샘플 데이터 (실제로는 API나 상위 props에서 전달)

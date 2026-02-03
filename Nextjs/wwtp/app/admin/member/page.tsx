@@ -9,6 +9,7 @@ interface Member {
   userNo: number;
   userId: string;
   userName: string;
+  userEmail: string; // [추가] 백엔드 필드명 매칭
   role: string;
 }
 
@@ -25,7 +26,7 @@ export default function MemberManagementPage() {
     try {
       const response = await fetch("/api/member/list", { 
         headers: { 
-          "Authorization": `${localStorage.getItem('accessToken')}` 
+          "Authorization": `Bearer ${localStorage.getItem('accessToken')}` // Bearer 접두사 추가 권장
         }
       });
       const result = await response.json();
@@ -130,11 +131,12 @@ export default function MemberManagementPage() {
 
       {/* 리스트 테이블 */}
       <div className="max-w-6xl mx-auto bg-slate-800/40 rounded-3xl border border-white/10 overflow-hidden backdrop-blur-md shadow-2xl">
-        <table className="w-full">
+        <table className="w-full text-sm sm:text-base">
           <thead>
-            <tr className="border-b border-white/5 bg-white/5 text-slate-400 text-sm uppercase tracking-wider">
+            <tr className="border-b border-white/5 bg-white/5 text-slate-400 text-xs uppercase tracking-wider">
               <th className="p-6 text-left font-semibold">No</th>
               <th className="p-6 text-left font-semibold">아이디</th>
+              <th className="p-6 text-left font-semibold">이메일</th> {/* [추가] */}
               <th className="p-6 text-left font-semibold">이름</th>
               <th className="p-6 text-left font-semibold">권한</th>
               <th className="p-6 text-center font-semibold">관리 액션</th>
@@ -142,9 +144,9 @@ export default function MemberManagementPage() {
           </thead>
           <tbody className="divide-y divide-white/5">
             {loading ? (
-              <tr><td colSpan={5} className="p-20 text-center text-slate-500 animate-pulse">데이터 로딩 중...</td></tr>
+              <tr><td colSpan={6} className="p-20 text-center text-slate-500 animate-pulse">데이터 로딩 중...</td></tr>
             ) : members.length === 0 ? (
-              <tr><td colSpan={5} className="p-20 text-center text-slate-500">등록된 사원이 없습니다.</td></tr>
+              <tr><td colSpan={6} className="p-20 text-center text-slate-500">등록된 사원이 없습니다.</td></tr>
             ) : (
               members.map((mem) => (
                 <motion.tr 
@@ -155,9 +157,11 @@ export default function MemberManagementPage() {
                 >
                   <td className="p-6 text-slate-500 text-sm">{mem.userNo}</td>
                   <td className="p-6 font-bold text-blue-100">{mem.userId}</td>
-                  <td className="p-6 text-slate-300">{mem.userName}</td>
+                  {/* [추가] 이메일 셀 */}
+                  <td className="p-6 text-slate-400 text-sm italic">{mem.userEmail || "-"}</td>
+                  <td className="p-6 text-slate-300 font-medium">{mem.userName}</td>
                   <td className="p-6 text-sm">
-                    <span className={`px-3 py-1 rounded-full ${mem.role === 'ROLE_ADMIN' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
+                    <span className={`px-3 py-1 rounded-full text-xs ${mem.role === 'ROLE_ADMIN' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
                       {mem.role}
                     </span>
                   </td>
