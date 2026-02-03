@@ -348,7 +348,7 @@ public class MemberController {
 			return ResponseEntity.ok().body(res);
 		}
 		
-		memberService.addMember(req.userId, req.password, req.userName, req.password);
+		memberService.addMember(req.userId, req.password, req.userName, req.userEmail);
 		
 		return ResponseEntity.ok().body(res);
 	}
