@@ -223,10 +223,15 @@ sudo dnf install python3-certbot-nginx -y
 
 \#인증서 발급: 
 
-sudo certbot --nginx -d example.com
+\# 참조 블로그
+https://jun-codinghistory.tistory.com/651
+sudo certbot certonly -d *.도메인네임.???.??? --manual --preferred-challenges dns
+
+# 발급 성공시 인증서의 자동 저장 위치
+/etc/letsencrypt/live/projectwwtp.kro.kr/fullchain.pem
+/etc/letsencrypt/live/projectwwtp.kro.kr/privkey.pem
 
 \#자동 갱신: 
-
 sudo certbot renew --dry-run
 
 \#ZeroSSL에서 인증서를 발급 받는 경우
@@ -242,7 +247,6 @@ https://zerossl.com/
 cat certificate.crt ca\_bundle.crt > nginx\_ssl.crt
 
 \# 파일 이동
-
 sudo mv nginx\_ssl.crt /etc/pki/nginx/
 sudo mv privatekey /etc/pki/nginx/private/
 
@@ -256,7 +260,7 @@ sudo nginx -t
 
 \#변경후 재시작
 
-sudo systemctl restart ngix
+sudo systemctl restart nginx
 
 
 

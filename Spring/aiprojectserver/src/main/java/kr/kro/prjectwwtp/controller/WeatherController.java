@@ -156,7 +156,6 @@ public class WeatherController {
 	public ResponseEntity<Object> modifyWeatherData(
 			HttpServletRequest request,
 			@RequestBody weatherDTO req) {
-		System.out.println("req : " + req);
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)

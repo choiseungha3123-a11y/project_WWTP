@@ -251,6 +251,30 @@ public class MemberController {
 		return ResponseEntity.ok().body(res);
 	}
 	
+	@GetMapping("/checkEmail")
+	@Operation(summary="Email 중복 체크", description = "Email 중복체크")
+	@Parameter(name = "userEmail", description = "확인할 사용자 Email")
+	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
+	public ResponseEntity<Object> checkEmail(@RequestParam String userEmail) {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		if(userEmail == null || userEmail.length() == 0) {
+			res.setSuccess(false);
+			res.setErrorMsg("정보가 올바르지 않습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		
+		if(memberService.checkEmail(userEmail)) {
+			res.setSuccess(false);
+			res.setErrorMsg("이미 사용중인 Email 입니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		
+		return ResponseEntity.ok().body(res);
+	}
+	
 	@Getter
 	@Setter
 	@ToString
@@ -261,6 +285,8 @@ public class MemberController {
 		private String password;
 		@Schema(name = "userName", description = "등록할 사용자명", example = "member")
 		private String userName;
+		@Schema(name = "userEmail", description = "등록할 Email", example = "xxx@xxx.xom")
+		private String userEmail;;
 	}
 	
 	boolean validatePassword(String password) {
@@ -283,7 +309,8 @@ public class MemberController {
 				.build();
 		if(req.userId == null || req.userId.length() == 0 
 				|| req.password == null || req.password.length() == 0
-				|| req.userName == null || req.userName.length() == 0) {
+				|| req.userName == null || req.userName.length() == 0
+				|| req.userEmail == null || req.userEmail.length() == 0) {
 			res.setSuccess(false);
 			res.setErrorMsg("정보가 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
@@ -315,8 +342,13 @@ public class MemberController {
 			res.setErrorMsg("이미 사용중인 ID 입니다.");
 			return ResponseEntity.ok().body(res);
 		}
+		if(memberService.checkEmail(req.userEmail)) {
+			res.setSuccess(false);
+			res.setErrorMsg("이미 사용중인 Email 입니다.");
+			return ResponseEntity.ok().body(res);
+		}
 		
-		memberService.addMember(req.userId, req.password, req.userName);
+		memberService.addMember(req.userId, req.password, req.userName, req.password);
 		
 		return ResponseEntity.ok().body(res);
 	}

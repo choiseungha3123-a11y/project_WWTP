@@ -41,15 +41,20 @@ public class MemberService {
 		return memberRepo.findByUserId(userId).isPresent();
 	}
 	
+	public boolean checkEmail(String userEmail) {
+		return memberRepo.findByUserEmail(userEmail).isPresent();
+	}
+	
 	public List<Member> getMemberList() {
 		return memberRepo.findAll();
 	}
 	
-	public void addMember(String userId, String password, String userName) {
+	public void addMember(String userId, String password, String userName, String userEmail) {
 		memberRepo.save(Member.builder()
 				.userId(userId)
 				.password(encoder.encode(password))
 				.userName(userName)
+				.userEmail(userEmail)
 				.role(Role.ROLE_MEMBER)
 				.build());
 	}

@@ -22,9 +22,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import kr.kro.prjectwwtp.domain.Member;
+import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.TmsOrigin;
 import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.service.TmsOriginService;
+import kr.kro.prjectwwtp.util.JWTUtil;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -66,11 +70,30 @@ public class TmsOriginController {
 	@Operation(summary="실제 측정 데이터 upload", description = ".csv 파일을 업로드하여 실제 측정 데이터를 저장합니다.")
 	@Parameter(name = "file", description= ".csv 파일명", schema = @Schema(implementation = MultipartFile.class))
 	@ApiResponse(description = "dataList[0]에 saveCount : XXXX 로 저장된 수를 전달", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
-	public ResponseEntity<Object> postTmsOriginUpload(MultipartFile file) {
+	public ResponseEntity<Object> postTmsOriginUpload(
+			HttpServletRequest request,
+			MultipartFile file) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
 				.build();
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		if(member.getRole() != Role.ROLE_ADMIN) {
+			res.setSuccess(false);
+			res.setErrorMsg("권한이 없습니다.");
+			return ResponseEntity.ok().body(res);
+		}
 		try {
 			int saveCount = tmsOriginService.saveFromCsv(file);
 			res.addData("saveCount : " + saveCount);
@@ -89,16 +112,75 @@ public class TmsOriginController {
 		@ApiResponse(responseCode = "201", description = "dataList[]", content = @Content(mediaType = "application/json", schema = @Schema(implementation = TmsOrigin.class)))
 	})
 	public ResponseEntity<Object> getTmsOriginList(
+			HttpServletRequest request,
 			@RequestParam String time) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
 				.build();
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		if(member.getRole() != Role.ROLE_ADMIN) {
+			res.setSuccess(false);
+			res.setErrorMsg("권한이 없습니다.");
+			return ResponseEntity.ok().body(res);
+		}
 		try {
 			List<TmsOrigin> list = tmsOriginService.getTmsOriginListByDate(time);
 			for(TmsOrigin t : list) {
 				res.addData(t);
 			}
+		} catch (Exception e) {
+			res.setSuccess(false);
+			res.setErrorMsg(e.getMessage());
+		}
+		return ResponseEntity.ok().body(res);
+	}
+	
+	@GetMapping("/imputate")
+	@Operation(summary="실제 측정 데이터 조회", description = "저장된 실제 측정 데이터를 조회합니다.")
+	@Parameter(name = "time", description= "조회날짜(yyyyMMdd)", example = "20240101")
+	public ResponseEntity<Object> postTmsOriginImputate(
+			HttpServletRequest request,
+			@RequestParam String time) {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		if(member.getRole() != Role.ROLE_ADMIN) {
+			res.setSuccess(false);
+			res.setErrorMsg("권한이 없습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		
+		try {
+			List<TmsOrigin> list = tmsOriginService.imputate(time);
+			for(TmsOrigin t : list) {
+				res.addData(t);
+			}
+			
 		} catch (Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());

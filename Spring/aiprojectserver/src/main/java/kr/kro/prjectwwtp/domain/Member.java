@@ -38,6 +38,8 @@ public class Member {
 	private String userId;
 	@Schema(description = "회원이름", example = "회원이름")
 	private String userName;
+	@Schema(description = "회원Email", example = "회원Email")
+	private String userEmail;
 	@JsonProperty(access = Access.WRITE_ONLY)
 	@Schema(description = "비밀번호", example = "비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.")
 	private String password;
