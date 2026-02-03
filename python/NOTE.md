@@ -8,11 +8,52 @@
 
 ### 📂 작업 파일
 ```
-src/features.py                # 수정 (타겟 lag 피처 추가)
-test_target_lags.py            # 새로 생성
-docs/TARGET_LAG_FEATURES.md    # 새로 생성
-QUICK_START_TARGET_LAGS.md     # 새로 생성
+src/ML/features.py                # 수정 (타겟 lag 피처 추가)
+src/DL/features.py                # 완성 (도메인 특화 피처 포팅)
+src/DL/model_config.py            # 생성 (4개 모델 사양)
+src/DL/preprocessing.py           # 수정 (장기 결측 처리 개선)
+src/ML/preprocess.py              # 수정 (장기 결측 처리 개선)
+scripts/DL/*.py
 ```
+
+### 🔧 결측치 및 이상치 처리 전략 개선 ⭐⭐
+
+**변경 이유**: 
+- 장기 결측을 NaN으로 유지하면 학습 시 데이터 손실 발생
+- 이상치를 NaN으로만 변환하면 추가 결측치 발생
+
+**1. 결측치 처리 개선**
+
+**새로운 전략**:
+- **단기 결측 (1-3시간)**: Forward Fill (변경 없음)
+- **중기 결측 (4-12시간)**: EWMA (span=6, 변경 없음)
+- **장기 결측 (12시간+)**: **EWMA (span=24)** ← 변경!
+  - 기존: NaN 유지 → 데이터 손실
+  - 개선: 장기 span EWMA로 채우기 → 데이터 보존
+  - span을 4배로 늘려 더 부드러운 보간
+
+**2. 이상치 처리 개선**
+
+**새로운 전략**:
+- 이상치 탐지: 도메인 지식 + 통계적 방법 (변경 없음)
+- 이상치 대체: **EWMA (span=12)로 대체** ← 변경!
+  - 기존: NaN으로 변환 → 추가 결측치 발생
+  - 개선: EWMA로 즉시 대체 → 연속성 유지
+  - 시간 가중 이동평균으로 부드럽게 대체
+
+**적용 범위**:
+- `src/DL/preprocessing.py`: LSTM 파이프라인
+- `src/ML/preprocess.py`: ML 파이프라인
+
+**마스크 추가**:
+- 결측치: `{col}_imputed_long_ewma` (장기 EWMA로 채움)
+- 이상치: `{col}_outlier_replaced_ewma` (EWMA로 대체됨)
+
+**장점**:
+- 데이터 손실 최소화
+- 학습 가능한 샘플 수 증가
+- 시계열 연속성 유지
+- 과거 추세를 반영한 부드러운 보간/대체
 
 ### 🎯 타겟 Lag 피처 구현 (Autoregressive Features) ⭐
 
@@ -27,11 +68,90 @@ QUICK_START_TARGET_LAGS.md     # 새로 생성
   - 현재 시점 타겟은 제외 (데이터 누수 방지)
   - 과거 타겟 값만 입력으로 사용 (autoregressive)
 
+### 🧠 LSTM 도메인 특화 피처 엔지니어링 완성 ⭐⭐⭐
+
+**배경**: LSTM 파이프라인에 ML 모델에서 사용하던 도메인 특화 피처가 없어 성능 저하 우려
+
+**작업 내용**:
+- `src/DL/features.py` 완전 재작성 (1,000+ 라인)
+  - `src/ML/features.py`의 모든 도메인 특화 함수 포팅
+  - 모델별 특성 생성 자동화 (`model_mode` 파라미터)
+
+**구현된 도메인 특화 피처 함수**:
+
+1. **유틸리티 함수**:
+   - `calculate_rolling_std()`: 기상 안정성 계산
+   - `calculate_spike_flags()`: 이상치 플래그 (z-score)
+   - `calculate_derivatives()`: 변화율 계산
+   - `calculate_ari()`: 선행강우지수 (ARI)
+
+2. **강수 피처** (`add_rain_features()`):
+   - 기본: 변화율, 선행강수량 (AR_3H/6H/12H/24H), 건조기간
+   - ModelA/B/C 전용: 단기 집중도, API 지수, rain_start/end 플래그, post_rain_6H
+
+3. **기상 피처** (`add_weather_features()`):
+   - 기본: 이슬점 강하, 온도-습도 상호작용, 온도 변화율
+   - ModelA/B/C 전용: VPD (증기압 부족), 기상 안정성 (rolling_std)
+
+4. **TMS 상호작용 피처** (`add_tms_interaction_features()`):
+   - **ModelA 전용**: TOC/SS_proxy_load, 영양염 비율, pH_zone, TN_high_flag, TP_spike_flag, 변화율
+   - **ModelB 전용**: SS/TOC_load, PH×TOC, SS×FLUX, TOC/SS 비율, spike flags
+   - **ModelC 전용**: 조성 비율 (TOC/SS, TN/TP, TOC/TN), 상호결합, spike flags
+
+5. **강수-TMS 상호작용** (`add_rain_tms_interaction_features()`):
+   - **ModelA**: RN_60m×SS(t-1), (TN/TP)×PH, dry×RN_15m
+   - **ModelB**: dry×RN_15m, RN_60m×SS_lag1h
+   - **ModelC**: RN_15m/60m×SS/TOC, TA×TN/TOC
+   - **Flow**: rain×level_sum_lag1
+
+6. **수위-유량 피처** (`add_level_flow_features()` - Flow 전용):
+   - level_sum/diff, lag (1/2/3/6/12/36시간)
+   - rolling 통계: 평균/표준편차/최소/최대/IQR/추세
+
+7. **강우 공간 피처** (`add_rain_spatial_features()` - Flow 전용):
+   - 공간 통계: mean/max/min/std/spread
+   - 단기 집중도, ARI (tau=0.5/1/2), wet_flag, dry_spell
+
+**통합 함수** (`create_features()`):
+- 모델 모드에 따라 자동으로 적절한 도메인 피처 생성
+- 기본 시간/lag/rolling 피처 + 도메인 특화 피처
+- 타겟 컬럼 자동 제외 (데이터 누수 방지)
+
+**테스트 결과**:
+```
+✓ Flow 모드: 1,243개 새 피처 생성
+✓ ModelA 모드: 621개 새 피처 생성
+✓ 모든 도메인 함수 정상 작동 확인
+```
+
+### 📋 모델 사양 정의 완료
+
+**작업 내용**:
+- `src/DL/model_config.py` 생성
+- 4개 모델 사양 정의:
+  - **flow**: Q_in 예측 (TMS 데이터 미사용)
+  - **modelA**: TOC_VU, SS_VU 예측 (FLUX 입력 사용)
+  - **modelB**: TN_VU, TP_VU 예측 (FLUX 입력 사용)
+  - **modelC**: FLUX_VU, PH_VU 예측 (FLUX 제외)
+
+### 기존 train.py 코드에서 LSTM 분리
+
+**배경**: 학습 시 잦은 오류 발생
+
+**작업 내용**:
+- ML과 DL 폴더 구분
+- LSTM 파이프라인 코드 새롭게 작성
 
 ### ✅ 다음 할 일 (2026/02/04)
-- [ ] 타겟 lag 피처 포함 모델 학습 및 성능 평가
-- [ ] 타겟 lag 유무 성능 비교 (A/B 테스트)
-- [ ] LSTM 파이프라인 실험 및 ML vs LSTM 비교
+- [ ] 4개 모델 각각 학습 및 성능 평가
+  ```bash
+  python scripts/DL/train_lstm.py --model flow
+  python scripts/DL/train_lstm.py --model modelA
+  python scripts/DL/train_lstm.py --model modelB
+  python scripts/DL/train_lstm.py --model modelC
+  ```
+- [ ] 도메인 피처 유무 성능 비교
+- [ ] LSTM vs ML 모델 성능 비교
 
 ---
 
