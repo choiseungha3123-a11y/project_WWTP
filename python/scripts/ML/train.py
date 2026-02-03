@@ -17,16 +17,15 @@ import warnings
 import os
 
 # 프로젝트 루트를 sys.path에 추가
-# scripts/ML/train.py -> scripts/ML -> scripts -> project_root
-project_root = Path(__file__).parent.parent.parent
+project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.ML.io import load_csvs, prep_flow, prep_aws, set_datetime_index, merge_sources_on_time
-from src.ML.pipeline import run_pipeline, run_improved_pipeline, run_sliding_window_pipeline
-from src.ML.features import FeatureConfig
-from src.ML.split import SplitConfig
-from src.ML.preprocess import ImputationConfig, OutlierConfig
-from src.ML.metrics import plot_predictions
+from src.io import load_csvs, prep_flow, prep_aws, set_datetime_index, merge_sources_on_time
+from src.pipeline import run_pipeline, run_improved_pipeline
+from src.features import FeatureConfig
+from src.split import SplitConfig
+from src.preprocess import ImputationConfig, OutlierConfig
+from src.metrics import plot_predictions
 import numpy as np
 
 # 경고 필터 설정
@@ -52,11 +51,11 @@ def build_argparser():
                    help="Pandas 리샘플링 규칙, 예: 5min, 1h")
     p.add_argument("--random-state", type=int, default=42,
                    help="랜덤 시드")
-    p.add_argument("--train-ratio", type=float, default=0.7,
+    p.add_argument("--train-ratio", type=float, default=0.6,
                    help="학습 데이터 비율")
-    p.add_argument("--valid-ratio", type=float, default=0.15,
+    p.add_argument("--valid-ratio", type=float, default=0.2,
                    help="검증 데이터 비율")
-    p.add_argument("--test-ratio", type=float, default=0.15,
+    p.add_argument("--test-ratio", type=float, default=0.2,
                    help="테스트 데이터 비율")
     
     # 기본 파이프라인 전용
@@ -79,22 +78,6 @@ def build_argparser():
     p.add_argument("--save-dir", default="results/ML",
                    help="결과 저장 디렉토리 (개선된 파이프라인)")
     
-    # Sliding Window 파이프라인 전용
-    p.add_argument("--sliding-window", action="store_true",
-                   help="Sliding Window 파이프라인 사용 (시계열 패턴 학습)")
-    p.add_argument("--window-size", type=int, default=24,
-                   help="과거 몇 개의 시간 스텝을 볼 것인지 (기본: 24시간)")
-    p.add_argument("--horizon", type=int, default=1,
-                   help="미래 몇 스텝 후를 예측할 것인지 (기본: 1 = 다음 시간)")
-    p.add_argument("--stride", type=int, default=1,
-                   help="윈도우 이동 간격 (기본: 1 = 매 시간마다)")
-    
-    # 결측치 처리 옵션
-    p.add_argument("--use-rolling-median", action="store_true",
-                   help="장기 결측을 Rolling Median으로 채우기 (기본: NaN 유지)")
-    p.add_argument("--rolling-window-hours", type=int, default=168,
-                   help="Rolling Median 윈도우 크기 (시간, 기본: 168=7일)")
-    
     return p
 
 
@@ -102,13 +85,7 @@ def main():
     """메인 실행 함수"""
     args = build_argparser().parse_args()
 
-    # 파이프라인 타입 결정
-    if args.sliding_window:
-        pipeline_type = "Sliding Window 파이프라인"
-    elif args.improved:
-        pipeline_type = "개선 파이프라인"
-    else:
-        pipeline_type = "기본 파이프라인"
+    pipeline_type = "개선 파이프라인" if args.improved else "기본 파이프라인"
     
     print("=" * 60)
     print(f"WWTP 예측 모델 학습 ({pipeline_type})")
@@ -116,13 +93,7 @@ def main():
     print(f"모드: {args.mode}")
     print(f"데이터 경로: {args.data_root}")
     print(f"리샘플링: {args.resample}")
-    
-    if args.sliding_window:
-        print(f"Window Size: {args.window_size}, Horizon: {args.horizon}, Stride: {args.stride}")
-        print(f"피처 선택: 상위 {args.n_features}개")
-        print(f"교차 검증: {args.cv_splits} splits")
-        print(f"Optuna 시도: {args.n_trials} trials")
-    elif args.improved:
+    if args.improved:
         print(f"피처 선택: 상위 {args.n_features}개")
         print(f"교차 검증: {args.cv_splits} splits")
         print(f"Optuna 시도: {args.n_trials} trials")
@@ -143,46 +114,9 @@ def main():
         valid_ratio=args.valid_ratio,
         test_ratio=args.test_ratio
     )
-    
-    # 결측치 처리 설정
-    imputation_cfg = ImputationConfig(
-        use_rolling_median=args.use_rolling_median,
-        rolling_window_hours=args.rolling_window_hours
-    )
 
     # 3. 파이프라인 실행
-    if args.sliding_window:
-        # Sliding Window 파이프라인
-        print("[3/8] Sliding Window 파이프라인 실행 중...")
-        out = run_sliding_window_pipeline(
-            dfs,
-            mode=args.mode,
-            window_size=args.window_size,
-            horizon=args.horizon,
-            stride=args.stride,
-            time_col_map=time_col_map,
-            tz=None,
-            resample_rule=args.resample,
-            resample_agg="mean",
-            split_cfg=split_cfg,
-            imputation_cfg=imputation_cfg,
-            n_top_features=args.n_features,
-            cv_splits=args.cv_splits,
-            n_trials=args.n_trials,
-            random_state=args.random_state,
-            save_dir=args.save_dir
-        )
-        
-        # Sliding Window 파이프라인 결과 출력
-        print("\n" + "=" * 60)
-        print("Sliding Window 정보")
-        print("=" * 60)
-        print(f"원본 데이터: {len(out['X_original'])} 샘플")
-        print(f"윈도우 생성 후: {len(out['X_seq'])} 윈도우")
-        print(f"선택된 피처: {len(out['top_features'])}개")
-        print(f"상위 10개: {out['top_features'][:10]}")
-        
-    elif args.improved:
+    if args.improved:
         # 개선된 파이프라인
         print("[3/8] 개선된 파이프라인 실행 중...")
         out = run_improved_pipeline(
@@ -193,7 +127,6 @@ def main():
             resample_rule=args.resample,
             resample_agg="mean",
             split_cfg=split_cfg,
-            imputation_cfg=imputation_cfg,
             n_top_features=args.n_features,
             cv_splits=args.cv_splits,
             n_trials=args.n_trials,
@@ -206,7 +139,7 @@ def main():
         print("선택된 피처")
         print("=" * 60)
         print(f"총 {len(out['top_features'])}개 피처 선택됨")
-        print(f"상위 10개: {out['top_features'][:10]}")
+        print(f"상위 10개: {out['top_features'][-10:]}")
         
     else:
         # 기본 파이프라인
@@ -230,7 +163,6 @@ def main():
             resample_rule=args.resample,
             resample_agg=resample_agg,
             split_cfg=split_cfg,
-            imputation_cfg=imputation_cfg,
             random_state=args.random_state,
         )
 
@@ -268,7 +200,7 @@ def main():
     print(f"Test R²: {best_r2:.4f}")
     print(f"Test RMSE: {best_rmse:.2f}")
 
-    if args.improved or args.sliding_window:
+    if args.improved:
         print(f"\n결과 저장 위치: {args.save_dir}")
 
     print("\n" + "=" * 60)

@@ -101,10 +101,7 @@ class ImputationConfig:
     """결측치 보간 설정"""
     short_term_hours: int = 3      # 단기 결측: 1-3시간
     medium_term_hours: int = 12    # 중기 결측: 4-12시간
-    long_term_hours: int = 48      # 장기 결측 임계값 (48시간+)
     ewma_span: int = 6             # EWMA 스팬 (시간 단위)
-    use_rolling_median: bool = False  # 장기 결측 처리: False=NaN 유지, True=Rolling Median
-    rolling_window_hours: int = 168   # Rolling Median 윈도우 (7일)
     
     
 def impute_missing_with_strategy(df: pd.DataFrame, 
@@ -117,7 +114,7 @@ def impute_missing_with_strategy(df: pd.DataFrame,
     전략:
     - 단기 결측 (1-3시간): Forward Fill
     - 중기 결측 (4-12시간): EWMA (시간 가중, 과거 데이터만 사용)
-    - 장기 결측 (12시간+): EWMA (장기 span 사용)
+    - 장기 결측 (12시간+): NaN 유지
     
     Parameters:
     -----------
@@ -179,18 +176,10 @@ def impute_missing_with_strategy(df: pd.DataFrame,
             if add_mask:
                 df_out[f'{col}_imputed_ewma'] = medium_mask.astype(int)
         
-        # 3단계: 장기 결측도 EWMA로 채우기 (더 긴 span 사용)
-        still_missing_long = series_ffill.isna()
-        if still_missing_long.sum() > 0:
-            # 장기 결측용 더 긴 span (기본 span의 4배)
-            long_ewma_span = int(config.ewma_span * 4 / freq_hours)
-            series_long_ewma = series_ffill.ewm(span=long_ewma_span, adjust=False).mean()
-            
-            long_mask = still_missing_long
-            series_ffill[long_mask] = series_long_ewma[long_mask]
-            
-            if add_mask:
-                df_out[f'{col}_imputed_long_ewma'] = long_mask.astype(int)
+        # 3단계: 장기 결측은 NaN 유지
+        long_missing = series_ffill.isna()
+        if add_mask:
+            df_out[f'{col}_imputed_nan'] = long_missing.astype(int)
         
         # 최종 결과 저장
         df_out[col] = series_ffill
@@ -217,8 +206,7 @@ def summarize_imputation(df: pd.DataFrame) -> Optional[pd.DataFrame]:
     # 원본 컬럼 추출
     original_cols = set()
     for mask_col in mask_cols:
-        for suffix in ['_is_missing', '_imputed_ffill', '_imputed_ewma', 
-                       '_imputed_long_ewma', '_imputed_rolling_median', '_imputed_nan']:
+        for suffix in ['_is_missing', '_imputed_ffill', '_imputed_ewma', '_imputed_nan']:
             if suffix in mask_col:
                 original_cols.add(mask_col.replace(suffix, ''))
                 break
@@ -233,8 +221,6 @@ def summarize_imputation(df: pd.DataFrame) -> Optional[pd.DataFrame]:
             'original_missing': df.get(f'{col}_is_missing', pd.Series(0)).sum(),
             'ffill': df.get(f'{col}_imputed_ffill', pd.Series(0)).sum(),
             'ewma': df.get(f'{col}_imputed_ewma', pd.Series(0)).sum(),
-            'long_ewma': df.get(f'{col}_imputed_long_ewma', pd.Series(0)).sum(),
-            'rolling_median': df.get(f'{col}_imputed_rolling_median', pd.Series(0)).sum(),
             'still_nan': df.get(f'{col}_imputed_nan', pd.Series(0)).sum()
         }
         summary_rows.append(row)
@@ -361,16 +347,14 @@ def detect_outliers_statistical(series: pd.Series,
 
 def detect_and_handle_outliers(df: pd.DataFrame, 
                                config: OutlierConfig = OutlierConfig(), 
-                               add_mask: bool = True,
-                               ewma_span: int = 12) -> pd.DataFrame:
+                               add_mask: bool = True) -> pd.DataFrame:
     """
-    이상치 탐지 및 처리 (EWMA로 대체)
+    이상치 탐지 및 처리 (NaN으로 변환)
     
     전략:
     - 도메인 지식 + 통계적 방법 병행
     - require_both=True: 둘 다 이상치여야 처리 (보수적)
     - require_both=False: 둘 중 하나만 이상치여도 처리 (공격적)
-    - 이상치를 EWMA로 대체하여 연속성 유지
     
     Parameters:
     -----------
@@ -380,12 +364,10 @@ def detect_and_handle_outliers(df: pd.DataFrame,
         이상치 탐지 설정
     add_mask : bool
         마스크 컬럼 추가 여부
-    ewma_span : int
-        EWMA span (기본: 12시간)
         
     Returns:
     --------
-    DataFrame : 이상치가 EWMA로 대체된 데이터프레임
+    DataFrame : 이상치가 NaN으로 변환된 데이터프레임
     """
     df_out = df.copy()
     
@@ -425,17 +407,7 @@ def detect_and_handle_outliers(df: pd.DataFrame,
             df_out[f'{col}_outlier_final'] = final_outliers.astype(int)
         
         # 이상치를 NaN으로 변환
-        series[final_outliers] = np.nan
-        
-        # EWMA로 이상치 대체
-        if final_outliers.sum() > 0:
-            series_ewma = series.ewm(span=ewma_span, adjust=False).mean()
-            series[final_outliers] = series_ewma[final_outliers]
-            
-            if add_mask:
-                df_out[f'{col}_outlier_replaced_ewma'] = final_outliers.astype(int)
-        
-        df_out[col] = series
+        df_out.loc[final_outliers, col] = np.nan
     
     return df_out
 
@@ -466,8 +438,7 @@ def summarize_outliers(df: pd.DataFrame) -> Optional[pd.DataFrame]:
             'column': col,
             'domain': df.get(f'{col}_outlier_domain', pd.Series(0)).sum(),
             'statistical': df.get(f'{col}_outlier_statistical', pd.Series(0)).sum(),
-            'final': df[mask_col].sum(),
-            'replaced_ewma': df.get(f'{col}_outlier_replaced_ewma', pd.Series(0)).sum()
+            'final': df[mask_col].sum()
         }
         summary_rows.append(row)
     
