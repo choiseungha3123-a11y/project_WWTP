@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import AddMemberModal from "../../components/AddMemberModal";
+import AddMemberModal from "../../options/AddMemberModal";
 
 interface Member {
   userNo: number;

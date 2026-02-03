@@ -1,276 +1,113 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import EditProfileModal from "../components/EditProfileModal";
-import AddMemberModal from "../components/AddMemberModal";
 
-interface ProcessDataItem {
-  time: string;
-  toc: number;
-  ph: number;
-  ss: number;
-  flux: number;
-  tn: number;
-  tp: number;
-}
+// 분리한 컴포넌트들
+import Row1Status from "@/components/dashboard/Row1Status";
+import Row2Alerts from "@/components/dashboard/Row2Alerts";
+import Row3Charts from "@/components/dashboard/Row3Charts";
+import Row4RiskDetail from "@/components/dashboard/Row4RiskDetail";
+import Row5ActionPanel from "@/components/dashboard/Row5ActionPanel";
 
-interface Memo {
-  memoNo: number;
-  content: string;
-  createTime: string;
-  createMember: {
-    userId: string;
-    userName: string;
-  };
-}
-
-interface MetricCardProps {
-  title: string;
-  value: string | number;
-  unit: string;
-  color: string;
-  onClick: () => void;
-}
-
-const MetricCard = ({ title, value, unit, color, onClick }: MetricCardProps) => (
-  <motion.div
-    whileHover={{ scale: 1.02, translateY: -5 }}
-    whileTap={{ scale: 0.98 }}
-    onClick={onClick}
-    className="bg-slate-800/40 p-8 rounded-3xl border border-white/5 backdrop-blur-md cursor-pointer hover:border-blue-500/50 transition-all shadow-2xl flex flex-col justify-between min-h-45"
-  >
-    <div>
-      <div className="flex items-center gap-2 mb-4">
-        <div className={`w-2 h-2 rounded-full animate-pulse`} style={{ backgroundColor: color }}></div>
-        <h3 className="text-slate-400 font-medium tracking-wider">{title}</h3>
-      </div>
-      <div className="flex items-baseline gap-2">
-        <span className="text-4xl font-bold tracking-tight text-white">{value}</span>
-        <span className="text-slate-500 font-medium">{unit}</span>
-      </div>
-    </div>
-    <div className="mt-6 flex justify-between items-center text-xs text-slate-500 border-t border-white/5 pt-4">
-      <span>실시간 데이터</span>
-      <span className="text-blue-400">상세보기 →</span>
-    </div>
-  </motion.div>
-);
+// 기존 모달 (경로 확인 필요: ../options/EditProfileModal)
+import EditProfileModal from "../options/EditProfileModal";
 
 export default function DashboardPage() {
   const router = useRouter();
+
+  // 사용자 상태 관리
   const [isAuthChecked, setIsAuthChecked] = useState(false);
-  const [userNo, setUserNo] = useState<number>(0);
-  const [userRole, setUserRole] = useState("");
-  const [userId, setUserId] = useState("");
-  const [userName, setUserName] = useState("");
+  const [userData, setUserData] = useState({
+    userNo: 0,
+    userId: "",
+    userName: "",
+    userRole: ""
+  });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [processData, setProcessData] = useState<ProcessDataItem[]>([]);
 
-  const [memos, setMemos] = useState<Memo[]>([]);
-  const [oldMemos, setOldMemos] = useState<Memo[]>([]);
-  const [newMemoContent, setNewMemoContent] = useState("");
-  const [isMemoLoading, setIsMemoLoading] = useState(false);
-
-  // 수정 기능을 위한 추가 상태
-  const [editingMemoId, setEditingMemoId] = useState<number | null>(null);
-  const [editContent, setEditContent] = useState("");
-
-  const getAuthHeaders = useCallback((): HeadersInit => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
-      console.error("❌ 로컬 스토리지에 accessToken이 없습니다!");
-      return { "Content-Type": "application/json" };
-    }
-    const cleanToken = token.startsWith("Bearer ") ? token.replace("Bearer ", "") : token;
-    return {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${cleanToken.trim()}`,
-    };
-  }, []);
-
-  const fetchMemos = useCallback(async () => {
-    if (localStorage.getItem("userRole") === "ROLE_VIEWER") return;
-
-    try {
-      const headers = getAuthHeaders();
-      const [resActive, resOld] = await Promise.all([
-        fetch("/api/memo/list?page=0&count=10", { headers }),
-        fetch("/api/memo/oldList?page=0&count=10", { headers })
-      ]);
-
-      const activeResult = await resActive.json();
-      const oldResult = await resOld.json();
-
-      if (activeResult.success && activeResult.dataList?.[0]?.items) {
-        setMemos(activeResult.dataList[0].items);
-      }
-      if (oldResult.success && oldResult.dataList?.[0]?.items) {
-        setOldMemos(oldResult.dataList[0].items);
-      }
-    } catch (err) {
-      console.error("메모 페칭 중 예외 발생:", err);
-    }
-  }, [getAuthHeaders]);
-
+  // 인증 및 로컬스토리지 데이터 로드
   useEffect(() => {
     const savedRole = localStorage.getItem('userRole');
-    const savedId = localStorage.getItem('userId');
-    const savedName = localStorage.getItem('userName');
-    const savedNo = localStorage.getItem('userNo');
-    
     if (!savedRole) {
       router.replace("/");
       return;
     }
-
-    setUserNo(Number(savedNo));
-    setUserId(savedId || "");
-    setUserRole(savedRole);
-    setUserName(savedName || "username");
-    setIsAuthChecked(true);
-
-    fetch("/data/process_data.json")
-      .then(res => res.json())
-      .then(json => setProcessData(json))
-      .catch(err => console.error("데이터 로딩 실패:", err));
-
-    fetchMemos();
-  }, [router, fetchMemos]);
-
-  // 메모 작성
-  const handleCreateMemo = async () => {
-    if (!newMemoContent.trim()) return;
-    setIsMemoLoading(true);
-    try {
-      const res = await fetch("/api/memo/create", {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ content: newMemoContent }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        setNewMemoContent("");
-        fetchMemos();
-      }
-    } finally {
-      setIsMemoLoading(false);
-    }
-  };
-
-  // 메모 수정 (백엔드 postMemoModify 연결)
-  const handleUpdateMemo = async (memoNo: number) => {
-    if (!editContent.trim()) return;
-    try {
-      const res = await fetch("/api/memo/modify", {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ 
-          memoNo: memoNo, 
-          content: editContent 
-        }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        setEditingMemoId(null);
-        fetchMemos();
-      } else {
-        alert(result.errorMsg);
-      }
-    } catch (err) {
-      console.error("수정 오류:", err);
-    }
-  };
-
-  // 메모 완료 (비활성화 - 백엔드 postMemoDisable 연결)
-  const handleCompleteMemo = async (memoNo: number) => {
-    if (!confirm("업무를 완료 처리하시겠습니까?")) return;
-    const res = await fetch("/api/memo/disable", {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ memoNo }),
+    setUserData({
+      userNo: Number(localStorage.getItem('userNo')),
+      userId: localStorage.getItem('userId') || "",
+      userName: localStorage.getItem('userName') || "사용자",
+      userRole: savedRole
     });
-    const result = await res.json();
-    if (result.success) fetchMemos();
-  };
-
-  // 메모 영구 삭제 (백엔드 postMemoDelete 연결)
-  const handleAbsoluteDelete = async (memoNo: number) => {
-    if (!confirm("이 메모를 영구적으로 삭제하시겠습니까? (복구 불가)")) return;
-    try {
-      const res = await fetch("/api/memo/delete", {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ memoNo }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        fetchMemos();
-      } else {
-        alert(result.errorMsg);
-      }
-    } catch (err) {
-      console.error("삭제 오류:", err);
-    }
-  };
+    setIsAuthChecked(true);
+  }, [router]);
 
   const handleLogout = () => {
     if (confirm("로그아웃 하시겠습니까?")) {
       localStorage.clear();
-      router.push("/"); 
+      router.push("/");
     }
   };
 
-  if (!isAuthChecked) return <div className="min-h-screen bg-slate-900" />;
-
-  const latest = processData.length > 0 ? processData[processData.length - 1] : null;
-  const metrics = [
-    { title: "TOC (총유기탄소)", key: "toc", color: "#60a5fa", unit: "mg/L" },
-    { title: "pH (수소이온농도)", key: "ph", color: "#34d399", unit: "pH" },
-    { title: "SS (부유물질)", key: "ss", color: "#fbbf24", unit: "mg/L" },
-    { title: "FLUX (유량)", key: "flux", color: "#a78bfa", unit: "m³/h" },
-    { title: "TN (총질소)", key: "tn", color: "#f87171", unit: "mg/L" },
-    { title: "TP (총인)", key: "tp", color: "#22d3ee", unit: "mg/L" },
-  ];
+  if (!isAuthChecked) return <div className="min-h-screen bg-slate-950" />;
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-8 font-sans">
-      <header className="flex justify-between items-center mb-12 border-b border-white/10 pb-8">
+    /**
+     * [주요 수정] 
+     * 1. h-screen: 브라우저 높이에 고정
+     * 2. overflow-hidden: 바깥 스크롤 제거
+     * 3. flex flex-col: 헤더와 메인 영역 분리
+     */
+    <div className="h-screen bg-slate-950 text-white p-4 font-sans overflow-hidden flex flex-col">
+      
+      {/* --- 상단 헤더: 높이 축소 (h-16) --- */}
+      <header className="flex justify-between items-center mb-4 border-b border-white/5 pb-4 h-16 flex-none">
         <div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-xl font-black text-white flex items-center gap-3">
             <span className="text-blue-500">●</span> Smart WWTP Monitoring
           </h1>
-          <p className="text-slate-400 mt-2 font-light">공정별 실시간 상태 요약</p>
+          <p className="text-slate-500 text-[10px] uppercase tracking-widest font-medium">Integrated Operation Dashboard</p>
         </div>
+
         <div className="relative flex items-center gap-4">
-          <div onClick={() => setIsProfileOpen(!isProfileOpen)} className="flex items-center gap-3 hover:bg-white/5 p-2 rounded-xl transition-all cursor-pointer border border-transparent hover:border-white/10">
+          <div 
+            onClick={() => setIsProfileOpen(!isProfileOpen)} 
+            className="flex items-center gap-3 hover:bg-white/5 p-2 rounded-xl transition-all cursor-pointer border border-transparent hover:border-white/10"
+          >
             <div className="text-right">
-              <p className="text-sm font-bold text-white">{userName}님</p>
-              <p className="text-[10px] text-slate-500 uppercase">{userRole.replace("ROLE_", "")}</p>
+              <p className="text-sm font-bold text-white">{userData.userName}님</p>
+              <p className="text-[10px] text-blue-400 font-medium uppercase tracking-tighter">{userData.userRole.replace("ROLE_", "")}</p>
             </div>
-            <div className="w-10 h-10 bg-linear-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
-              {userName.substring(0, 1)}
+            <div className="w-10 h-10 bg-linear-to-br from-blue-600 to-indigo-700 rounded-full flex items-center justify-center text-sm font-bold shadow-lg shadow-blue-900/20">
+              {userData.userName.substring(0, 1)}
             </div>
           </div>
-          <button onClick={handleLogout} className="px-4 py-2 rounded-lg bg-white/5 hover:bg-red-500/10 hover:text-red-400 border border-white/10 transition-all text-xs font-medium">
+
+          <button onClick={handleLogout} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 hover:text-red-400 border border-white/10 transition-all text-[11px] font-medium text-slate-400">
             로그아웃
           </button>
           
           <AnimatePresence>
             {isProfileOpen && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 top-full mt-4 w-64 bg-slate-700 rounded-2xl z-50 overflow-hidden border border-slate-500/50 shadow-2xl">
-                <div className="p-6 flex flex-col items-center border-b border-slate-600 bg-slate-600/50">
-                  <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg">{userName.substring(0, 1)}</div>
-                  <p className="font-bold text-lg text-white mt-3">{userName}</p>
-                  <p className="text-xs text-blue-300/80">{userId}</p>
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                exit={{ opacity: 0, y: 10 }} 
+                className="absolute right-0 top-full mt-4 w-64 bg-slate-800 rounded-2xl z-50 overflow-hidden border border-white/10 shadow-2xl"
+              >
+                <div className="p-6 flex flex-col items-center border-b border-white/5 bg-white/5">
+                  <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg">{userData.userName.substring(0, 1)}</div>
+                  <p className="font-bold text-lg text-white mt-3">{userData.userName}</p>
+                  <p className="text-xs text-slate-400">{userData.userId}</p>
                 </div>
                 <div className="flex flex-col text-sm p-2">
-                  <button onClick={() => { setIsEditModalOpen(true); setIsProfileOpen(false); }} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-600 transition-all">👤 개인정보 수정</button>
-                  {userRole === "ROLE_ADMIN" && <button onClick={() => { router.push("/admin/member"); setIsProfileOpen(false); }} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-600 transition-all">⚙️ 사원 관리</button>}
-                  <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-500/20 text-red-300 transition-all">🚪 <b>로그아웃</b></button>
+                  <button onClick={() => { setIsEditModalOpen(true); setIsProfileOpen(false); }} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-slate-300">👤 개인정보 수정</button>
+                  {userData.userRole === "ROLE_ADMIN" && (
+                    <button onClick={() => { router.push("/admin/member"); setIsProfileOpen(false); }} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-slate-300">⚙️ 사원 관리</button>
+                  )}
+                  <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-500/10 text-red-400 transition-all font-bold">🚪 로그아웃</button>
                 </div>
               </motion.div>
             )}
@@ -278,85 +115,52 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-        {metrics.map((metric) => (
-          <MetricCard key={metric.key} title={metric.title} value={latest ? (latest[metric.key as keyof ProcessDataItem]) : "..."} unit={metric.unit} color={metric.color} onClick={() => router.push(`/dashboard/${metric.key}`)} />
-        ))}
+      {/* --- 메인 레이아웃: flex-1과 overflow-hidden으로 내부 고정 --- */}
+      <div className="flex-1 grid grid-cols-12 gap-4 overflow-hidden min-h-0">
+        
+        {/* 왼쪽 섹션 (7/12 비율): Row 1, 2, 3 */}
+        <div className="col-span-12 lg:col-span-7 flex flex-col gap-4 overflow-hidden">
+          {/* Row1: 상태 요약 (높이 고정) */}
+          <div className="flex-none">
+            <Row1Status />
+          </div>
+          {/* Row2: 이벤트 리스트 (유연한 높이) */}
+          <div className="flex-1 min-h-0">
+            <Row2Alerts />
+          </div>
+          {/* Row3: 예측 그래프 (유연한 높이) */}
+          <div className="flex-1 min-h-0">
+            <Row3Charts />
+          </div>
+        </div>
+
+        {/* 오른쪽 섹션 (5/12 비율): Row 4, 5 */}
+        <div className="col-span-12 lg:col-span-5 flex flex-col gap-4 overflow-hidden">
+          {/* Row 4: 리스크 상세 (비중 55%) */}
+          <div className="flex-[0.55] min-h-0">
+            <Row4RiskDetail />
+          </div>
+          {/* Row 5: 운영 권고 및 메모 (비중 45%) */}
+          <div className="flex-[0.45] min-h-0">
+            <Row5ActionPanel />
+          </div>
+        </div>
       </div>
 
-      {userRole !== "ROLE_VIEWER" && (
-        <div className="space-y-12">
-          <section className="bg-slate-800/30 p-8 rounded-3xl border border-white/5 backdrop-blur-md">
-            <h3 className="text-xl font-bold mb-8 flex items-center gap-3 text-white">
-              <span className="text-blue-500">📝</span> 실시간 업무 공유
-            </h3>
-            <div className="flex gap-4 mb-10">
-              <input type="text" value={newMemoContent} onChange={(e) => setNewMemoContent(e.target.value)} placeholder="업무 내용을 입력 후 Enter..." className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 focus:border-blue-500 outline-none transition-all" onKeyDown={(e) => e.key === "Enter" && handleCreateMemo()} />
-              <button onClick={handleCreateMemo} disabled={isMemoLoading} className="px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl font-bold transition-all">{isMemoLoading ? "등록 중..." : "등록"}</button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {memos.map((memo) => (
-                <div key={memo.memoNo} className="relative bg-white/5 p-6 rounded-2xl border border-white/5 hover:border-blue-500/30 transition-all group">
-                  <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {(userRole === "ROLE_ADMIN" || memo.createMember?.userId === userId) && (
-                      <>
-                        <button onClick={() => handleCompleteMemo(memo.memoNo)} className="px-2 py-1 hover:bg-blue-500/20 rounded text-blue-300 text-[10px] font-bold">완료</button>
-                        <button 
-                          onClick={() => {
-                            setEditingMemoId(memo.memoNo);
-                            setEditContent(memo.content);
-                          }} 
-                          className="px-2 py-1 hover:bg-emerald-500/20 rounded text-emerald-400 text-[10px] font-bold"
-                        >
-                          수정
-                        </button>
-                        <button onClick={() => handleAbsoluteDelete(memo.memoNo)} className="px-2 py-1 hover:bg-red-500/20 rounded text-red-400 text-[10px] font-bold">삭제</button>
-                      </>
-                    )}
-                  </div>
-                  
-                  {editingMemoId === memo.memoNo ? (
-                    <div className="mb-4">
-                      <textarea 
-                        value={editContent} 
-                        onChange={(e) => setEditContent(e.target.value)}
-                        className="w-full bg-slate-900 border border-blue-500/50 rounded-lg p-2 text-sm text-white outline-none mb-2"
-                        rows={3}
-                      />
-                      <div className="flex gap-2">
-                        <button onClick={() => handleUpdateMemo(memo.memoNo)} className="text-[10px] bg-blue-600 px-2 py-1 rounded">저장</button>
-                        <button onClick={() => setEditingMemoId(null)} className="text-[10px] bg-slate-600 px-2 py-1 rounded">취소</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-slate-200 text-sm mb-6 leading-relaxed pr-14 break-all whitespace-pre-wrap">{memo.content}</p>
-                  )}
-
-                  <div className="flex justify-between items-center pt-4 border-t border-white/5 text-[11px] text-slate-500">
-                    <span className="font-medium text-blue-400">{memo.createMember?.userName || "작성자"}</span>
-                    <span>{memo.createTime ? new Date(memo.createTime).toLocaleDateString() : "-"}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="bg-slate-900/40 p-8 rounded-3xl border border-white/5 opacity-50">
-            <h3 className="text-lg font-bold mb-6 text-slate-400">완료된 업무 이력</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {oldMemos.map((memo) => (
-                <div key={memo.memoNo} className="p-4 bg-white/5 rounded-xl border border-white/5 text-[11px]">
-                  <p className="text-slate-400 truncate">{memo.content}</p>
-                  <p className="text-slate-600 mt-2">{memo.createMember?.userName || "작성자"}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-      )}
-
-      <EditProfileModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} currentUser={{ userNo, id: userId, name: userName, role: userRole }} onUpdateSuccess={(newId, newName) => { setUserId(newId); setUserName(newName); }} />
-      <AddMemberModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSuccess={fetchMemos} />
+      {/* 개인정보 수정 모달 */}
+      <EditProfileModal 
+        isOpen={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)} 
+        currentUser={{ 
+          userNo: userData.userNo, 
+          id: userData.userId, 
+          name: userData.userName, 
+          role: userData.userRole 
+        }} 
+        onUpdateSuccess={(newId, newName) => { 
+          setUserData(prev => ({ ...prev, userId: newId, userName: newName })); 
+        }} 
+      />
     </div>
   );
 }
