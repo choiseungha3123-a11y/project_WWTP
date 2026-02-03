@@ -19,7 +19,7 @@ interface ProcessDataItem {
 interface Memo {
   memoNo: number;
   content: string;
-  createTime: string; // 백엔드 엔티티와 일치
+  createTime: string;
   createMember: {
     userId: string;
     userName: string;
@@ -75,21 +75,19 @@ export default function DashboardPage() {
   const [newMemoContent, setNewMemoContent] = useState("");
   const [isMemoLoading, setIsMemoLoading] = useState(false);
 
-  // --- 중요: 인증 헤더 생성 및 디버깅 ---
+  // 수정 기능을 위한 추가 상태
+  const [editingMemoId, setEditingMemoId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState("");
+
   const getAuthHeaders = useCallback((): HeadersInit => {
     const token = localStorage.getItem("accessToken");
-    
-    // 콘솔에서 토큰 존재 여부 확인용
     if (!token) {
       console.error("❌ 로컬 스토리지에 accessToken이 없습니다!");
-      return { "Content-Type": "application/json"}
+      return { "Content-Type": "application/json" };
     }
-
     const cleanToken = token.startsWith("Bearer ") ? token.replace("Bearer ", "") : token;
-
     return {
       "Content-Type": "application/json",
-      // Bearer 뒤에 반드시 공백 한 칸이 있어야 합니다.
       "Authorization": `Bearer ${cleanToken.trim()}`,
     };
   }, []);
@@ -103,15 +101,6 @@ export default function DashboardPage() {
         fetch("/api/memo/list?page=0&count=10", { headers }),
         fetch("/api/memo/oldList?page=0&count=10", { headers })
       ]);
-
-      // 응답이 JSON인지 HTML인지 먼저 체크
-      const ct = resActive.headers.get("content-type");
-      if (ct && !ct.includes("application/json")) {
-        const text = await resActive.text();
-        console.error("⚠️ 서버가 JSON이 아닌 HTML을 보냈습니다. (인증/권한 에러 가능성)");
-        console.error("서버 응답 내용 일부:", text.substring(0, 200));
-        return;
-      }
 
       const activeResult = await resActive.json();
       const oldResult = await resOld.json();
@@ -152,6 +141,7 @@ export default function DashboardPage() {
     fetchMemos();
   }, [router, fetchMemos]);
 
+  // 메모 작성
   const handleCreateMemo = async () => {
     if (!newMemoContent.trim()) return;
     setIsMemoLoading(true);
@@ -171,8 +161,33 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDeleteMemo = async (memoNo: number) => {
-    if (!confirm("삭제하시겠습니까?")) return;
+  // 메모 수정 (백엔드 postMemoModify 연결)
+  const handleUpdateMemo = async (memoNo: number) => {
+    if (!editContent.trim()) return;
+    try {
+      const res = await fetch("/api/memo/modify", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ 
+          memoNo: memoNo, 
+          content: editContent 
+        }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setEditingMemoId(null);
+        fetchMemos();
+      } else {
+        alert(result.errorMsg);
+      }
+    } catch (err) {
+      console.error("수정 오류:", err);
+    }
+  };
+
+  // 메모 완료 (비활성화 - 백엔드 postMemoDisable 연결)
+  const handleCompleteMemo = async (memoNo: number) => {
+    if (!confirm("업무를 완료 처리하시겠습니까?")) return;
     const res = await fetch("/api/memo/disable", {
       method: "POST",
       headers: getAuthHeaders(),
@@ -180,6 +195,26 @@ export default function DashboardPage() {
     });
     const result = await res.json();
     if (result.success) fetchMemos();
+  };
+
+  // 메모 영구 삭제 (백엔드 postMemoDelete 연결)
+  const handleAbsoluteDelete = async (memoNo: number) => {
+    if (!confirm("이 메모를 영구적으로 삭제하시겠습니까? (복구 불가)")) return;
+    try {
+      const res = await fetch("/api/memo/delete", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ memoNo }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        fetchMemos();
+      } else {
+        alert(result.errorMsg);
+      }
+    } catch (err) {
+      console.error("삭제 오류:", err);
+    }
   };
 
   const handleLogout = () => {
@@ -262,12 +297,41 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {memos.map((memo) => (
                 <div key={memo.memoNo} className="relative bg-white/5 p-6 rounded-2xl border border-white/5 hover:border-blue-500/30 transition-all group">
-                  <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {(userRole === "ROLE_ADMIN" || memo.createMember?.userId === userId) && (
-                      <button onClick={() => handleDeleteMemo(memo.memoNo)} className="p-1.5 hover:bg-red-500/20 rounded text-red-400 text-xs">삭제</button>
+                      <>
+                        <button onClick={() => handleCompleteMemo(memo.memoNo)} className="px-2 py-1 hover:bg-blue-500/20 rounded text-blue-300 text-[10px] font-bold">완료</button>
+                        <button 
+                          onClick={() => {
+                            setEditingMemoId(memo.memoNo);
+                            setEditContent(memo.content);
+                          }} 
+                          className="px-2 py-1 hover:bg-emerald-500/20 rounded text-emerald-400 text-[10px] font-bold"
+                        >
+                          수정
+                        </button>
+                        <button onClick={() => handleAbsoluteDelete(memo.memoNo)} className="px-2 py-1 hover:bg-red-500/20 rounded text-red-400 text-[10px] font-bold">삭제</button>
+                      </>
                     )}
                   </div>
-                  <p className="text-slate-200 text-sm mb-6 leading-relaxed pr-8">{memo.content}</p>
+                  
+                  {editingMemoId === memo.memoNo ? (
+                    <div className="mb-4">
+                      <textarea 
+                        value={editContent} 
+                        onChange={(e) => setEditContent(e.target.value)}
+                        className="w-full bg-slate-900 border border-blue-500/50 rounded-lg p-2 text-sm text-white outline-none mb-2"
+                        rows={3}
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={() => handleUpdateMemo(memo.memoNo)} className="text-[10px] bg-blue-600 px-2 py-1 rounded">저장</button>
+                        <button onClick={() => setEditingMemoId(null)} className="text-[10px] bg-slate-600 px-2 py-1 rounded">취소</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-slate-200 text-sm mb-6 leading-relaxed pr-14 break-all whitespace-pre-wrap">{memo.content}</p>
+                  )}
+
                   <div className="flex justify-between items-center pt-4 border-t border-white/5 text-[11px] text-slate-500">
                     <span className="font-medium text-blue-400">{memo.createMember?.userName || "작성자"}</span>
                     <span>{memo.createTime ? new Date(memo.createTime).toLocaleDateString() : "-"}</span>
