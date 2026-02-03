@@ -86,5 +86,19 @@ public class MemoService {
 		disableMemo.setDisableTime(LocalDateTime.now());
 		memoRepo.save(disableMemo);
 	}
+	
+	public void deleteMemo(Member member, long memoNo) throws Exception {
+		Optional<Memo> opt = memoRepo.findByMemoNoAndDisableMemberIsNull(memoNo);
+		if(opt.isEmpty())
+			throw new Exception("memoNo가 올바르지 않습니다.");
+		Memo deleteMemo = opt.get();
+		logRepo.save(MemoLog.builder()
+				.type("delete")
+				.memoNo(memoNo)
+				.currentContent(deleteMemo.getContent())
+				.member(member)
+				.build());
+		memoRepo.delete(deleteMemo);
+	}
 
 }

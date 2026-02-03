@@ -277,6 +277,48 @@ public class MemoController {
 		return ResponseEntity.ok().body(res);
 	}
 	
+	@PostMapping("/delete")
+	@Operation(summary="메모 삭제", description = "작성된 메모를 삭제합니다.")
+	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
+	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = memoDisableDTO.class))
+	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
+	public ResponseEntity<Object> postMemoDelete(
+			HttpServletRequest request,
+			@RequestBody memoDisableDTO req) {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		// 토큰 추출 및 검증
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		if(member.getRole() == Role.ROLE_VIEWER) {
+			res.setSuccess(false);
+			res.setErrorMsg("권한이 올바르지 않습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		try {
+			memoService.deleteMemo(member, req.memoNo);
+		}
+		catch(Exception e) {
+			res.setSuccess(false);
+			res.setErrorMsg(e.getMessage());
+		}
+		
+		
+		return ResponseEntity.ok().body(res);
+	}
+	
 	@GetMapping("/oldList")
 	@Operation(summary="비활성화된 메모 조회", description = "비활성화된 메모 데이터를 조회합니다.")
 	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")

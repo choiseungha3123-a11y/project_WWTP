@@ -37,25 +37,13 @@ sudo certbot certonly -d *.projectwwtp.kro.kr --manual --preferred-challenges dn
 -사용중인 포트 확인-
 sudo ss -tunlp
 
-도메인 인증서 재발급(와일드카드를 이용해서 받아야 주의요망이 사라짐 *****)
-
-
 http://10.125.121.176:8081/swagger-ui/index.html
-
-80을 8080으로
-sudo iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 80 -j REDIRECT --to-port 8080
-
-sudo certbot certonly -d *.projectwwtp.kro.kr --manual --preferred-challenges dns
-https://jun-codinghistory.tistory.com/651
 
 
 
 
 
 해야할 일 : 
-	HTTP 인증 및 도메인 처리
-	
-
 	데이터 관리
 		- 특히 데이터 수집 이력은 별도 기록
 		- 수집 시점, 조회기간, 수집 개수
@@ -111,3 +99,5 @@ https://jun-codinghistory.tistory.com/651
 -2026-02-02	Member API 명칭 변경
 -2026-02-02	swagger UI 용 어노테이션 추가 정리
 -2026-02-02	로그인 실패 이력 처리 추가
+-2026-02-03	*.projectwwtp.kro.kr 도메인에 대한 인증서 발급
+-2026-02-03	메모 삭제 API 추가
