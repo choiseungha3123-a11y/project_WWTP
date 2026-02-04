@@ -130,61 +130,69 @@ export default function MemberManagementPage() {
       </div>
 
       {/* 리스트 테이블 */}
-      <div className="max-w-6xl mx-auto bg-slate-800/40 rounded-3xl border border-white/10 overflow-hidden backdrop-blur-md shadow-2xl">
-        <table className="w-full text-sm sm:text-base">
-          <thead>
-            <tr className="border-b border-white/5 bg-white/5 text-slate-400 text-xs uppercase tracking-wider">
-              <th className="p-6 text-left font-semibold">No</th>
-              <th className="p-6 text-left font-semibold">아이디</th>
-              <th className="p-6 text-left font-semibold">이메일</th> {/* [추가] */}
-              <th className="p-6 text-left font-semibold">이름</th>
-              <th className="p-6 text-left font-semibold">권한</th>
-              <th className="p-6 text-center font-semibold">관리 액션</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {loading ? (
-              <tr><td colSpan={6} className="p-20 text-center text-slate-500 animate-pulse">데이터 로딩 중...</td></tr>
-            ) : members.length === 0 ? (
-              <tr><td colSpan={6} className="p-20 text-center text-slate-500">등록된 사원이 없습니다.</td></tr>
-            ) : (
-              members.map((mem) => (
-                <motion.tr 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
-                  key={mem.userNo} 
-                  className="hover:bg-white/5 transition-colors group"
+<div className="max-w-6xl mx-auto bg-slate-800/40 rounded-3xl border border-white/10 overflow-hidden backdrop-blur-md shadow-2xl">
+  <table className="w-full text-sm sm:text-base table-fixed"> 
+    <thead>
+      <tr className="border-b border-white/5 bg-white/5 text-slate-400 text-xs uppercase tracking-wider">
+        <th className="p-6 text-center font-semibold w-16">No</th>
+        <th className="p-6 text-center font-semibold">아이디</th>
+        <th className="p-6 text-center font-semibold w-1/4">이메일</th> 
+        <th className="p-6 text-center font-semibold">이름</th>
+        <th className="p-6 text-center font-semibold">권한</th>
+        <th className="p-6 text-center font-semibold">관리 액션</th>
+      </tr>
+    </thead>
+    <tbody className="divide-y divide-white/5">
+      {loading ? (
+        <tr><td colSpan={6} className="p-20 text-center text-slate-500 animate-pulse">데이터 로딩 중...</td></tr>
+      ) : members.length === 0 ? (
+        <tr><td colSpan={6} className="p-20 text-center text-slate-500">등록된 사원이 없습니다.</td></tr>
+      ) : (
+        members.map((mem) => (
+          <motion.tr 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            key={mem.userNo} 
+            className="hover:bg-white/5 transition-colors group"
+          >
+            <td className="p-6 text-center text-slate-500 text-sm">{mem.userNo}</td>
+            <td className="p-6 text-center font-bold text-blue-100">{mem.userId}</td>
+            <td className="p-6 text-center">
+              <div 
+                className="max-w-xs mx-auto text-slate-400 text-sm italic truncate" 
+                title={mem.userEmail} 
+              >
+                {mem.userEmail || "-"}
+              </div>
+            </td>
+            <td className="p-6 text-center text-slate-300 font-medium">{mem.userName}</td>
+            <td className="p-6 text-center text-sm">
+              <span className={`inline-block px-3 py-1 rounded-full text-xs ${mem.role === 'ROLE_ADMIN' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
+                {mem.role}
+              </span>
+            </td>
+            <td className="p-6 text-center">
+              <div className="flex justify-center gap-2">
+                <button 
+                  onClick={() => handleResetPassword(mem.userNo, mem.userId)}
+                  className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap"
                 >
-                  <td className="p-6 text-slate-500 text-sm">{mem.userNo}</td>
-                  <td className="p-6 font-bold text-blue-100">{mem.userId}</td>
-                  {/* [추가] 이메일 셀 */}
-                  <td className="p-6 text-slate-400 text-sm italic">{mem.userEmail || "-"}</td>
-                  <td className="p-6 text-slate-300 font-medium">{mem.userName}</td>
-                  <td className="p-6 text-sm">
-                    <span className={`px-3 py-1 rounded-full text-xs ${mem.role === 'ROLE_ADMIN' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
-                      {mem.role}
-                    </span>
-                  </td>
-                  <td className="p-6 flex justify-center gap-2">
-                    <button 
-                      onClick={() => handleResetPassword(mem.userNo, mem.userId)}
-                      className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-colors"
-                    >
-                      비밀번호 초기화
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(mem.userNo, mem.userId)}
-                      className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-3 py-1.5 rounded-lg text-xs transition-all border border-red-500/20"
-                    >
-                      삭제
-                    </button>
-                  </td>
-                </motion.tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                  비밀번호 초기화
+                </button>
+                <button 
+                  onClick={() => handleDelete(mem.userNo, mem.userId)}
+                  className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-3 py-1.5 rounded-lg text-xs transition-all border border-red-500/20"
+                >
+                  삭제
+                </button>
+              </div>
+            </td>
+          </motion.tr>
+        ))
+      )}
+    </tbody>
+  </table>
+</div>
 
       <AddMemberModal 
         isOpen={isAddModalOpen} 
