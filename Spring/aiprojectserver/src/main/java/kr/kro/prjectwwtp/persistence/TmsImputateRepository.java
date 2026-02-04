@@ -9,4 +9,5 @@ import kr.kro.prjectwwtp.domain.TmsImputate;
 
 public interface TmsImputateRepository extends JpaRepository<TmsImputate, Long>{
 	List<TmsImputate> findByTmsTimeBetween(LocalDateTime start, LocalDateTime end);
+	boolean existsByTmsTime(LocalDateTime time);
 }

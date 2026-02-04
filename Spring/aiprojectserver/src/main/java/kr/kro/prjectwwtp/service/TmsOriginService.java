@@ -180,21 +180,19 @@ public class TmsOriginService {
 		LocalDateTime start = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
 		LocalDateTime end = LocalDateTime.of(start.getYear(), start.getMonth(), start.getDayOfMonth(), 23, 59, 59);
 		List<TmsOrigin> list = tmsOriginRepo.findByTmsTimeBetween(start, end);
-		System.out.println("size : " + list.size());
+		System.out.println("getTmsOriginListByDate size : " + list.size());
 		return list;
 	}
 	
-	public List<TmsImputate> getTmsImputateListByDate(String dateStr) {
-		LocalDateTime start = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
-		LocalDateTime end = LocalDateTime.of(start.getYear(), start.getMonth(), start.getDayOfMonth(), 23, 59, 59);
+	public List<TmsImputate> getTmsImputateListByDate(LocalDateTime end) {
+		LocalDateTime start = end.minusDays(1).minusMinutes(1);
 		List<TmsImputate> list = tmsImputateRepo.findByTmsTimeBetween(start, end);
-		System.out.println("size : " + list.size());
+		System.out.println("getTmsImputateListByDate size : " + list.size());
 		return list;
 	}
 	
-	public List<TmsImputate> imputate(String dateStr) {
-		LocalDateTime start = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
-		LocalDateTime end = LocalDateTime.of(start.getYear(), start.getMonth(), start.getDayOfMonth(), 23, 59, 59);
+	public List<TmsImputate> imputate(LocalDateTime end) {
+		LocalDateTime start = end.minusDays(1).minusMinutes(1);
 		List<TmsOrigin> origin = tmsOriginRepo.findByTmsTimeBetween(start, end);
 		
 		System.out.println("[imputate] origin size=" + origin.size());
@@ -568,6 +566,12 @@ public class TmsOriginService {
 	
 	public void saveTmsImputateList(List<TmsImputate> list) {
 		if(list == null || list.size() == 0) return;
-		insertRepo.TmsImputateInsert(list);
+		List<TmsImputate> addList = new ArrayList<>();
+		for(TmsImputate tms : list) {
+			if(!tmsImputateRepo.existsByTmsTime(tms.getTmsTime())) {
+				addList.add(tms);
+			}
+		}
+		insertRepo.TmsImputateInsert(addList);
 	}
 }

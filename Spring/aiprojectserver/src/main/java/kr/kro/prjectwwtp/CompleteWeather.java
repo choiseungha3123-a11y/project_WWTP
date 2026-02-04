@@ -38,12 +38,6 @@ public class CompleteWeather implements ApplicationRunner {
 	private final WeatherAPILogService logService;
 	private RestTemplate restTemplate = new RestTemplate();
 	
-	@Value("${scheduler.delay_term}")
-	private int delayTerm;
-	private int delayCount = 0;
-	private int fetchListCount = -1;
-	@Value("${scheduler.delay}")
-	private int delaytime; 
 	@Value("${scheduler.enable}")
 	private boolean enable;
 	
@@ -69,26 +63,13 @@ public class CompleteWeather implements ApplicationRunner {
 	}
 	
 
-	@Scheduled(fixedDelayString  = "${scheduler.delay}") 
+	@Scheduled(fixedDelayString  = "${scheduler.delay_term}") 
 	public void completeWeatherData() {
 		if(isFirst) {
 			isFirst = false;
 			return;
 		}
 		if(!enable) return;
-		if(fetchListCount == 0)
-		{
-			++delayCount;
-			if(delayCount == delayTerm / delaytime)
-			{
-				fetchListCount = -1;
-				System.out.println("30 minute delayed");
-			}
-			return;
-		}
-		
-		delayCount = 0;
-		fetchListCount = 0;
 		
 		int[] stnlist = { 368,		// 구리 수택동
 				569, // 구리 토평동
@@ -107,7 +88,7 @@ public class CompleteWeather implements ApplicationRunner {
 				//System.out.println("now : " + now);
 				if(complete != null) {
 					last = complete.getDataTime();
-					fetchListCount = dataCount = complete.getDataSize();
+					dataCount = complete.getDataSize();
 					
 				}
 				

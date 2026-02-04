@@ -1,7 +1,8 @@
 package kr.kro.prjectwwtp.controller;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.TimeZone;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -24,9 +25,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
+import kr.kro.prjectwwtp.domain.TmsImputate;
 import kr.kro.prjectwwtp.domain.TmsLog;
 import kr.kro.prjectwwtp.domain.TmsOrigin;
 import kr.kro.prjectwwtp.domain.responseDTO;
@@ -48,6 +51,11 @@ public class TmsOriginController {
 	
 	@Value("${spring.FastAPI.URI}")
 	private String fastAPIURI;
+	
+	@PostConstruct
+	public void init() {
+		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+	}
 	
 	@ExceptionHandler(MissingServletRequestParameterException.class)
 	public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex) {
@@ -207,12 +215,18 @@ public class TmsOriginController {
 //				// 보간된 데이터를 CSV 파일로 저장
 //				tmsOriginService.saveToCsv(list, csvFilePath);
 //			} 
-/*
-			List<TmsImputate> list = tmsOriginService.getTmsImputateListByDate(time);
 			
-			if(list == null || list.size() == 0) {
+			LocalDateTime fakeNow = tmsSummaryService.getFakeNow();
+			LocalDateTime now = LocalDateTime.now();
+			fakeNow = fakeNow.withHour(now.getHour());
+			fakeNow = fakeNow.withMinute(now.getMinute());
+
+
+			List<TmsImputate> list = tmsOriginService.getTmsImputateListByDate(fakeNow);
+			
+			if(list == null || list.size() < 1440) {
 				// 보간된 데이터가 없으면 보간 수행
-				list = tmsOriginService.imputate(time);
+				list = tmsOriginService.imputate(fakeNow);
 				tmsOriginService.saveTmsImputateList(list);
 			}
 			
@@ -229,9 +243,7 @@ public class TmsOriginController {
 					.time(time)
 					.count(list.size())
 					.build());
-*/		
-			List<Date> list = tmsSummaryService.getFakeDatesList();
-			System.out.println("Fake Dates: " + list);
+								
 		} catch (Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
