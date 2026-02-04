@@ -2,6 +2,7 @@ package kr.kro.prjectwwtp.controller;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -25,6 +26,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
+import kr.kro.prjectwwtp.domain.TmsImputate;
 import kr.kro.prjectwwtp.domain.TmsOrigin;
 import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.service.TmsOriginService;
@@ -38,6 +40,9 @@ import lombok.RequiredArgsConstructor;
 @Tag(name="TmsOriginController", description = "TMS Origin API")
 public class TmsOriginController {
 	private final TmsOriginService tmsOriginService;
+	
+	@Value("${spring.FastAPI.URI}")
+	private String fastAPIURI;
 	
 	@ExceptionHandler(MissingServletRequestParameterException.class)
 	public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex) {
@@ -176,8 +181,31 @@ public class TmsOriginController {
 		}
 		
 		try {
-			List<TmsOrigin> list = tmsOriginService.imputate(time);
-			for(TmsOrigin t : list) {
+			/*
+			// CSV 파일 체크
+			String csvFilePath = "Downloads/imputated_data_" + time + ".csv";
+			
+			List<TmsOrigin> list = tmsOriginService.loadFromCsv(csvFilePath);
+			if(list == null || list.size() == 0) {
+				// CSV 파일이 없으면 보간 수행
+				list = tmsOriginService.imputate(time);
+				// 보간된 데이터를 CSV 파일로 저장
+				tmsOriginService.saveToCsv(list, csvFilePath);
+			} 
+			*/
+			List<TmsImputate> list = tmsOriginService.getTmsImputateListByDate(time);
+			
+			if(list == null || list.size() == 0) {
+				// 보간된 데이터가 없으면 보간 수행
+				list = tmsOriginService.imputate(time);
+				tmsOriginService.saveTmsImputateList(list);
+			}
+			
+//			String csvFilePath = "Downloads/imputated_data_" + time + ".csv";
+//			tmsOriginService.saveToCsv(list, csvFilePath);
+			// list를 파이썬 faseapi로 보내서 예측 수행 후 결과 저장
+			
+			for(TmsImputate t : list) {
 				res.addData(t);
 			}
 			

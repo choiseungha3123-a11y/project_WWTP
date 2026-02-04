@@ -1,7 +1,11 @@
 package kr.kro.prjectwwtp.service;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -15,14 +19,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import kr.kro.prjectwwtp.domain.TmsImputate;
 import kr.kro.prjectwwtp.domain.TmsLog;
 import kr.kro.prjectwwtp.domain.TmsOrigin;
-import kr.kro.prjectwwtp.imputation.TmsDataProcessor;
-import kr.kro.prjectwwtp.imputation.TmsDataProcessor.ImputationConfig;
-import kr.kro.prjectwwtp.imputation.TmsDataProcessor.OutlierConfig;
+import kr.kro.prjectwwtp.persistence.TmsImputateRepository;
 import kr.kro.prjectwwtp.persistence.TmsLogRepository;
-import kr.kro.prjectwwtp.persistence.TmsOriginInsertRepository;
+import kr.kro.prjectwwtp.persistence.TmsInsertRepository;
 import kr.kro.prjectwwtp.persistence.TmsOriginRepository;
+import kr.kro.prjectwwtp.service.TmsImputateService.ImputationConfig;
+import kr.kro.prjectwwtp.service.TmsImputateService.OutlierConfig;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -30,8 +35,9 @@ import lombok.RequiredArgsConstructor;
 public class TmsOriginService {
 
 	private final TmsOriginRepository tmsOriginRepo;
+	private final TmsImputateRepository tmsImputateRepo;
 	private final TmsLogRepository logRepo;
-	private final TmsOriginInsertRepository insertRepo;
+	private final TmsInsertRepository insertRepo;
 
 	/**
 	 * Parse CSV file and save TmsOrigin entries.
@@ -134,11 +140,25 @@ public class TmsOriginService {
 		return Integer.parseInt(t);
 	}
 
+	public static Long parseLongOrNull(String s) {
+		if (s == null) return null;
+		String t = s.trim();
+		if (t.length() == 0) return null;
+		if (t.equalsIgnoreCase("NA") || t.equalsIgnoreCase("null")) return null;
+		try {
+			return Long.parseLong(t);
+		} catch (NumberFormatException e) {
+			return null;
+		}
+	}
+
 	public static LocalDateTime parseDateTime(String s) {
 		String str = s.trim();
 		// try several common patterns
 		String[] patterns = new String[] {
+			"yyyy-MM-dd HH:mm:ss",
 			"M/d/yy H:mm",
+			"yyyy-MM-dd'T'HH:mm:ss",
 		};
 		for (String p : patterns) {
 			try {
@@ -164,36 +184,45 @@ public class TmsOriginService {
 		return list;
 	}
 	
-	public List<TmsOrigin> imputate(String dateStr) {
+	public List<TmsImputate> getTmsImputateListByDate(String dateStr) {
+		LocalDateTime start = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
+		LocalDateTime end = LocalDateTime.of(start.getYear(), start.getMonth(), start.getDayOfMonth(), 23, 59, 59);
+		List<TmsImputate> list = tmsImputateRepo.findByTmsTimeBetween(start, end);
+		System.out.println("size : " + list.size());
+		return list;
+	}
+	
+	public List<TmsImputate> imputate(String dateStr) {
 		LocalDateTime start = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
 		LocalDateTime end = LocalDateTime.of(start.getYear(), start.getMonth(), start.getDayOfMonth(), 23, 59, 59);
 		List<TmsOrigin> origin = tmsOriginRepo.findByTmsTimeBetween(start, end);
 		
 		System.out.println("[imputate] origin size=" + origin.size());
 		
-		// 1분 단위로 1440개 행 생성
+		// 1분 단위로 1440개의 데이터를 가진 Map 생성
 		Map<LocalDateTime, TmsOrigin> dataMap = new HashMap<>();
 		for (TmsOrigin tms : origin) {
 			dataMap.put(tms.getTmsTime(), tms);
 		}
 		
+		// 시간 초기화
 		List<LocalDateTime> times = new ArrayList<>();
 		for (int i = 0; i < 1440; i++) {
 			times.add(start.plusMinutes(i));
 		}
 		
-		// 1440개 행으로 DataFrame 구성 (NaN으로 초기화)
+		// 데이터 NaN으로 초기화
 		double[] toc = new double[1440];
 		double[] ph = new double[1440];
 		double[] ss = new double[1440];
-		int[] flux = new int[1440];
+		double[] flux = new double[1440];
 		double[] tn = new double[1440];
 		double[] tp = new double[1440];
 		
 		Arrays.fill(toc, Double.NaN);
 		Arrays.fill(ph, Double.NaN);
 		Arrays.fill(ss, Double.NaN);
-		Arrays.fill(flux, Integer.MIN_VALUE);
+		Arrays.fill(flux, Double.NaN);
 		Arrays.fill(tn, Double.NaN);
 		Arrays.fill(tp, Double.NaN);
 		
@@ -211,43 +240,46 @@ public class TmsOriginService {
 			}
 		}
 		
-		System.out.println("[imputate] after reindex rows=1440");
+		System.out.println("[imputate] origin 데이터로 1440개의 배열 생성");
 		
 		// 2) 결측치 보간
 		ImputationConfig impConfig = new ImputationConfig();
-		toc = TmsDataProcessor.imputeMissingWithStrategy(toc, impConfig);
-		ph = TmsDataProcessor.imputeMissingWithStrategy(ph, impConfig);
-		ss = TmsDataProcessor.imputeMissingWithStrategy(ss, impConfig);
-		tn = TmsDataProcessor.imputeMissingWithStrategy(tn, impConfig);
-		tp = TmsDataProcessor.imputeMissingWithStrategy(tp, impConfig);
+		toc = TmsImputateService.imputeMissingWithStrategy(toc, impConfig);
+		ph = TmsImputateService.imputeMissingWithStrategy(ph, impConfig);
+		ss = TmsImputateService.imputeMissingWithStrategy(ss, impConfig);
+		flux = TmsImputateService.imputeMissingWithStrategy(flux, impConfig);
+		tn = TmsImputateService.imputeMissingWithStrategy(tn, impConfig);
+		tp = TmsImputateService.imputeMissingWithStrategy(tp, impConfig);
 		
-		System.out.println("[imputate] after imputation rows=1440");
+		System.out.println("[imputate] 데이터 별로 결측치 보간");
 		
 		// 3) 이상치 탐지 및 처리
 		OutlierConfig outConfig = new OutlierConfig();
-		toc = TmsDataProcessor.detectAndHandleOutliers(toc, "toc", outConfig);
-		ph = TmsDataProcessor.detectAndHandleOutliers(ph, "ph", outConfig);
-		ss = TmsDataProcessor.detectAndHandleOutliers(ss, "ss", outConfig);
-		tn = TmsDataProcessor.detectAndHandleOutliers(tn, "tn", outConfig);
-		tp = TmsDataProcessor.detectAndHandleOutliers(tp, "tp", outConfig);
+		toc = TmsImputateService.detectAndHandleOutliers(toc, "toc", outConfig);
+		ph = TmsImputateService.detectAndHandleOutliers(ph, "ph", outConfig);
+		ss = TmsImputateService.detectAndHandleOutliers(ss, "ss", outConfig);
+		flux = TmsImputateService.detectAndHandleOutliers(flux, "flux", outConfig);
+		tn = TmsImputateService.detectAndHandleOutliers(tn, "tn", outConfig);
+		tp = TmsImputateService.detectAndHandleOutliers(tp, "tp", outConfig);
 		
-		System.out.println("[imputate] after outlier handling rows=1440");
+		System.out.println("[imputate] 이상치 처리");
 		
-		// 4) List<TmsOrigin>으로 변환
-		List<TmsOrigin> result = new ArrayList<>();
+		// 4) List<TmsImputate>으로 변환
+		List<TmsImputate> result = new ArrayList<>();
 		for (int i = 0; i < 1440; i++) {
-			TmsOrigin t = new TmsOrigin();
+			TmsImputate t = new TmsImputate();
 			t.setTmsTime(times.get(i));
 			t.setToc(Double.isNaN(toc[i]) ? null : toc[i]);
 			t.setPh(Double.isNaN(ph[i]) ? null : ph[i]);
 			t.setSs(Double.isNaN(ss[i]) ? null : ss[i]);
-			t.setFlux(flux[i] == Integer.MIN_VALUE ? null : flux[i]);
+			Double fluxValue = Double.isNaN(flux[i]) ? null : flux[i];
+			t.setFlux((int)fluxValue.doubleValue());
 			t.setTn(Double.isNaN(tn[i]) ? null : tn[i]);
 			t.setTp(Double.isNaN(tp[i]) ? null : tp[i]);
 			result.add(t);
 		}
 		
-		System.out.println("[imputate] final result size=" + result.size());
+		System.out.println("[imputate] 데이터 구성=" + result.size());
 		checkNullValues(result);
 		return result;
 	}
@@ -258,7 +290,7 @@ public class TmsOriginService {
 	 * 
 	 * @param list TmsOrigin 리스트
 	 */
-	private void checkNullValues(List<TmsOrigin> list) {
+	private void checkNullValues(List<TmsImputate> list) {
 		if (list == null || list.isEmpty()) {
 			System.out.println("[NULL Check] 리스트가 비어있습니다");
 			return;
@@ -273,7 +305,7 @@ public class TmsOriginService {
 		int tpNullCount = 0;
 		
 		// NULL 값 개수 계산
-		for (TmsOrigin tms : list) {
+		for (TmsImputate tms : list) {
 			if (tms.getToc() == null) tocNullCount++;
 			if (tms.getPh() == null) phNullCount++;
 			if (tms.getSs() == null) ssNullCount++;
@@ -299,5 +331,243 @@ public class TmsOriginService {
 		int totalFields = totalRows * 6;
 		System.out.printf("전체 NULL: %d / %d (%.2f%%)%n", totalNulls, totalFields, (double) totalNulls / totalFields * 100);
 		System.out.println("==============================");
+	}
+	
+	/**
+	 * TmsOrigin 리스트를 CSV 파일로 저장
+	 * 
+	 * @param list TmsOrigin 리스트
+	 * @param filePath 저장할 파일 경로 (상대 경로 또는 절대 경로)
+	 * @return 저장 성공 여부
+	 * @throws Exception 파일 저장 중 발생하는 예외
+	 */
+	public boolean saveToCsv(List<TmsImputate> list, String filePath) throws Exception {
+		if (list == null || list.isEmpty()) {
+			System.out.println("[saveToCsv] 저장할 데이터가 없습니다");
+			return false;
+		}
+		
+		try {
+			// 파일 경로 해석 (홈 디렉토리, 상대 경로, 절대 경로 모두 지원)
+			File file = resolveFilePath(filePath);
+			System.out.println("[saveToCsv] 해석된 파일 경로: " + file.getAbsolutePath());
+			
+			// 파일 경로의 디렉토리 생성
+			File parentDir = file.getParentFile();
+			if (parentDir != null && !parentDir.exists()) {
+				boolean dirCreated = parentDir.mkdirs();
+				if (!dirCreated && !parentDir.exists()) {
+					throw new Exception("디렉토리 생성 실패: " + parentDir.getAbsolutePath());
+				}
+				System.out.println("[saveToCsv] 디렉토리 생성: " + parentDir.getAbsolutePath());
+			}
+			
+			// 부모 디렉토리 쓰기 권한 확인
+			if (parentDir != null && !parentDir.canWrite()) {
+				throw new Exception("디렉토리 쓰기 권한 없음: " + parentDir.getAbsolutePath());
+			}
+			
+			// UTF-8 인코딩으로 CSV 파일 작성
+			try (BufferedWriter bw = new BufferedWriter(
+					new OutputStreamWriter(new FileOutputStream(file.getAbsolutePath()), "UTF-8"))) {
+				
+				// 헤더 작성
+				//bw.write("tmsNo,tmsTime,toc,ph,ss,flux,tn,tp");
+				bw.write("SYS_TIME,TOC_VU,PH_VU,SS_VU,FLUX_VU,TN_VU,TP_VU");
+				bw.newLine();
+				
+				// 데이터 작성
+				for (TmsImputate tms : list) {
+					StringBuilder sb = new StringBuilder();
+					//sb.append(tms.getTmsNo()).append(",");
+					sb.append(formatDateTime(tms.getTmsTime())).append(",");
+					sb.append(formatDouble(tms.getToc())).append(",");
+					sb.append(formatDouble(tms.getPh())).append(",");
+					sb.append(formatDouble(tms.getSs())).append(",");
+					sb.append(formatInteger(tms.getFlux())).append(",");
+					sb.append(formatDouble(tms.getTn())).append(",");
+					sb.append(formatDouble(tms.getTp()));
+					
+					bw.write(sb.toString());
+					bw.newLine();
+				}
+			}
+			
+			System.out.println("[saveToCsv] CSV 파일 저장 성공: " + filePath);
+			System.out.println("[saveToCsv] 저장된 행 수: " + list.size());
+			return true;
+			
+		} catch (Exception e) {
+			System.err.println("[saveToCsv] CSV 파일 저장 중 오류 발생: " + e.getMessage());
+			e.printStackTrace();
+			throw new Exception("CSV 파일 저장 중 오류가 발생했습니다: " + e.getMessage());
+		}
+	}
+	
+	/**
+	 * CSV 파일로부터 TmsOrigin 리스트를 로드
+	 * 
+	 * @param filePath 로드할 파일 경로 (상대 경로 또는 절대 경로)
+	 * @return 로드된 TmsOrigin 리스트
+	 * @throws Exception 파일 로드 중 발생하는 예외
+	 */
+	public List<TmsImputate> loadFromCsv(String filePath) {
+		List<TmsImputate> list = new ArrayList<>();
+		
+		try {
+			// 파일 경로 해석 (홈 디렉토리, 상대 경로, 절대 경로 모두 지원)
+			File file = resolveFilePath(filePath);
+			System.out.println("[loadFromCsv] 해석된 파일 경로: " + file.getAbsolutePath());
+			
+			// 파일 존재 여부 확인
+			if (!file.exists()) {
+				//throw new Exception("파일을 찾을 수 없음: " + file.getAbsolutePath());
+				return null;
+			}
+			
+			// 파일 읽기 권한 확인
+			if (!file.canRead()) {
+				//throw new Exception("파일 읽기 권한 없음: " + file.getAbsolutePath());
+				return null;
+			}
+			
+			// UTF-8 인코딩으로 CSV 파일 읽기
+			try (BufferedReader br = new BufferedReader(
+					new InputStreamReader(new java.io.FileInputStream(file.getAbsolutePath()), "UTF-8"))) {
+				
+				String line;
+				int lineNo = 0;
+				
+				while ((line = br.readLine()) != null) {
+					lineNo++;
+					
+					// 빈 라인 스킵
+					if (line.isEmpty()) {
+						continue;
+					}
+					
+					// 헤더 라인 스킵
+					if (lineNo == 1 && line.contains("tmsNo")) {
+						continue;
+					}
+					
+					// CSV 파싱
+					String[] cols = line.split(",");
+					if (cols.length < 8) {
+						System.out.println("[loadFromCsv] 경고: 라인 " + lineNo + "의 컬럼 수가 부족합니다. 스킵");
+						continue;
+					}
+					
+					try {
+						Long tmsNo = parseLongOrNull(cols[0]);
+						LocalDateTime tmsTime = parseDateTime(cols[1]);
+						Double toc = parseDoubleOrNullEmptyOk(cols[2]);
+						Double ph = parseDoubleOrNullEmptyOk(cols[3]);
+						Double ss = parseDoubleOrNullEmptyOk(cols[4]);
+						Integer flux = parseIntOrNullEmptyOk(cols[5]);
+						Double tn = parseDoubleOrNullEmptyOk(cols[6]);
+						Double tp = parseDoubleOrNullEmptyOk(cols[7]);
+						
+						TmsImputate tms = TmsImputate.builder()
+							.tmsNo(tmsNo)
+							.tmsTime(tmsTime)
+							.toc(toc)
+							.ph(ph)
+							.ss(ss)
+							.flux(flux)
+							.tn(tn)
+							.tp(tp)
+							.build();
+						
+						list.add(tms);
+						
+					} catch (Exception e) {
+						System.out.println("[loadFromCsv] 경고: 라인 " + lineNo + " 파싱 중 오류 발생 - " + e.getMessage() + ", 스킵");
+						continue;
+					}
+				}
+			}
+			
+			System.out.println("[loadFromCsv] CSV 파일 로드 성공: " + filePath);
+			System.out.println("[loadFromCsv] 로드된 행 수: " + list.size());
+			return list;
+			
+		} catch (Exception e) {
+			System.err.println("[loadFromCsv] CSV 파일 로드 중 오류 발생: " + e.getMessage());
+			e.printStackTrace();
+			//throw new Exception("CSV 파일 로드 중 오류가 발생했습니다: " + e.getMessage());
+			return null;
+		}
+	}
+	
+	/**
+	 * LocalDateTime을 문자열로 포맷
+	 * 
+	 * @param dateTime LocalDateTime 객체
+	 * @return 포맷된 문자열 (yyyy-MM-dd HH:mm:ss)
+	 */
+	private String formatDateTime(LocalDateTime dateTime) {
+		if (dateTime == null) {
+			return "";
+		}
+		return dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+	}
+	
+	/**
+	 * Double 값을 문자열로 포맷
+	 * 
+	 * @param value Double 값
+	 * @return 포맷된 문자열 (null이면 빈 문자열)
+	 */
+	private String formatDouble(Double value) {
+		if (value == null || value.isNaN()) {
+			return "";
+		}
+		return String.valueOf(value);
+	}
+	
+	/**
+	 * Integer 값을 문자열로 포맷
+	 * 
+	 * @param value Integer 값
+	 * @return 포맷된 문자열 (null이면 빈 문자열)
+	 */
+	private String formatInteger(Integer value) {
+		if (value == null) {
+			return "";
+		}
+		return String.valueOf(value);
+	}
+	
+	/**
+	 * 파일 경로를 정규화하여 절대 경로로 변환
+	 * ~/Downloads/ 형태의 홈 디렉토리 경로도 처리
+	 * 
+	 * @param filePath 파일 경로 (상대/절대/홈 디렉토리 경로)
+	 * @return 절대 경로 File 객체
+	 */
+	private File resolveFilePath(String filePath) {
+		File file = new File(filePath);
+		
+		// 이미 절대 경로인 경우
+		if (file.isAbsolute()) {
+			return file;
+		}
+		
+		// 홈 디렉토리 경로 처리 (~/ 또는 ~\)
+		if (filePath.startsWith("~" + File.separator) || filePath.startsWith("~/")) {
+			String userHome = System.getProperty("user.home");
+			String relativePath = filePath.substring(2); // ~/ 제거
+			return new File(userHome, relativePath);
+		}
+		
+		// 상대 경로인 경우 현재 작업 디렉토리 기준
+		String workingDir = System.getProperty("user.dir");
+		return new File(workingDir, filePath);
+	}
+	
+	public void saveTmsImputateList(List<TmsImputate> list) {
+		if(list == null || list.size() == 0) return;
+		insertRepo.TmsImputateInsert(list);
 	}
 }

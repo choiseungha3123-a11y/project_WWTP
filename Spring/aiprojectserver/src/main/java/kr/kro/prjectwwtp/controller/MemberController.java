@@ -293,6 +293,10 @@ public class MemberController {
 		return password.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{10,20}$");
 	}
 	
+	boolean validateMail(String email) {
+		return email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+	}
+	
 	@PutMapping("/create")
 	@Operation(summary="맴버 추가", description = "userid/password/userName값을 맴버에 추가")
 	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
@@ -320,6 +324,11 @@ public class MemberController {
 //			res.setSuccess(false);
 //			res.setErrorMsg("비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.");
 //		}
+		if(!validateMail(req.userEmail))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("유효하지 않은 이메일 주소입니다.");
+		}
 		if(JWTUtil.isExpired(request))
 		{
 			res.setSuccess(false);

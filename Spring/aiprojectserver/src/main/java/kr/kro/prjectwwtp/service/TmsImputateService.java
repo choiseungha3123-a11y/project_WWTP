@@ -1,4 +1,4 @@
-package kr.kro.prjectwwtp.imputation;
+package kr.kro.prjectwwtp.service;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,7 +15,7 @@ import java.util.List;
  * - OutlierDetector: 이상치 탐지 (도메인 기반, 통계 기반)
  * - OutlierHandler: 이상치 처리 (EWMA로 대체)
  */
-public class TmsDataProcessor {
+public class TmsImputateService {
 
 	// ==================== 설정 클래스 ====================
 
@@ -91,9 +91,9 @@ public class TmsDataProcessor {
 	 */
 	public static double[] imputeMissingWithStrategy(double[] data, ImputationConfig config) {
 		double[] result = Arrays.copyOf(data, data.length);
-		int shortMinutes = config.shortTermHours * 60;
-		int mediumMinutes = config.mediumTermHours * 60;
-		int rollingMinutes = config.rollingWindow * 60;
+		int shortMinutes = config.shortTermHours * 3600;
+		int mediumMinutes = config.mediumTermHours * 3600;
+		int rollingMinutes = config.rollingWindow * 3600;
 		
 		// 1단계: Forward Fill (단기 결측, limit=short_term_hours)
 		forwardFill(result, shortMinutes);

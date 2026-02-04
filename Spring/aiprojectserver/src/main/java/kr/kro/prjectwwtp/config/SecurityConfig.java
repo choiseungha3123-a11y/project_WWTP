@@ -14,6 +14,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
@@ -34,6 +35,7 @@ public class SecurityConfig {
 
 	private final MemberRepository memberRepo;
 	private final AuthenticationSuccessHandler oauth2SuccessHandler;
+	private final AuthenticationFailureHandler oauth2FailurHandler;
 	private final TokenBlacklistManager tokenBlacklistManager;
 	private final SessionService sessionService;
 	private final AccessLogService logService;
@@ -111,7 +113,11 @@ public class SecurityConfig {
 		http.formLogin(form -> form.disable());
 		
 		// OAuth2 인증 추가
-		http.oauth2Login(oauth2->oauth2.successHandler(oauth2SuccessHandler));
+		http.oauth2Login(oauth2->oauth2
+				.authorizationEndpoint(endpoint -> endpoint.baseUri("/api/oauth2/authorization"))
+				.redirectionEndpoint(endpoint -> endpoint.baseUri("/api/oauth2/code/*"))
+				.failureHandler(oauth2FailurHandler)
+				.successHandler(oauth2SuccessHandler));
 		System.out.println("[SecurityConfig] Filter oauth2Login complete!");
 		
 		// 예외 처리

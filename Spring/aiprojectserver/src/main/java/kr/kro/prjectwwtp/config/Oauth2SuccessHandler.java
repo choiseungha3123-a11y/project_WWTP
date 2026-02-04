@@ -139,7 +139,7 @@ public class Oauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler{
 	 * 클라이언트의 실제 IP 주소 추출
 	 * 프록시 환경에서도 올바른 IP를 가져오도록 처리
 	 */
-	private String getRemoteAddress(HttpServletRequest request) {
+	public static String getRemoteAddress(HttpServletRequest request) {
 		String ip = request.getHeader("X-Forwarded-For");
 		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
 			ip = request.getHeader("Proxy-Client-IP");
