@@ -291,3 +291,4 @@ def detect_and_handle_outliers(df: pd.DataFrame,
             df_out[col] = series
     
     return df_out
+
