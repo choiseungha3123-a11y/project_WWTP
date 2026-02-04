@@ -36,6 +36,8 @@ public class TmsLog {
 	private String type;
 	@Schema(description = "처리 수", example = "0~")
 	private int count;
+	@Schema(description = "요청파라메터의 날짜", example = "20260130")
+	private String time;
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name="userNo")
 	@Schema(description = "요청 회원", example = "1~")

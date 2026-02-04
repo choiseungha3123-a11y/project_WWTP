@@ -1,5 +1,6 @@
 package kr.kro.prjectwwtp.controller;
 
+import java.util.Date;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -26,10 +27,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
-import kr.kro.prjectwwtp.domain.TmsImputate;
+import kr.kro.prjectwwtp.domain.TmsLog;
 import kr.kro.prjectwwtp.domain.TmsOrigin;
 import kr.kro.prjectwwtp.domain.responseDTO;
+import kr.kro.prjectwwtp.persistence.TmsLogRepository;
 import kr.kro.prjectwwtp.service.TmsOriginService;
+import kr.kro.prjectwwtp.service.TmsSummaryService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import lombok.RequiredArgsConstructor;
 
@@ -40,6 +43,8 @@ import lombok.RequiredArgsConstructor;
 @Tag(name="TmsOriginController", description = "TMS Origin API")
 public class TmsOriginController {
 	private final TmsOriginService tmsOriginService;
+	private final TmsLogRepository logRepository;
+	private final TmsSummaryService tmsSummaryService;
 	
 	@Value("${spring.FastAPI.URI}")
 	private String fastAPIURI;
@@ -101,6 +106,11 @@ public class TmsOriginController {
 		}
 		try {
 			int saveCount = tmsOriginService.saveFromCsv(file);
+			logRepository.save(TmsLog.builder()
+									.type("upload")
+									.member(member)
+									.count(saveCount)
+									.build());
 			res.addData("saveCount : " + saveCount);
 		} catch (Exception e) {
 			res.setSuccess(false);
@@ -145,6 +155,12 @@ public class TmsOriginController {
 			for(TmsOrigin t : list) {
 				res.addData(t);
 			}
+			logRepository.save(TmsLog.builder()
+					.type("list")
+					.member(member)
+					.time(time)
+					.count(list.size())
+					.build());
 		} catch (Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
@@ -153,7 +169,7 @@ public class TmsOriginController {
 	}
 	
 	@GetMapping("/imputate")
-	@Operation(summary="실제 측정 데이터 조회", description = "저장된 실제 측정 데이터를 조회합니다.")
+	@Operation(summary="측정 데이터의 결측/이상 값을 처리", description = "결측/이상 값을 처리한 데이터를 조회합니다. 데이터가 없으면 보간을 수행합니다.")
 	@Parameter(name = "time", description= "조회날짜(yyyyMMdd)", example = "20240101")
 	public ResponseEntity<Object> postTmsOriginImputate(
 			HttpServletRequest request,
@@ -181,18 +197,17 @@ public class TmsOriginController {
 		}
 		
 		try {
-			/*
 			// CSV 파일 체크
-			String csvFilePath = "Downloads/imputated_data_" + time + ".csv";
-			
-			List<TmsOrigin> list = tmsOriginService.loadFromCsv(csvFilePath);
-			if(list == null || list.size() == 0) {
-				// CSV 파일이 없으면 보간 수행
-				list = tmsOriginService.imputate(time);
-				// 보간된 데이터를 CSV 파일로 저장
-				tmsOriginService.saveToCsv(list, csvFilePath);
-			} 
-			*/
+//			String csvFilePath = "Downloads/imputated_data_" + time + ".csv";
+//			
+//			List<TmsOrigin> list = tmsOriginService.loadFromCsv(csvFilePath);
+//			if(list == null || list.size() == 0) {
+//				// CSV 파일이 없으면 보간 수행
+//				list = tmsOriginService.imputate(time);
+//				// 보간된 데이터를 CSV 파일로 저장
+//				tmsOriginService.saveToCsv(list, csvFilePath);
+//			} 
+/*
 			List<TmsImputate> list = tmsOriginService.getTmsImputateListByDate(time);
 			
 			if(list == null || list.size() == 0) {
@@ -208,11 +223,19 @@ public class TmsOriginController {
 			for(TmsImputate t : list) {
 				res.addData(t);
 			}
-			
+			logRepository.save(TmsLog.builder()
+					.type("imputate")
+					.member(member)
+					.time(time)
+					.count(list.size())
+					.build());
+*/		
+			List<Date> list = tmsSummaryService.getFakeDatesList();
+			System.out.println("Fake Dates: " + list);
 		} catch (Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
-		}
+		}		 		
 		return ResponseEntity.ok().body(res);
 	}
 
