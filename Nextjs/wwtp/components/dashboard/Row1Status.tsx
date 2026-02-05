@@ -1,22 +1,103 @@
+"use client";
+
+import { useState, useEffect } from "react";
+
+interface TmsRecord {
+  SYS_TIME: string;
+  TOC_VU: number;
+  PH_VU: number;
+  SS_VU: number;
+  FLUX_VU: number;
+  TN_VU: number;
+  TP_VU: number;
+}
+
+interface WeatherRecord {
+  SYS_TIME: string;
+  TA: number;      // 기온
+  RN_15m: number;  // 강우량
+}
+
 export default function Row1Status() {
+  const [tmsData, setTmsData] = useState<TmsRecord | null>(null);
+  const [weatherData, setWeatherData] = useState<WeatherRecord | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true); // Hydration 방지용
+
+    const fetchData = async () => {
+      try {
+        const response = await fetch("http://10.125.121.176:8081/api/tmsOrigin/tmsList");
+        const json = await response.json();
+
+        if (json.success && json.dataList) {
+          // TMS: dataList[0]의 마지막 값
+          const tmsList = json.dataList[0] as TmsRecord[];
+          if (tmsList?.length > 0) setTmsData(tmsList[tmsList.length - 1]);
+
+          // 날씨: dataList[1]의 마지막 값
+          const weatherList = json.dataList[1] as WeatherRecord[];
+          if (weatherList?.length > 0) setWeatherData(weatherList[weatherList.length - 1]);
+        }
+      } catch (error) {
+        console.error("Data fetch error:", error);
+      }
+    };
+
+    fetchData();
+    const timer = setInterval(fetchData, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  if (!isClient) return <div className="grid grid-cols-3 gap-4 h-24 animate-pulse bg-slate-900/50 rounded-2xl" />;
+
   const items = [
-    { label: "유입유량", value: "1,200", status: "normal" },
-    { label: "수위", value: "4.5", status: "warning" },
-    { label: "TMS", value: "정상", status: "normal" },
-    { label: "공정상태", value: "안정", status: "normal" },
-    { label: "운영점수", value: "85", status: "danger" },
-    { label: "데이터", value: "수신중", status: "normal" },
+    { 
+      label: "유입유량", 
+      value: tmsData ? `${tmsData.FLUX_VU.toLocaleString()}` : "-", 
+      status: "normal" 
+    },
+    { 
+      label: "pH | FLUX", 
+      value: tmsData ? `${tmsData.PH_VU.toFixed(1)} | ${tmsData.FLUX_VU}` : "-", 
+      status: (tmsData && (tmsData.PH_VU > 8 || tmsData.PH_VU < 6)) ? "warning" : "normal" 
+    },
+    { 
+      label: "TMS (TOC/TN/TP/SS)", 
+      value: tmsData ? `${tmsData.TOC_VU.toFixed(1)} / ${tmsData.TN_VU.toFixed(1)} / ${tmsData.TP_VU.toFixed(1)} / ${tmsData.SS_VU.toFixed(1)}` : "-", 
+      status: "normal" 
+    },
+    { 
+      label: "기온 | 강우", 
+      value: weatherData 
+        ? `${weatherData.TA}°C | ${weatherData.RN_15m > 0 ? `${weatherData.RN_15m}mm` : "맑음"}` 
+        : "-", 
+      status: (weatherData && weatherData.RN_15m > 5) ? "danger" : (weatherData && weatherData.RN_15m > 0) ? "warning" : "normal" 
+    },
+    { 
+      label: "데이터 상태", 
+      value: tmsData ? "수신중" : "연결중", 
+      status: tmsData ? "normal" : "warning" 
+    },
+    { 
+      label: "시스템 체크", 
+      value: "정상", 
+      status: "normal" 
+    },
   ];
 
   return (
     <div className="grid grid-cols-3 gap-4">
       {items.map((item, i) => (
         <div key={i} className="bg-slate-800/40 p-4 rounded-2xl border border-white/5 flex flex-col items-center justify-center">
-          <span className="text-slate-400 text-xs mb-1">{item.label}</span>
-          <span className={`text-xl font-black ${
+          <span className="text-slate-400 text-[10px] mb-1 uppercase tracking-widest">{item.label}</span>
+          <span className={`text-lg font-black ${
             item.status === 'warning' ? 'text-orange-400' : 
             item.status === 'danger' ? 'text-red-400' : 'text-emerald-400'
-          }`}>{item.value}</span>
+          }`}>
+            {item.value}
+          </span>
         </div>
       ))}
     </div>

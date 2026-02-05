@@ -1,35 +1,101 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+} from "recharts";
+
+interface TmsRecord {
+  SYS_TIME: string;
+  TOC_VU: number;
+  PH_VU: number;
+  SS_VU: number;
+  FLUX_VU: number;
+  TN_VU: number;
+  TP_VU: number;
+}
+
 export default function Row3Charts() {
+  const [items, setItems] = useState<TmsRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch("http://10.125.121.176:8081/api/tmsOrigin/tmsList");
+        const json = await res.json();
+        if (json.success && json.dataList[0]) {
+          setItems(json.dataList[0]);
+        }
+      } catch (e) {
+        console.error("차트 데이터 로드 실패:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const chartData = useMemo(() => {
+    return items.map((d) => ({
+      ...d,
+      displayTime: d.SYS_TIME.split("T")[1]?.substring(0, 5) || d.SYS_TIME,
+    }));
+  }, [items]);
+
+  if (loading) return <div className="h-64 flex items-center justify-center text-slate-500">차트 로딩 중...</div>;
+
   return (
-    <div className="grid grid-cols-2 gap-4">
-      {/* 유입유량 & 수위 예측 */}
-      <div className="bg-slate-800/40 p-5 rounded-3xl border border-white/10 min-h-55 flex flex-col">
-        <h3 className="text-xs font-bold text-slate-400 mb-4">유입유량 & 수위 그래프 (예측)</h3>
-        <div className="flex-1 bg-slate-900/60 rounded-xl border border-dashed border-white/10 flex items-center justify-center relative overflow-hidden">
-          {/* 그래프 자리 표시용 더미 (실제 구현 시 Recharts 사용) */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-20">
-             <div className="w-full h-px bg-red-500 absolute top-1/2" /> {/* 기준선 */}
-             <p className="text-[10px]">Graph Area (Flow/Level)</p>
-          </div>
-          <span className="text-[10px] absolute bottom-2 right-2 text-blue-400 font-mono italic">Future Prediction →</span>
+    // min-h-0과 flex-1을 사용하여 공간을 확보합니다.
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full h-full min-h-87.5">
+      
+      {/* 1. 유입유량(FLUX) 차트 */}
+      <div className="bg-slate-800/40 p-4 rounded-2xl border border-white/5 flex flex-col h-87.5">
+        <h3 className="text-sm font-bold mb-4 text-blue-400">유입유량 트렌드 (FLUX)</h3>
+        <div className="flex-1 w-full min-h-0"> {/* min-h-0이 중요합니다 */}
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+              <XAxis dataKey="displayTime" tick={{fontSize: 10}} stroke="#475569" />
+              <YAxis tick={{fontSize: 10}} stroke="#475569" />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', fontSize: '12px' }}
+                itemStyle={{ color: '#fff' }}
+              />
+              <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+              <Line type="monotone" dataKey="FLUX_VU" name="유량" stroke="#3b82f6" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
-      {/* 수질 항목 예측 */}
-      <div className="bg-slate-800/40 p-5 rounded-3xl border border-white/10 min-h-55 flex flex-col">
-        <h3 className="text-xs font-bold text-slate-400 mb-4">TOC / TN / TP / SS 예측</h3>
-        <div className="flex-1 bg-slate-900/60 rounded-xl border border-dashed border-white/10 flex items-center justify-center relative overflow-hidden">
-          <div className="absolute inset-0 flex items-center justify-center opacity-20">
-             <div className="w-full h-px bg-green-500 absolute top-1/3" />
-             <p className="text-[10px]">Graph Area (Water Quality)</p>
-          </div>
-          <div className="absolute top-2 right-2 flex gap-2">
-            <span className="text-[9px] text-emerald-400">● TOC</span>
-            <span className="text-[9px] text-blue-400">● TN</span>
-          </div>
+      {/* 2. 수질 통합 차트 */}
+      <div className="bg-slate-800/40 p-4 rounded-2xl border border-white/5 flex flex-col h-87.5">
+        <h3 className="text-sm font-bold mb-4 text-emerald-400">수질 통합 분석 (TOC/TN/TP/SS)</h3>
+        <div className="flex-1 w-full min-h-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+              <XAxis dataKey="displayTime" tick={{fontSize: 10}} stroke="#475569" />
+              <YAxis tick={{fontSize: 10}} stroke="#475569" />
+              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', fontSize: '12px' }} />
+              <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+              <Line type="monotone" dataKey="TOC_VU" name="TOC" stroke="#10b981" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="TN_VU" name="T-N" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="TP_VU" name="T-P" stroke="#f59e0b" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="SS_VU" name="SS" stroke="#94a3b8" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
+
     </div>
   );
 }

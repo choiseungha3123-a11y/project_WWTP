@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -16,33 +16,40 @@ import EditProfileModal from "../options/EditProfileModal";
 export default function DashboardPage() {
   const router = useRouter();
 
-  const [userData, setUserData] = useState(() => {
-    if (typeof window !== "undefined") {
-      return {
-        userNo: Number(localStorage.getItem('userNo')) || 0,
-        userId: localStorage.getItem('userId') || "",
-        userName: localStorage.getItem('userName') || "사용자",
-        userRole: localStorage.getItem('userRole') || ""
-      };
-    }
-    return { userNo: 0, userId: "", userName: "사용자", userRole: "" };
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
+  const [userData, setUserData] = useState({
+    userNo: 0,
+    userId: "",
+    userName: "",
+    userRole: ""
   });
-
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const handleLogout = () => {
+  // 인증 및 로컬스토리지 데이터 로드
+  useEffect(() => {
+    const savedRole = localStorage.getItem('userRole');
+    if (!savedRole) {
+      router.replace("/");
+      return;
+    }
+    setUserData({
+      userNo: Number(localStorage.getItem('userNo')),
+      userId: localStorage.getItem('userId') || "",
+      userName: localStorage.getItem('userName') || "사용자",
+      userRole: savedRole
+    });
+    setIsAuthChecked(true);
+  }, [router]);
+
+   const handleLogout = () => {
     if (confirm("로그아웃 하시겠습니까?")) {
       localStorage.clear();
       router.push("/");
     }
   };
 
-  // 만약 로그인 정보가 없다면 (비정상 접근 시) 빈 화면 혹은 메시지 노출
-  if (!userData.userRole && typeof window !== "undefined") {
-    router.replace("/");
-    return null;
-  }
+  if (!isAuthChecked) return <div className="min-h-screen bg-slate-950" />;
 
   return (
     <div className="min-h-screen lg:h-screen bg-slate-950 text-white p-4 font-sans flex flex-col lg:overflow-hidden">
