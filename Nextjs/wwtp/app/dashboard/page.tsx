@@ -11,38 +11,42 @@ import Row3Charts from "@/components/dashboard/Row3Charts";
 import Row4RiskDetail from "@/components/dashboard/Row4RiskDetail";
 import Row5ActionPanel from "@/components/dashboard/Row5ActionPanel";
 
-// 기존 모달 (경로 확인 필요: ../options/EditProfileModal)
 import EditProfileModal from "../options/EditProfileModal";
 
 export default function DashboardPage() {
   const router = useRouter();
 
-  // 사용자 상태 관리
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
-  const [userData, setUserData] = useState({
-    userNo: 0,
-    userId: "",
-    userName: "",
-    userRole: ""
+ const [userData, setUserData] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedRole = localStorage.getItem('userRole');
+      if (savedRole) {
+        return {
+          userNo: Number(localStorage.getItem('userNo')),
+          userId: localStorage.getItem('userId') || "",
+          userName: localStorage.getItem('userName') || "사용자",
+          userRole: savedRole,
+          isLoaded: true 
+        };
+      }
+    }
+    return { userNo: 0, userId: "", userName: "", userRole: "", isLoaded: false };
   });
+
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  // 인증 및 로컬스토리지 데이터 로드
+  
   useEffect(() => {
-    const savedRole = localStorage.getItem('userRole');
-    if (!savedRole) {
+    if (typeof window === "undefined") return;
+
+    if (!userData.userRole && !localStorage.getItem('userRole')) {
       router.replace("/");
-      return;
     }
-    setUserData({
-      userNo: Number(localStorage.getItem('userNo')),
-      userId: localStorage.getItem('userId') || "",
-      userName: localStorage.getItem('userName') || "사용자",
-      userRole: savedRole
-    });
-    setIsAuthChecked(true);
-  }, [router]);
+  }, [userData.userRole, router]);
+
+  if (!userData.isLoaded) {
+    return <div className="min-h-screen bg-slate-950" />;
+  }
 
   const handleLogout = () => {
     if (confirm("로그아웃 하시겠습니까?")) {
@@ -51,15 +55,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (!isAuthChecked) return <div className="min-h-screen bg-slate-950" />;
-
   return (
-    /**
-     * [주요 수정] 
-     * 1. h-screen: 브라우저 높이에 고정
-     * 2. overflow-hidden: 바깥 스크롤 제거
-     * 3. flex flex-col: 헤더와 메인 영역 분리
-     */
     <div className="min-h-screen lg:h-screen bg-slate-950 text-white p-4 font-sans flex flex-col lg:overflow-hidden">
       
       {/* --- 상단 헤더 --- */}
@@ -76,7 +72,7 @@ export default function DashboardPage() {
             onClick={() => setIsProfileOpen(!isProfileOpen)} 
             className="flex items-center gap-3 hover:bg-white/5 p-2 rounded-xl transition-all cursor-pointer border border-transparent hover:border-white/10"
           >
-            <div className="text-right hidden sm:block"> {/* 모바일에서 이름 숨기기 선택사항 */}
+            <div className="text-right hidden sm:block"> 
               <p className="text-sm font-bold text-white">{userData.userName}님</p>
               <p className="text-[10px] text-blue-400 font-medium uppercase tracking-tighter">{userData.userRole.replace("ROLE_", "")}</p>
             </div>
@@ -115,17 +111,11 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* --- 메인 레이아웃 --- */}
-      {/* [수정] lg 미만에서는 grid-cols-12 대신 flex-col로 작동하도록 gap 조정 및 overflow 설정 */}
       <div className="flex-1 grid grid-cols-12 gap-4 lg:overflow-hidden min-h-0">
-        
-        {/* 왼쪽 섹션 (데스크탑 7/12) */}
-        {/* [수정] lg 미만에서는 flex-none으로 높이 고정을 풀고, lg에서만 flex-1 및 min-h-0 적용 */}
         <div className="col-span-12 lg:col-span-7 flex flex-col gap-4 min-h-0">
           <div className="flex-none">
             <Row1Status />
           </div>
-          {/* Row2, Row3: 모바일에서는 각자 내용만큼 차지, 데스크탑에선 반반 */}
           <div className="flex-none lg:flex-1 lg:min-h-0">
             <Row2Alerts />
           </div>
@@ -133,10 +123,7 @@ export default function DashboardPage() {
             <Row3Charts />
           </div>
         </div>
-
-        {/* 오른쪽 섹션 (데스크탑 5/12) */}
         <div className="col-span-12 lg:col-span-5 flex flex-col gap-4 min-h-0">
-          {/* [수정] 모바일에서는 flex-none으로 설정하여 내용이 찌그러지지 않게 함 */}
           <div className="flex-none lg:flex-[0.55] lg:min-h-0">
             <Row4RiskDetail />
           </div>

@@ -71,7 +71,7 @@ export default function LandingPage() {
         }
       } else {
         // 404 외의 다른 에러 응답 (500 등) 처리
-        alert(`로그인 요청 중 서버 에러가 발생했습니다. (상태 코드: ${response.status})`);
+        alert(`서버 점검 중입니다. 잠시 후 다시 시도해주세요. (Error Code: ${response.status})`);
       }
     } catch (error) {
       // 서버가 꺼져있어서 fetch 자체가 실패하는 경우 (Network Error)
