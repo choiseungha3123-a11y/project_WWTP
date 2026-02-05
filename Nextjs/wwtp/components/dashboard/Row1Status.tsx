@@ -21,33 +21,57 @@ interface WeatherRecord {
 export default function Row1Status() {
   const [tmsData, setTmsData] = useState<TmsRecord | null>(null);
   const [weatherData, setWeatherData] = useState<WeatherRecord | null>(null);
+  const [isSystemOk, setIsSystemOk] = useState<boolean>(false);
   const [isClient, setIsClient] = useState(false);
 
-  useEffect(() => {
-    setIsClient(true); // Hydration 방지용
+  // 1. TMS 및 날씨 데이터를 가져오는 함수 (30분 주기)
+  const fetchTmsAndWeather = async () => {
+    try {
+      const response = await fetch("http://10.125.121.176:8081/api/tmsOrigin/tmsList");
+      const json = await response.json();
 
-    const fetchData = async () => {
-      try {
-        const response = await fetch("http://10.125.121.176:8081/api/tmsOrigin/tmsList");
-        const json = await response.json();
+      if (json.success && json.dataList) {
+        // TMS: dataList[0]의 마지막 값
+        const tmsList = json.dataList[0] as TmsRecord[];
+        if (tmsList?.length > 0) setTmsData(tmsList[tmsList.length - 1]);
 
-        if (json.success && json.dataList) {
-          // TMS: dataList[0]의 마지막 값
-          const tmsList = json.dataList[0] as TmsRecord[];
-          if (tmsList?.length > 0) setTmsData(tmsList[tmsList.length - 1]);
-
-          // 날씨: dataList[1]의 마지막 값
-          const weatherList = json.dataList[1] as WeatherRecord[];
-          if (weatherList?.length > 0) setWeatherData(weatherList[weatherList.length - 1]);
-        }
-      } catch (error) {
-        console.error("Data fetch error:", error);
+        // 날씨: dataList[1]의 마지막 값
+        const weatherList = json.dataList[1] as WeatherRecord[];
+        if (weatherList?.length > 0) setWeatherData(weatherList[weatherList.length - 1]);
       }
-    };
+    } catch (error) {
+      console.error("TMS Data fetch error:", error);
+    }
+  };
 
-    fetchData();
-    const timer = setInterval(fetchData, 30 * 60 * 1000);
-    return () => clearInterval(timer);
+  // 2. 시스템 상태를 체크하는 함수 (30초 주기)
+  const fetchHealthCheck = async () => {
+    try {
+      const response = await fetch("http://10.125.121.176:8081/api/member/health");
+      const json = await response.json();
+      setIsSystemOk(json.success === true);
+    } catch (error) {
+      console.error("Health check error:", error);
+      setIsSystemOk(false);
+    }
+  };
+
+  useEffect(() => {
+    setIsClient(true);
+
+    // 컴포넌트 마운트 시 최초 1회 실행
+    fetchTmsAndWeather();
+    fetchHealthCheck();
+
+    // 각각의 인터벌 설정
+    const tmsTimer = setInterval(fetchTmsAndWeather, 30 * 60 * 1000); // 30분
+    const healthTimer = setInterval(fetchHealthCheck, 30 * 1000);    // 30초
+
+    // 클린업: 컴포넌트 언마운트 시 타이머 제거
+    return () => {
+      clearInterval(tmsTimer);
+      clearInterval(healthTimer);
+    };
   }, []);
 
   if (!isClient) return <div className="grid grid-cols-3 gap-4 h-24 animate-pulse bg-slate-900/50 rounded-2xl" />;
@@ -82,8 +106,8 @@ export default function Row1Status() {
     },
     { 
       label: "시스템 체크", 
-      value: "정상", 
-      status: "normal" 
+      value: isSystemOk ? "정상" : "점검필요", 
+      status: isSystemOk ? "normal" : "danger" 
     },
   ];
 
