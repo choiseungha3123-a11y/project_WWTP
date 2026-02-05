@@ -46,7 +46,7 @@ export default function Row1Status() {
     };
 
     fetchData();
-    const timer = setInterval(fetchData, 30000);
+    const timer = setInterval(fetchData, 30 * 60 * 1000);
     return () => clearInterval(timer);
   }, []);
 

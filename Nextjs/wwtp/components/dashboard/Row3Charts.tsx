@@ -59,7 +59,7 @@ export default function Row3Charts() {
       {/* 1. 유입유량(FLUX) 차트 */}
       <div className="bg-slate-800/40 p-4 rounded-2xl border border-white/5 flex flex-col h-87.5">
         <h3 className="text-sm font-bold mb-4 text-blue-400">유입유량 트렌드 (FLUX)</h3>
-        <div className="flex-1 w-full min-h-0"> {/* min-h-0이 중요합니다 */}
+        <div className="flex-1 w-full min-h-0"> 
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
