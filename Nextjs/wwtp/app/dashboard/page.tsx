@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -16,37 +16,20 @@ import EditProfileModal from "../options/EditProfileModal";
 export default function DashboardPage() {
   const router = useRouter();
 
- const [userData, setUserData] = useState(() => {
+  const [userData, setUserData] = useState(() => {
     if (typeof window !== "undefined") {
-      const savedRole = localStorage.getItem('userRole');
-      if (savedRole) {
-        return {
-          userNo: Number(localStorage.getItem('userNo')),
-          userId: localStorage.getItem('userId') || "",
-          userName: localStorage.getItem('userName') || "사용자",
-          userRole: savedRole,
-          isLoaded: true 
-        };
-      }
+      return {
+        userNo: Number(localStorage.getItem('userNo')) || 0,
+        userId: localStorage.getItem('userId') || "",
+        userName: localStorage.getItem('userName') || "사용자",
+        userRole: localStorage.getItem('userRole') || ""
+      };
     }
-    return { userNo: 0, userId: "", userName: "", userRole: "", isLoaded: false };
+    return { userNo: 0, userId: "", userName: "사용자", userRole: "" };
   });
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-
-  
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    if (!userData.userRole && !localStorage.getItem('userRole')) {
-      router.replace("/");
-    }
-  }, [userData.userRole, router]);
-
-  if (!userData.isLoaded) {
-    return <div className="min-h-screen bg-slate-950" />;
-  }
 
   const handleLogout = () => {
     if (confirm("로그아웃 하시겠습니까?")) {
@@ -54,6 +37,12 @@ export default function DashboardPage() {
       router.push("/");
     }
   };
+
+  // 만약 로그인 정보가 없다면 (비정상 접근 시) 빈 화면 혹은 메시지 노출
+  if (!userData.userRole && typeof window !== "undefined") {
+    router.replace("/");
+    return null;
+  }
 
   return (
     <div className="min-h-screen lg:h-screen bg-slate-950 text-white p-4 font-sans flex flex-col lg:overflow-hidden">
@@ -74,7 +63,9 @@ export default function DashboardPage() {
           >
             <div className="text-right hidden sm:block"> 
               <p className="text-sm font-bold text-white">{userData.userName}님</p>
-              <p className="text-[10px] text-blue-400 font-medium uppercase tracking-tighter">{userData.userRole.replace("ROLE_", "")}</p>
+              <p className="text-[10px] text-blue-400 font-medium uppercase tracking-tighter">
+                {userData.userRole.replace("ROLE_", "")}
+              </p>
             </div>
             <div className="w-10 h-10 bg-linear-to-br from-blue-600 to-indigo-700 rounded-full flex items-center justify-center text-sm font-bold shadow-lg shadow-blue-900/20">
               {userData.userName.substring(0, 1)}
@@ -94,7 +85,9 @@ export default function DashboardPage() {
                 className="absolute right-0 top-full mt-4 w-64 bg-slate-800 rounded-2xl z-50 overflow-hidden border border-white/10 shadow-2xl"
               >
                 <div className="p-6 flex flex-col items-center border-b border-white/5 bg-white/5">
-                  <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg">{userData.userName.substring(0, 1)}</div>
+                  <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg">
+                    {userData.userName.substring(0, 1)}
+                  </div>
                   <p className="font-bold text-lg text-white mt-3">{userData.userName}</p>
                   <p className="text-xs text-slate-400">{userData.userId}</p>
                 </div>
@@ -111,25 +104,16 @@ export default function DashboardPage() {
         </div>
       </header>
 
+      {/* 대시보드 메인 콘텐츠 */}
       <div className="flex-1 grid grid-cols-12 gap-4 lg:overflow-hidden min-h-0">
         <div className="col-span-12 lg:col-span-7 flex flex-col gap-4 min-h-0">
-          <div className="flex-none">
-            <Row1Status />
-          </div>
-          <div className="flex-none lg:flex-1 lg:min-h-0">
-            <Row2Alerts />
-          </div>
-          <div className="flex-none lg:flex-1 lg:min-h-0">
-            <Row3Charts />
-          </div>
+          <div className="flex-none"><Row1Status /></div>
+          <div className="flex-none lg:flex-1 lg:min-h-0"><Row2Alerts /></div>
+          <div className="flex-none lg:flex-1 lg:min-h-0"><Row3Charts /></div>
         </div>
         <div className="col-span-12 lg:col-span-5 flex flex-col gap-4 min-h-0">
-          <div className="flex-none lg:flex-[0.55] lg:min-h-0">
-            <Row4RiskDetail />
-          </div>
-          <div className="flex-none lg:flex-[0.45] lg:min-h-0">
-            <Row5ActionPanel />
-          </div>
+          <div className="flex-none lg:flex-[0.55] lg:min-h-0"><Row4RiskDetail /></div>
+          <div className="flex-none lg:flex-[0.45] lg:min-h-0"><Row5ActionPanel /></div>
         </div>
       </div>
 
