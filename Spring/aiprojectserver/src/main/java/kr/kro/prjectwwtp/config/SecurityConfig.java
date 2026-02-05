@@ -22,6 +22,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import jakarta.servlet.http.HttpServletResponse;
 import kr.kro.prjectwwtp.persistence.MemberRepository;
 import kr.kro.prjectwwtp.service.AccessLogService;
 import kr.kro.prjectwwtp.service.LoginLogService;
@@ -42,12 +43,12 @@ public class SecurityConfig {
 	private final LoginLogService loginService;
 	
 	@Bean
-	public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+	AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
 		return authenticationConfiguration.getAuthenticationManager();
 	}
 	
 	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager) throws Exception {
+	SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager) throws Exception {
 		// JWT 인증 필터 생성 (로그인 처리)
 		JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(authenticationManager, tokenBlacklistManager, sessionService, logService, loginService);
 		// 로그인 엔드포인트 지정
@@ -82,6 +83,7 @@ public class SecurityConfig {
 			.requestMatchers("/api/member/login").permitAll()
 			.requestMatchers("/api/member/checkId").permitAll()
 			.requestMatchers("/api/weather/list").permitAll()
+			.requestMatchers("/api/tmsOrigin/tmsList").permitAll()
 			
 			// 인증 필요 - 이 경로들은 JWT 필터를 통과해야 함
 			.requestMatchers("/api/member/logout").authenticated()
@@ -100,14 +102,11 @@ public class SecurityConfig {
 			.anyRequest().permitAll());
 		
 		// JWT 인증 필터 추가 (로그인 처리)
-		System.out.println("[SecurityConfig] Adding JWTAuthenticationFilter at position: BEFORE UsernamePasswordAuthenticationFilter");
 		http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 		
 		// JWT 인가 필터 추가 (토큰 검증용) - JWTAuthenticationFilter 이후에 실행
-		System.out.println("[SecurityConfig] Adding JWTAuthorizationFilter at position: AFTER UsernamePasswordAuthenticationFilter");
 		JWTAuthorizationFilter jwtAuthorizationFilter = new JWTAuthorizationFilter(memberRepo, tokenBlacklistManager);
 		http.addFilterAfter(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
-		System.out.println("[SecurityConfig] Filter registration complete!");
 		
 		// 폼 로그인 설정 비활성화
 		http.formLogin(form -> form.disable());
@@ -118,10 +117,22 @@ public class SecurityConfig {
 				.redirectionEndpoint(endpoint -> endpoint.baseUri("/api/oauth2/code/*"))
 				.failureHandler(oauth2FailurHandler)
 				.successHandler(oauth2SuccessHandler));
-		System.out.println("[SecurityConfig] Filter oauth2Login complete!");
 		
 		// 예외 처리
-		http.exceptionHandling(ex -> ex.accessDeniedPage("/system/accessDenied"));
+		http.exceptionHandling(conf -> conf
+                // 인증되지 않은 사용자가 보호된 리소스에 접근할 때 (401)
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"success\":false, \"dataSize\":0,\"dataList\":null,\"errorMsg\": \"로그인이 필요합니다.\"}");
+                })
+                // 인증은 되었으나 권한이 부족할 때 (403)
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"success\":false, \"dataSize\":0,\"dataList\":null,\"errorMsg\": \"접근 권한이 없습니다.\"}");
+                })
+        );
 		
 		// 로그아웃 설정
 		http.logout(logout -> logout
@@ -135,12 +146,12 @@ public class SecurityConfig {
 	}
 	
 	@Bean
-	public HttpSessionEventPublisher httpSessionEventPublisher() {
+	HttpSessionEventPublisher httpSessionEventPublisher() {
 		return new HttpSessionEventPublisher();
 	}
 	
 	@Bean
-	public SessionRegistry sessionRegistry() {
+	SessionRegistry sessionRegistry() {
 		return new SessionRegistryImpl();
 	}
 	
@@ -148,8 +159,8 @@ public class SecurityConfig {
 	private String[] patterns;
 	
 	@Bean
-	public CorsConfigurationSource corsConfigurationSource() {
-		System.out.println(Arrays.toString(patterns));
+	CorsConfigurationSource corsConfigurationSource() {
+		System.out.println("[corsConfigurationSource] : " + Arrays.toString(patterns));
 		CorsConfiguration config = new CorsConfiguration();
 		config.setAllowedOriginPatterns(Arrays.asList(patterns));
 		config.addAllowedMethod(CorsConfiguration.ALL);

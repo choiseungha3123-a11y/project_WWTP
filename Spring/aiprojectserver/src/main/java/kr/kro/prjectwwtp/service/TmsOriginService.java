@@ -184,15 +184,22 @@ public class TmsOriginService {
 		return list;
 	}
 	
+	public boolean existsByTmsTime(LocalDateTime tmsTime) {
+		return tmsImputateRepo.existsByTmsTime(tmsTime);
+	}
+	
 	public List<TmsImputate> getTmsImputateListByDate(LocalDateTime end) {
-		LocalDateTime start = end.minusDays(1).minusMinutes(1);
-		List<TmsImputate> list = tmsImputateRepo.findByTmsTimeBetween(start, end);
+		LocalDateTime start = end.minusDays(1).plusMinutes(1);
+		List<TmsImputate> list = tmsImputateRepo.findByTmsTimeBetweenOrderByTmsTime(start, end);
+		System.out.println("start : " + start.toString());
+		System.out.println("end : " + end.toString());
 		System.out.println("getTmsImputateListByDate size : " + list.size());
 		return list;
 	}
 	
-	public List<TmsImputate> imputate(LocalDateTime end) {
-		LocalDateTime start = end.minusDays(1).minusMinutes(1);
+	public List<TmsImputate> imputate(LocalDateTime today) {
+		LocalDateTime start = today.withHour(0).withMinute(0);
+		LocalDateTime end = today.withHour(23).withMinute(59);
 		List<TmsOrigin> origin = tmsOriginRepo.findByTmsTimeBetween(start, end);
 		
 		System.out.println("[imputate] origin size=" + origin.size());

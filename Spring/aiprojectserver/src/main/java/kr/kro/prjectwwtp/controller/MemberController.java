@@ -32,6 +32,7 @@ import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.service.LoginLogService;
 import kr.kro.prjectwwtp.service.MemberService;
 import kr.kro.prjectwwtp.util.JWTUtil;
+import kr.kro.prjectwwtp.util.Util;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -74,6 +75,15 @@ public class MemberController {
 		return ResponseEntity.ok().body(res);
 	}
 	
+	@GetMapping("/health")
+	public ResponseEntity<Object> healthCheck() {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		return ResponseEntity.ok().body(res);
+	}
+	
 	@Getter
 	@Setter
 	@ToString
@@ -103,7 +113,7 @@ public class MemberController {
 		String errorMsg = null;
 		
 		try {
-			String remoteAddr = getRemoteAddress(request);
+			String remoteAddr = Util.getRemoteAddress(request);
 			int remotePort = request.getRemotePort();
 			remoteInfo = remoteAddr + ":" + remotePort;
 			if(req.userId == null || req.userId.length() == 0 
@@ -506,27 +516,5 @@ public class MemberController {
 		//System.out.println("delete success");
 		
 		return ResponseEntity.ok().body(res);
-	}
-	
-	/**
-	 * 클라이언트의 실제 IP 주소 추출
-	 * 프록시 환경에서도 올바른 IP를 가져오도록 처리
-	 */
-	private String getRemoteAddress(HttpServletRequest request) {
-		String ip = request.getHeader("X-Forwarded-For");
-		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-			ip = request.getHeader("Proxy-Client-IP");
-		}
-		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-			ip = request.getHeader("WL-Proxy-Client-IP");
-		}
-		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-			ip = request.getRemoteAddr();
-		}
-		// X-Forwarded-For가 여러 IP를 포함할 수 있으므로 첫 번째만 사용
-		if (ip != null && ip.contains(",")) {
-			ip = ip.split(",")[0].trim();
-		}
-		return ip;
 	}
 }

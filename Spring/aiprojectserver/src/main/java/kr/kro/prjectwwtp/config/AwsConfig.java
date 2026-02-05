@@ -20,7 +20,7 @@ public class AwsConfig {
 	
 	@Bean
     AmazonSimpleEmailService amazonSimpleEmailService() {
-		System.out.println("[amazonSimpleEmailService]: " + accessKey + ", " + secretKey + ", " + region);
+		//System.out.println("[amazonSimpleEmailService]: " + accessKey + ", " + secretKey + ", " + region);
 		BasicAWSCredentials basicAWSCredentials = new BasicAWSCredentials(accessKey, secretKey);
         AWSStaticCredentialsProvider awsStaticCredentialsProvider = new AWSStaticCredentialsProvider(basicAWSCredentials);
  

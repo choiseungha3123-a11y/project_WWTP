@@ -19,6 +19,7 @@ import kr.kro.prjectwwtp.service.LoginLogService;
 import kr.kro.prjectwwtp.service.MemberService;
 import kr.kro.prjectwwtp.service.SessionService;
 import kr.kro.prjectwwtp.util.JWTUtil;
+import kr.kro.prjectwwtp.util.Util;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -78,7 +79,7 @@ public class Oauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler{
 			if (userAgent == null) {
 				userAgent = "Unknown";
 			}
-			String remoteAddr = getRemoteAddress(request);
+			String remoteAddr = Util.getRemoteAddress(request);
 			int remotePort = request.getRemotePort();
 			remoteInfo = remoteAddr + ":" + remotePort;
 			
@@ -117,43 +118,21 @@ public class Oauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler{
 		//System.out.println("[OAuth2SuccessHandler]provider: " + provider);
 		
 		OAuth2User user = (OAuth2User)oAuth2Token.getPrincipal();
-		//String email = "unknown";
+		String email = "unknown";
 		String name = "unknown";
 		// 로그인 방법별 데이터 구성
 		if(provider.equalsIgnoreCase("naver")) {			// naver
 			Map<String, Object> response = (Map<String, Object>)user.getAttribute("response");
 			name = (String)response.get("name");
-			//email = (String)response.get("email");
+			email = (String)response.get("email");
 		} else if(provider.equalsIgnoreCase("google")) {	// google
 			name = (String)user.getAttributes().get("name");
-			//email = (String)user.getAttributes().get("email");
+			email = (String)user.getAttributes().get("email");
 		} else if(provider.equalsIgnoreCase("kakao")) {		// kakao
 			Map<String, String> properties = (Map<String, String>)user.getAttributes().get("properties");  
 			name = properties.get("nickname");
 		}
 		//System.out.println("[OAuth2SuccessHandler]email: " + email);
 		return Map.of("provider", provider, "name", name);
-	}
-	
-	/**
-	 * 클라이언트의 실제 IP 주소 추출
-	 * 프록시 환경에서도 올바른 IP를 가져오도록 처리
-	 */
-	public static String getRemoteAddress(HttpServletRequest request) {
-		String ip = request.getHeader("X-Forwarded-For");
-		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-			ip = request.getHeader("Proxy-Client-IP");
-		}
-		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-			ip = request.getHeader("WL-Proxy-Client-IP");
-		}
-		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-			ip = request.getRemoteAddr();
-		}
-		// X-Forwarded-For가 여러 IP를 포함할 수 있으므로 첫 번째만 사용
-		if (ip != null && ip.contains(",")) {
-			ip = ip.split(",")[0].trim();
-		}
-		return ip;
 	}
 }

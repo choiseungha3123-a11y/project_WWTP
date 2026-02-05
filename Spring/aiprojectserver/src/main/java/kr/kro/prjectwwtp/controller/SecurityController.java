@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 @Controller
 @RequiredArgsConstructor
 public class SecurityController {
+	
 	// 접근 권한 오류 페이지
 	@GetMapping("/system/accessDenied")
 	public void accessDenied() {}

@@ -23,7 +23,6 @@ import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kr.kro.prjectwwtp.domain.responseDTO;
-import kr.kro.prjectwwtp.service.PredictService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -32,7 +31,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Tag(name="OAuth2Controller", description = "소셜 로그인 콜백처리 API")
 public class OAuth2Controller {
-	private final PredictService predictService;
 	
 	@PostConstruct
 	public void init() {

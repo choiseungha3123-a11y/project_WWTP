@@ -20,7 +20,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.PostConstruct;
 import kr.kro.prjectwwtp.domain.responseDTO;
-import kr.kro.prjectwwtp.service.PredictService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -29,7 +28,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Tag(name="PredictController", description = "예측값 조회 API")
 public class PredictController {
-	private final PredictService predictService;
 	
 	@PostConstruct
 	public void init() {

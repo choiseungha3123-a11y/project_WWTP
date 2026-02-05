@@ -23,6 +23,7 @@ import kr.kro.prjectwwtp.service.AccessLogService;
 import kr.kro.prjectwwtp.service.LoginLogService;
 import kr.kro.prjectwwtp.service.SessionService;
 import kr.kro.prjectwwtp.util.JWTUtil;
+import kr.kro.prjectwwtp.util.Util;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
@@ -42,7 +43,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 		if (userAgent == null) {
 			userAgent = "Unknown";
 		}
-		String remoteAddr = getRemoteAddress(request);
+		String remoteAddr = Util.getRemoteAddress(request);
 		int remotePort = request.getRemotePort();
 		String remoteInfo = remoteAddr + ":" + remotePort;
 		
@@ -97,7 +98,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 			}
 			
 			// Remote IP 및 PORT 정보 추출
-			String remoteAddr = getRemoteAddress(request);
+			String remoteAddr = Util.getRemoteAddress(request);
 			int remotePort = request.getRemotePort();
 			remoteInfo = remoteAddr + ":" + remotePort;
 			
@@ -154,7 +155,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 		response.setCharacterEncoding("UTF-8");
 		
-		String remoteAddr = getRemoteAddress(request);
+		String remoteAddr = Util.getRemoteAddress(request);
 		int remotePort = request.getRemotePort();
 		String remoteInfo = remoteAddr + ":" + remotePort;
 		String errorMsg = "로그인에 실패했습니다. 아이디 또는 비밀번호를 확인하세요.";
@@ -169,27 +170,5 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 		response.getWriter().write(responseBody);
 		response.getWriter().flush();
 		loginService.addLoginLog(null, false, userId, remoteInfo, null, errorMsg);
-	}
-	
-	/**
-	 * 클라이언트의 실제 IP 주소 추출
-	 * 프록시 환경에서도 올바른 IP를 가져오도록 처리
-	 */
-	private String getRemoteAddress(HttpServletRequest request) {
-		String ip = request.getHeader("X-Forwarded-For");
-		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-			ip = request.getHeader("Proxy-Client-IP");
-		}
-		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-			ip = request.getHeader("WL-Proxy-Client-IP");
-		}
-		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-			ip = request.getRemoteAddr();
-		}
-		// X-Forwarded-For가 여러 IP를 포함할 수 있으므로 첫 번째만 사용
-		if (ip != null && ip.contains(",")) {
-			ip = ip.split(",")[0].trim();
-		}
-		return ip;
 	}
 }

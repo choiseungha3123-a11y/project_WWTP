@@ -1,11 +1,13 @@
 package kr.kro.prjectwwtp.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
+import kr.kro.prjectwwtp.controller.WeatherController.WeatherDTO;
 import kr.kro.prjectwwtp.domain.Weather;
 import kr.kro.prjectwwtp.persistence.WeatherRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +24,8 @@ public class WeatherService {
 		return opt.get();
 	}
 	
-	public Weather findFirstByStnOrderByDataNoDesc(int stn) {
-		return weatherRepo.findFirstByStnOrderByDataNoDesc(stn);
+	public Weather findFirstByStnOrderByLogTimeDesc(int stn) {
+		return weatherRepo.findFirstByStnOrderByLogTimeDesc(stn);
 	}
 	
 	public void saveWeatherList(List<Weather> list) {
@@ -34,8 +36,16 @@ public class WeatherService {
 		weatherRepo.deleteAll(list);
 	}
 	
-	public List<Weather> findByLogTimeBetween(LocalDateTime start, LocalDateTime end) {
-		return weatherRepo.findByLogTimeBetween(start, end);
+//	public List<Weather> findByLogTimeBetween(LocalDateTime start, LocalDateTime end) {
+//		return weatherRepo.findByLogTimeBetween(start, end);
+//	}
+	
+	public List<WeatherDTO> findByLogTimeBetween(LocalDateTime start, LocalDateTime end) {
+		List<Weather> list = weatherRepo.findByLogTimeBetween(start, end);
+		List<WeatherDTO> ret = new ArrayList<>();
+		for(Weather w : list)
+			ret.add(new WeatherDTO(w));
+		return ret;
 	}
 	
 	public List<Weather> findByStnAndLogTimeBetween(int stn, LocalDateTime start, LocalDateTime end) {

@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.service.LoginLogService;
+import kr.kro.prjectwwtp.util.Util;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -40,7 +41,7 @@ public class Oauth2FailureHandler extends SimpleUrlAuthenticationFailureHandler 
 			if (userAgent == null) {
 				userAgent = "Unknown";
 			}
-			String remoteAddr = Oauth2SuccessHandler.getRemoteAddress(request);
+			String remoteAddr = Util.getRemoteAddress(request);
 			int remotePort = request.getRemotePort();
 			remoteInfo = remoteAddr + ":" + remotePort;
 			

@@ -7,6 +7,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import jakarta.annotation.PostConstruct;
 import kr.kro.prjectwwtp.domain.Weather;
 import kr.kro.prjectwwtp.domain.WeatherComplete;
 import kr.kro.prjectwwtp.persistence.WeatherCompleteRepository;
@@ -38,11 +40,17 @@ public class CompleteWeather implements ApplicationRunner {
 	private final WeatherAPILogService logService;
 	private RestTemplate restTemplate = new RestTemplate();
 	
+	// API Hub 데이터 
 	@Value("${scheduler.enable}")
 	private boolean enable;
 	
 	private final WeatherCompleteRepository completeRepo;
 	private final GetherWeather getherWeather;
+	
+	@PostConstruct
+	public void init() {
+		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+	}
 
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
@@ -63,7 +71,8 @@ public class CompleteWeather implements ApplicationRunner {
 	}
 	
 
-	@Scheduled(fixedDelayString  = "${scheduler.delay_term}") 
+	@Scheduled(cron = "${scheduler.gether.cron}")
+	@Scheduled(fixedDelayString  = "${scheduler.complete.delay}") 
 	public void completeWeatherData() {
 		if(isFirst) {
 			isFirst = false;
@@ -83,16 +92,14 @@ public class CompleteWeather implements ApplicationRunner {
 			for(int stn : stnlist) {
 				WeatherComplete complete = completeRepo.findFirstByStnOrderByDataNoDesc(stn);
 				LocalDateTime last = LocalDateTime.of(2024, 1, 1, 0, 0);
-				int dataCount = 0;
-				LocalDateTime now = LocalDateTime.now();
+				LocalDateTime now = LocalDateTime.now().withHour(0).withMinute(0);
 				//System.out.println("now : " + now);
 				if(complete != null) {
-					last = complete.getDataTime();
-					dataCount = complete.getDataSize();
-					
+					last = complete.getDataTime().plusDays(1);
 				}
 				
-				if(last.isBefore(now) || dataCount != 24 * 60) {
+				// 데이터가 정상적이지 않을 때
+				if(last.isBefore(now)) {
 					LocalDateTime start = LocalDateTime.of(last.getYear(), last.getMonthValue(), last.getDayOfMonth(), 0, 0);
 					LocalDateTime end = LocalDateTime.of(last.getYear(), last.getMonthValue(), last.getDayOfMonth(), 23, 59);
 					List<Weather> list = weatherService.findByStnAndLogTimeBetween(stn, start, end);
@@ -100,12 +107,12 @@ public class CompleteWeather implements ApplicationRunner {
 					int size = list.size();
 					if(size == 24 * 60) {
 						// 데이터 완료
-						last = last.plusDays(1);
-						completeRepo.save(WeatherComplete.builder()
-											.dataTime(start)
-											.stn(stn)
-											.dataSize(size)
-											.build());
+						if(!completeRepo.existsByStnAndDataTime(stn, start))
+							completeRepo.save(WeatherComplete.builder()
+								.dataTime(start)
+								.stn(stn)
+								.dataSize(size)
+								.build());
 					} else if(size > 24 * 60) {
 						// 중복 발견 - time값이 동일한 중복 데이터 제거
 						System.out.println("중복 발견 : " + last);
@@ -127,7 +134,7 @@ public class CompleteWeather implements ApplicationRunner {
 							
 							System.out.println("중복 제거 완료: " + toDelete.size() + "개 삭제");
 							list = new ArrayList<>(uniqueMap.values());
-							dataCount = modifySize = list.size();
+							modifySize = list.size();
 						}
 						catch(Exception e) {
 							errorMag = e.getMessage();
@@ -160,7 +167,7 @@ public class CompleteWeather implements ApplicationRunner {
 								weatherService.saveWeatherList(missingData);
 								System.out.println("결측 데이터 보충: " + missingData.size() + "개 저장");
 								list.addAll(missingData);
-								dataCount = modifySize = list.size();
+								modifySize = list.size();
 							} else {
 								System.out.println("추가될 결측 데이터 없음");
 							}
@@ -170,6 +177,10 @@ public class CompleteWeather implements ApplicationRunner {
 							logService.addWeatherAPILog("AddNotEnough", originSize,  0, modifySize, uri, errorMag);
 						}
 					}
+				}
+				// 데이터가 정상적이면 다음 날을 구성
+				else if(last.isBefore(now)) {
+					last = last.plusDays(1);
 				}
 			}
 		}catch (Exception e) {

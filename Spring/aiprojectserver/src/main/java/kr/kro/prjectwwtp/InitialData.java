@@ -2,9 +2,11 @@ package kr.kro.prjectwwtp;
 
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import kr.kro.prjectwwtp.config.PasswordEncoder;
+import kr.kro.prjectwwtp.controller.TmsOriginController;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.persistence.MemberRepository;
@@ -14,7 +16,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class InitialData implements ApplicationRunner {
 	private final MemberRepository memberRepo;
+	private final TmsOriginController tmsController;
 	private PasswordEncoder encoder = new PasswordEncoder();
+	
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
 		// TODO Auto-generated method stub
@@ -37,6 +41,12 @@ public class InitialData implements ApplicationRunner {
 					.role(Role.ROLE_MEMBER)
 					.build());
 		}
+		tmsController.postMakeFakeDate();
+	}
+	
+	@Scheduled(cron = "${scheduler.fakeday.cron}")
+	public void makeFakeDate() {
+		tmsController.postMakeFakeDate();
 	}
 }
 	

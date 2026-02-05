@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
+import kr.kro.prjectwwtp.controller.WeatherController.WeatherDTO;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.TmsImputate;
@@ -36,6 +37,7 @@ import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.persistence.TmsLogRepository;
 import kr.kro.prjectwwtp.service.TmsOriginService;
 import kr.kro.prjectwwtp.service.TmsSummaryService;
+import kr.kro.prjectwwtp.service.WeatherService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import lombok.RequiredArgsConstructor;
 
@@ -43,11 +45,12 @@ import lombok.RequiredArgsConstructor;
 @RestControllerAdvice
 @RequestMapping("/api/tmsOrigin")
 @RequiredArgsConstructor
-@Tag(name="TmsOriginController", description = "TMS Origin API")
+@Tag(name="TmsOriginController", description = "TMS 수치 처리 API")
 public class TmsOriginController {
 	private final TmsOriginService tmsOriginService;
 	private final TmsLogRepository logRepository;
 	private final TmsSummaryService tmsSummaryService;
+	private final WeatherService weatherService;
 	
 	@Value("${spring.FastAPI.URI}")
 	private String fastAPIURI;
@@ -176,12 +179,35 @@ public class TmsOriginController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@GetMapping("/imputate")
-	@Operation(summary="측정 데이터의 결측/이상 값을 처리", description = "결측/이상 값을 처리한 데이터를 조회합니다. 데이터가 없으면 보간을 수행합니다.")
-	@Parameter(name = "time", description= "조회날짜(yyyyMMdd)", example = "20240101")
-	public ResponseEntity<Object> postTmsOriginImputate(
-			HttpServletRequest request,
-			@RequestParam String time) {
+	@PostMapping("/makeFakeDate")
+	@Operation(summary="임의의 날짜를 오늘로 처리", description = "현재 실시간 정보를 가져올수 없기 때문에 받아온 FMS 데이터 중에 임의의 날짜를 오늘로 처리하도록 함")
+	public ResponseEntity<Object> postMakeFakeDate() {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		LocalDateTime fakeNow = tmsSummaryService.getFakeNow();
+		LocalDateTime now = LocalDateTime.now();
+		fakeNow = fakeNow.withHour(now.getHour());
+		fakeNow = fakeNow.withMinute(now.getMinute());
+		
+		// 조회할 날짜(fakeNow를 기준으로 이전 날짜와 해당 날짜의 보간 데이터 구성
+		if(!tmsOriginService.existsByTmsTime(fakeNow)) {
+			List<TmsImputate> list = tmsOriginService.imputate(fakeNow);
+			tmsOriginService.saveTmsImputateList(list);
+		}
+		if(!tmsOriginService.existsByTmsTime(fakeNow.minusDays(1))) {
+			List<TmsImputate> list = tmsOriginService.imputate(fakeNow.minusDays(1));
+			tmsOriginService.saveTmsImputateList(list);
+		}
+		return ResponseEntity.ok().body(res);
+	}
+	
+	@GetMapping("/tmsList")
+	@Operation(summary="어제부터의 실시간 정보와 내일까지의 예상 정보를 요청", description = "결측/이상 값을 처리한 데이터를 조회합니다. 데이터가 없으면 보간을 수행합니다.")
+/*
+	public ResponseEntity<Object> getTmsList(
+			HttpServletRequest request) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
@@ -205,34 +231,15 @@ public class TmsOriginController {
 		}
 		
 		try {
-			// CSV 파일 체크
-//			String csvFilePath = "Downloads/imputated_data_" + time + ".csv";
-//			
-//			List<TmsOrigin> list = tmsOriginService.loadFromCsv(csvFilePath);
-//			if(list == null || list.size() == 0) {
-//				// CSV 파일이 없으면 보간 수행
-//				list = tmsOriginService.imputate(time);
-//				// 보간된 데이터를 CSV 파일로 저장
-//				tmsOriginService.saveToCsv(list, csvFilePath);
-//			} 
-			
 			LocalDateTime fakeNow = tmsSummaryService.getFakeNow();
 			LocalDateTime now = LocalDateTime.now();
 			fakeNow = fakeNow.withHour(now.getHour());
 			fakeNow = fakeNow.withMinute(now.getMinute());
-
-
+			
 			List<TmsImputate> list = tmsOriginService.getTmsImputateListByDate(fakeNow);
-			
-			if(list == null || list.size() < 1440) {
-				// 보간된 데이터가 없으면 보간 수행
-				list = tmsOriginService.imputate(fakeNow);
-				tmsOriginService.saveTmsImputateList(list);
-			}
-			
+						
 //			String csvFilePath = "Downloads/imputated_data_" + time + ".csv";
 //			tmsOriginService.saveToCsv(list, csvFilePath);
-			// list를 파이썬 faseapi로 보내서 예측 수행 후 결과 저장
 			
 			for(TmsImputate t : list) {
 				res.addData(t);
@@ -240,8 +247,40 @@ public class TmsOriginController {
 			logRepository.save(TmsLog.builder()
 					.type("imputate")
 					.member(member)
-					.time(time)
+					.time(fakeNow.toString())
 					.count(list.size())
+					.build());
+								
+		} catch (Exception e) {
+			res.setSuccess(false);
+			res.setErrorMsg(e.getMessage());
+		}		 		
+		return ResponseEntity.ok().body(res);
+	}
+*/	
+	
+	public ResponseEntity<Object> getTmsList() {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		try {
+			LocalDateTime now = LocalDateTime.now();
+			LocalDateTime fakeNow = tmsSummaryService.getFakeNow()
+									.withHour(now.getHour())
+									.withMinute(now.getMinute());
+			LocalDateTime start = fakeNow.minusDays(1).plusMinutes(1);
+			
+			List<TmsImputate> tmsList = tmsOriginService.getTmsImputateListByDate(fakeNow);
+			System.out.println("tmsList size : " + tmsList.size());
+			List<WeatherDTO> weatherList = weatherService.findByLogTimeBetween(start, fakeNow);
+			System.out.println("weatherList size : " + weatherList.size());
+			res.addData(tmsList);
+			res.addData(weatherList);
+			logRepository.save(TmsLog.builder()
+					.type("imputate")
+					.time(fakeNow.toString())
+					.count(tmsList.size())
 					.build());
 								
 		} catch (Exception e) {

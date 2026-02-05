@@ -11,14 +11,14 @@ import jakarta.annotation.PostConstruct;
 @EnableScheduling
 @SpringBootApplication
 public class AiprojectserverApplication {
-
-	public static void main(String[] args) {
-		SpringApplication.run(AiprojectserverApplication.class, args);
-	}
 	
 	@PostConstruct
 	public void init() {
 		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+	}
+
+	public static void main(String[] args) {
+		SpringApplication.run(AiprojectserverApplication.class, args);
 	}
 
 }

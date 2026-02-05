@@ -18,6 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -85,29 +88,42 @@ public class WeatherController {
 	@ToString
 	@NoArgsConstructor
 	@AllArgsConstructor
-	static public class weatherDTO {
+	static public class WeatherDTO {
+		@JsonIgnore
 		@Schema(description = "고유번호", example = "1~")
 		long dataNo;
+		@JsonProperty("SYS_TIME")
 		@Schema(description = "데이터의 기록 시간", example = "2026-01-30T15:30:00")
 		String time;
+		@JsonProperty("STN")
+		@Schema(description = "측정소 고유번호", example = "368 : 구리 수택동, 569 : 구리 토평동, 541 : 남양주 배양리")
+		int stn;
+		@JsonProperty("TA")
 		@Schema(description = "1분 평균 기온 (C)")
 		double ta;
+		@JsonProperty("RN_15m")
 		@Schema(description = "15분 누적 강수량 (mm)")
 		double rn15m;
+		@JsonProperty("RN_60m")
 		@Schema(description = "60분 누적 강수량 (mm)")
 		double rn60m;
+		@JsonProperty("RN_12H")
 		@Schema(description = "12시간 누적 강수량 (mm)")
 		double rn12h;
+		@JsonProperty("RN_DAY")
 		@Schema(description = "일 누적 강수량 (mm)")
 		double rnday;
+		@JsonProperty("HM")
 		@Schema(description = "1분 평균 상대습도 (%)")
 		double hm;
+		@JsonProperty("TD")
 		@Schema(description = "이슬점온도 (C)")
 		double td; 
 		
-		public weatherDTO(Weather data) {
+		public WeatherDTO(Weather data) {
 			this.dataNo = data.getDataNo();
 			this.time = data.getLogTime().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+			this.stn = data.getStn();
 			this.ta = data.getTa();
 			this.rn15m = data.getRn15m();
 			this.rn60m = data.getRn60m();
@@ -124,7 +140,7 @@ public class WeatherController {
 	@Parameter(name = "tm2", description= "조회종료날짜(yyyyMMddHHmm)", example = "202401012359")
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "결과", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class))),
-		@ApiResponse(responseCode = "201", description = "dataList[]", content = @Content(mediaType = "application/json", schema = @Schema(implementation = weatherDTO.class)))
+		@ApiResponse(responseCode = "201", description = "dataList[]", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WeatherDTO.class)))
 	})
 	public ResponseEntity<Object> getWeatherList(
 			@RequestParam String tm1,
@@ -139,11 +155,10 @@ public class WeatherController {
 		System.out.println("start : " + start);
 		System.out.println("end : " + end);
 		//List<Weather> list = weatherRepo.findByTimeBetweenOrderByDataNoDesc(start, end);
-		List<Weather> list = weatherService.findByLogTimeBetween(start, end);
-		for(Weather data : list)
+		List<WeatherDTO> list = weatherService.findByLogTimeBetween(start, end);
+		for(WeatherDTO data : list)
 		{
-			weatherDTO d = new weatherDTO(data);
-			res.addData(d);
+			res.addData(data);
 		}
 		return ResponseEntity.ok().body(res);
 	}
@@ -151,11 +166,11 @@ public class WeatherController {
 	@PatchMapping("/modify")
 	@Operation(summary="날씨 데이터 조회", description = "DB에 저장된 기상청 날씨 정보 조회")
 	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
-	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = weatherDTO.class))
+	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = WeatherDTO.class))
 	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> modifyWeatherData(
 			HttpServletRequest request,
-			@RequestBody weatherDTO req) {
+			@RequestBody WeatherDTO req) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)

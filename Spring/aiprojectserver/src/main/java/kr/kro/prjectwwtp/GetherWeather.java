@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TimeZone;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import jakarta.annotation.PostConstruct;
 import kr.kro.prjectwwtp.domain.Weather;
 import kr.kro.prjectwwtp.service.WeatherAPILogService;
 import kr.kro.prjectwwtp.service.WeatherService;
@@ -35,6 +37,11 @@ public class GetherWeather implements ApplicationRunner {
 	
 	@Value("${scheduler.enable}")
 	private boolean enable;
+	
+	@PostConstruct
+	public void init() {
+		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+	}
 
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
@@ -46,7 +53,7 @@ public class GetherWeather implements ApplicationRunner {
 //		System.out.println("enable : " + enable);
 	}
 	
-	@Scheduled(fixedDelayString  = "${scheduler.delay_term}") 
+	@Scheduled(fixedDelayString  = "${scheduler.gether.delay}") 
 	public void fetchWeatherData() {
 		if(isFirst) {
 			isFirst = false;
@@ -60,7 +67,7 @@ public class GetherWeather implements ApplicationRunner {
 		};
 		try {
 			for (int stn : stnlist) {
-				Weather lastData = weatherService.findFirstByStnOrderByDataNoDesc(stn);
+				Weather lastData = weatherService.findFirstByStnOrderByLogTimeDesc(stn);
 				LocalDateTime startTime = LocalDateTime.of(2024, 1, 1, 0, 0);
 				if (lastData != null) {
 					startTime = lastData.getLogTime();

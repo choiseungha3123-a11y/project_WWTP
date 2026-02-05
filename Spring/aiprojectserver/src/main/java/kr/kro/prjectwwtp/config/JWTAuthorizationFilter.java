@@ -20,6 +20,7 @@ import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.persistence.MemberRepository;
 import kr.kro.prjectwwtp.util.JWTUtil;
+import kr.kro.prjectwwtp.util.Util;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
@@ -35,9 +36,11 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 		
 		String requestPath = request.getRequestURI();
 		String method = request.getMethod();
+		String remoteAddr = Util.getRemoteAddress(request);
 		System.out.println("\n========== [JWTAuthorizationFilter] START ==========");
 		System.out.println("[JWTAuthorizationFilter] Method: " + method);
 		System.out.println("[JWTAuthorizationFilter] Path: " + requestPath);
+		System.out.println("[JWTAuthorizationFilter] IP: " + remoteAddr);
 		
 		String jwtToken = request.getHeader(HttpHeaders.AUTHORIZATION);
 		System.out.println("[JWTAuthorizationFilter] Authorization header: " + (jwtToken != null ? "존재함 (" + jwtToken.substring(0, Math.min(20, jwtToken.length())) + "...)" : "없음"));
