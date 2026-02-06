@@ -4,6 +4,75 @@
 
 ---
 
+## 📅 2026년 2월 6일
+
+### 📂 작업 파일
+```
+notebook/DL/LSTM.ipynb
+notebook\feature\WF_feature_selection.py
+notebook\feature\feature_engineering.py
+archive\
+```
+
+### LSTM 모델 성능 향상
+
+**이유**:
+- flow에 대한 LSTM 모델 성능도 R2 기준 0.3 수준
+- tms 지표에 대한 예측은 더욱 처참함
+
+**내용**:
+- 하이퍼파라미터 수정
+  - hidden_size: 64 -> 128
+  - num_layers: 2 -> 4
+  - dropout: 0.2 -> 0.3
+  - batch_size: 16 -> 64
+  - learning_rate: 0.001 -> 0.0003
+- resample 1h -> 30min
+- Layer Normalization 추가
+- Multi-head Attention 강화(4 -> 8)
+- MSELoss -> HuberLoss
+- ReduceLROnPlateau -> ConsinAnnealingWarmRestarts(주기적 restart로 local minima 탈출)
+- Gradient Clipping 추가
+
+**결과**:
+- flow 예측 성능을 0.62로 올림
+- 구간별 flow 예측 성능 불균형
+  - 낮은 flow(< 320): MAPE 27.05%
+  - 중간 flow(320 - 400): MAPE 5.17%
+  - 높은 flow(> 400): MAPE 6.40%
+
+### LSTM 파일 MAPE 값 수정
+
+**내용**:
+- 현재 y 값을 2D로 고정했기 때문에 y.dim() == 1 조건에 의해 MAPE 값을 계산하지 않음
+- MAPE 값이 비정상적으로 크고 clamp_min(1e-6)이 너무 작아서 MAPE를 폭발시킴
+- threshold를 설정해서 0.1 이상인 경우만 MAPE에 포함시킴
+- 카운터 기반 평균 계산
+- MAPE plot에 대한 한글 폰트 깨짐 해결
+
+### LSTM 파일 리펙토링
+
+**이유**:
+- LSTM.ipynb 안의 코드가 특성 엔지니어링 코드에 의해 너무 길어짐
+
+**내용**:
+- feature_engineering.py 생성
+- NaN/inf 값 사전 검증, 특성 이름과 X shape 일치 확인, X와 y 샘플 수 일치 확인
+- 누적 중요도 threshold 달성 관련 오류 수정
+
+### archive 폴더 생성
+
+**이유**:
+- ML과 DL 파일 버전을 올리면서 새로운 파일이 많이 생김
+- 현재 사용 중인 파일만 각 폴더에 유지하고 싶음
+
+- archive/README.md 참조
+
+### ✅ 다음 할 일 (2026/02/09)
+- [] LSTM 성능 개선
+
+---
+
 ## 📅 2026년 2월 5일
 
 ### 📂 작업 파일
@@ -43,7 +112,7 @@ notebook\feature\WF_feature_selection.py
 - tms 지표 예측 시, 유입유량 데이터 활용
 
 ### ✅ 다음 할 일 (2026/02/06)
-- [] LSTM 성능 올리기
+- [X] LSTM 성능 개선
 
 ---
 

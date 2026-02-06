@@ -17,8 +17,8 @@ class WalkForwardFeatureSelector:
     """
     
     def __init__(
-        self, 
-        X: np.ndarray, 
+        self,
+        X: np.ndarray,
         y: np.ndarray,
         feature_names: List[str],
         n_splits: int = 5,
@@ -50,22 +50,58 @@ class WalkForwardFeatureSelector:
         random_state : int
             난수 시드
         """
+        # ====== 데이터 검증 ======
         self.X = np.asarray(X, dtype=np.float32)
         self.y = np.asarray(y, dtype=np.float32)
+
+        # NaN/Inf 체크
+        if np.any(np.isnan(self.X)) or np.any(np.isinf(self.X)):
+            n_nan = np.sum(np.isnan(self.X))
+            n_inf = np.sum(np.isinf(self.X))
+            raise ValueError(
+                f"X contains invalid values: {n_nan} NaN, {n_inf} Inf. "
+                f"Please clean your data before feature selection."
+            )
+
+        if np.any(np.isnan(self.y)) or np.any(np.isinf(self.y)):
+            n_nan = np.sum(np.isnan(self.y))
+            n_inf = np.sum(np.isinf(self.y))
+            raise ValueError(
+                f"y contains invalid values: {n_nan} NaN, {n_inf} Inf. "
+                f"Please clean your data before feature selection."
+            )
+
         if self.y.ndim == 1:
             self.y = self.y[:, None]
-        
+
         self.feature_names = np.array(feature_names)
         self.n_features = len(feature_names)
         self.n_samples = len(X)
-        
+
+        # 특성 이름과 X shape 일치 확인
+        if self.n_features != self.X.shape[1]:
+            raise ValueError(
+                f"Feature names length ({self.n_features}) does not match "
+                f"X columns ({self.X.shape[1]})"
+            )
+
+        # 샘플 수 일치 확인
+        if len(self.X) != len(self.y):
+            raise ValueError(
+                f"X and y have different sample counts: "
+                f"X={len(self.X)}, y={len(self.y)}"
+            )
+
         self.n_splits = n_splits
         self.train_size = train_size
         self.val_size = val_size
         self.test_size = test_size
         self.window_step = window_step
         self.random_state = random_state
-        
+
+        # 전역 랜덤 시드 설정 (재현성 보장)
+        np.random.seed(self.random_state)
+
         self.fold_results = {}
         self.feature_importance_folds = []
         self.fold_metrics = []
@@ -109,14 +145,22 @@ class WalkForwardFeatureSelector:
         return splits
     
     def _train_model(
-        self, 
-        X_train: np.ndarray, 
+        self,
+        X_train: np.ndarray,
         y_train: np.ndarray,
         model_type: str = "rf"
     ):
         """특성 중요도 계산용 모델 학습"""
-        np.random.seed(self.random_state)
-        
+        # ====== 데이터 검증 ======
+        if len(X_train) == 0 or len(y_train) == 0:
+            raise ValueError("Empty training data provided")
+
+        if np.any(np.isnan(X_train)) or np.any(np.isinf(X_train)):
+            raise ValueError("X_train contains NaN or Inf values")
+
+        if np.any(np.isnan(y_train)) or np.any(np.isinf(y_train)):
+            raise ValueError("y_train contains NaN or Inf values")
+
         if model_type == "rf":
             model = RandomForestRegressor(
                 n_estimators=100,
@@ -138,7 +182,7 @@ class WalkForwardFeatureSelector:
             )
         else:
             raise ValueError(f"Unknown model type: {model_type}")
-        
+
         # 다중 출력 처리
         if y_train.ndim > 1 and y_train.shape[1] > 1:
             # 각 출력별로 독립적으로 학습
@@ -192,61 +236,98 @@ class WalkForwardFeatureSelector:
         }
     
     def _select_features_by_threshold(
-        self, 
+        self,
         importances: np.ndarray,
-        threshold: float = 0.01
+        threshold: float = 0.80
     ) -> np.ndarray:
         """
         중요도 임계값으로 특성 선택
-        
+
         Parameters
         ----------
         importances : np.ndarray
             특성 중요도 배열
         threshold : float
-            중요도 누적 임계값 (기본: 1% → 누적 중요도 80%)
-        
+            누적 중요도 임계값 (기본: 0.80 = 80%)
+
         Returns
         -------
         np.ndarray
             선택된 특성 인덱스
         """
+        # ====== 입력 검증 ======
+        if np.any(np.isnan(importances)) or np.any(np.isinf(importances)):
+            raise ValueError("Feature importances contain NaN or Inf values")
+
+        if np.sum(importances) == 0:
+            raise ValueError("Sum of feature importances is zero")
+
         # 정렬된 인덱스 (내림차순)
         sorted_idx = np.argsort(importances)[::-1]
-        
+
         # 누적 중요도 계산
         cum_importance = np.cumsum(importances[sorted_idx])
-        cum_importance = cum_importance / cum_importance[-1]  # 정규화
-        
-        # 누적 중요도 80% 달성하는 피쳐 수 결정
-        n_features_to_select = np.argmax(cum_importance >= 0.80) + 1
+
+        # 안전한 정규화 (분모가 0인 경우 방지)
+        total_importance = cum_importance[-1]
+        if total_importance > 0:
+            cum_importance = cum_importance / total_importance
+        else:
+            # 모든 중요도가 0인 경우: 상위 10개 또는 전체 특성의 10% 선택
+            n_features_to_select = max(1, min(10, len(importances) // 10))
+            selected_idx = sorted_idx[:n_features_to_select]
+            print(f"  ⚠️ Warning: All feature importances are zero. "
+                  f"Selecting top {n_features_to_select} features by default.")
+            return np.sort(selected_idx)
+
+        # 누적 중요도 threshold 달성하는 특성 수 결정
+        mask = cum_importance >= threshold
+        if np.any(mask):
+            n_features_to_select = np.argmax(mask) + 1
+        else:
+            # threshold를 달성하지 못하는 경우: 모든 특성 선택
+            n_features_to_select = len(importances)
+            print(f"  ⚠️ Warning: Cannot reach {threshold*100:.0f}% cumulative importance. "
+                  f"Selecting all {n_features_to_select} features.")
+
+        # 최소 1개 이상의 특성 선택 보장
+        n_features_to_select = max(1, n_features_to_select)
         selected_idx = sorted_idx[:n_features_to_select]
-        
+
         return np.sort(selected_idx)
     
     def run(
-        self, 
+        self,
         model_type: str = "rf",
-        importance_threshold: float = 0.01,
+        importance_threshold: float = 0.80,
         verbose: bool = True
     ) -> Dict:
         """
         Walk-Forward Validation 실행
-        
+
         Parameters
         ----------
         model_type : str
             'rf' (Random Forest) 또는 'gb' (Gradient Boosting)
         importance_threshold : float
-            특성 선택 임계값
+            누적 중요도 임계값 (기본: 0.80 = 80%)
         verbose : bool
             상세 출력 여부
-        
+
         Returns
         -------
         Dict
             폴드별 결과, 특성 중요도, 추천 특성
         """
+        # ====== 입력 검증 ======
+        if model_type not in ["rf", "gb"]:
+            raise ValueError(f"model_type must be 'rf' or 'gb', got '{model_type}'")
+
+        if not 0.0 < importance_threshold <= 1.0:
+            raise ValueError(
+                f"importance_threshold must be in (0, 1], got {importance_threshold}"
+            )
+
         splits = self._create_splits()
         
         print(f"\n{'='*70}")
@@ -260,13 +341,27 @@ class WalkForwardFeatureSelector:
         )):
             X_train, y_train = self.X[train_idx], self.y[train_idx]
             X_val, y_val = self.X[val_idx], self.y[val_idx]
-            X_test, y_test = self.X[test_idx], self.y[test_idx]
+            # X_test, y_test = self.X[test_idx], self.y[test_idx]  # 현재 미사용 (향후 확장용)
             
-            # 스케일링
+            # 스케일링 (안전성 개선)
             scaler = StandardScaler()
-            X_train_scaled = scaler.fit_transform(X_train)
-            X_val_scaled = scaler.transform(X_val)
-            X_test_scaled = scaler.transform(X_test)
+            try:
+                X_train_scaled = scaler.fit_transform(X_train)
+                X_val_scaled = scaler.transform(X_val)
+                # X_test_scaled = scaler.transform(X_test)  # 현재 미사용 (향후 확장용)
+
+                # 스케일링 후 NaN/Inf 체크
+                if (np.any(np.isnan(X_train_scaled)) or np.any(np.isinf(X_train_scaled)) or
+                    np.any(np.isnan(X_val_scaled)) or np.any(np.isinf(X_val_scaled))):
+                    raise ValueError(
+                        f"Fold {fold_idx + 1}: Scaling produced NaN or Inf values. "
+                        f"Check for constant features or extreme values."
+                    )
+            except Exception as e:
+                print(f"\n❌ Error in fold {fold_idx + 1} during scaling: {e}")
+                print(f"  X_train stats: min={X_train.min():.2e}, max={X_train.max():.2e}, "
+                      f"std={X_train.std():.2e}")
+                raise
             
             # 모델 학습
             model = self._train_model(X_train_scaled, y_train, model_type=model_type)
@@ -275,21 +370,32 @@ class WalkForwardFeatureSelector:
             importance = self._get_feature_importance(model)
             self.feature_importance_folds.append(importance)
             
-            # 특성 선택
-            selected_idx = self._select_features_by_threshold(
-                importance, 
-                threshold=importance_threshold
-            )
-            self.best_features_per_fold.append(selected_idx)
+            # 특성 선택 (안전성 개선)
+            try:
+                selected_idx = self._select_features_by_threshold(
+                    importance,
+                    threshold=importance_threshold
+                )
+                self.best_features_per_fold.append(selected_idx)
+            except Exception as e:
+                print(f"\n❌ Error in fold {fold_idx + 1} during feature selection: {e}")
+                print(f"  Feature importance stats: min={importance.min():.2e}, "
+                      f"max={importance.max():.2e}, sum={importance.sum():.2e}")
+                raise
             
             # 성능 평가 (모든 특성 vs 선택된 특성)
             val_metrics_all = self._evaluate_model(model, X_val_scaled, y_val)
             
             # 선택된 특성으로만 재학습 및 평가
-            X_train_sel = X_train_scaled[:, selected_idx]
-            X_val_sel = X_val_scaled[:, selected_idx]
-            model_sel = self._train_model(X_train_sel, y_train, model_type=model_type)
-            val_metrics_sel = self._evaluate_model(model_sel, X_val_sel, y_val)
+            if len(selected_idx) > 0:
+                X_train_sel = X_train_scaled[:, selected_idx]
+                X_val_sel = X_val_scaled[:, selected_idx]
+                model_sel = self._train_model(X_train_sel, y_train, model_type=model_type)
+                val_metrics_sel = self._evaluate_model(model_sel, X_val_sel, y_val)
+            else:
+                # 선택된 특성이 없는 경우 (예외 상황)
+                print(f"\n⚠️ Warning: No features selected in fold {fold_idx + 1}")
+                val_metrics_sel = val_metrics_all.copy()
             
             fold_result = {
                 "fold": fold_idx + 1,
