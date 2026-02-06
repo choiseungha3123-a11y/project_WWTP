@@ -8,17 +8,18 @@
 
 ### 📂 작업 파일
 ```
-notebook/DL/LSTM.ipynb
-notebook\feature\WF_feature_selection.py
-notebook\feature\feature_engineering.py
-archive\
+notebook/DL/LSTM_FLOW.ipynb
+notebook/DL/LSTM_TMS.ipynb
+notebook/DL/analyze_predictions.py
+notebook/feature/WF_feature_selection.py
+notebook/feature/feature_engineering.py
+archive
 ```
 
-### LSTM 모델 성능 향상
+### LSTM_FLOW 모델 성능 향상
 
 **이유**:
 - flow에 대한 LSTM 모델 성능도 R2 기준 0.3 수준
-- tms 지표에 대한 예측은 더욱 처참함
 
 **내용**:
 - 하이퍼파라미터 수정
@@ -40,6 +41,21 @@ archive\
   - 낮은 flow(< 320): MAPE 27.05%
   - 중간 flow(320 - 400): MAPE 5.17%
   - 높은 flow(> 400): MAPE 6.40%
+
+### LSTM_TMS 모델 성능 향상 시도
+
+**이유**:
+- tms에 대한 LSTM 모델 성능은 R2 기준 거의 마이너스 값
+
+**내용**:
+- OUTLIER_CONFIG(zscore, both=False)
+  - TOC_VU: R2 -1.8612
+  - SS_VU: R2 -0.5181
+  - TN_VU: R2 -0.1558
+  - TP_VU: R2 -2.1524
+  - FLUX_VU: R2 -0.0079
+  - PH_VU: R2 -0.1669
+
 
 ### LSTM 파일 MAPE 값 수정
 
@@ -68,8 +84,18 @@ archive\
 
 - archive/README.md 참조
 
+### analyze_predictions.py 생성
+
+- test 데이터에 대한 예측값을 results/DL/{mode}_predictions.csv에 저장
+- 실측값과 예측값의 차이를 시각적으로 확인하기 위해 작성
+  - 시계열 비교(실측 vs. 예측)
+  - 산점도 (실측 vs. 예측)
+  - 예측 에러 시계열
+  - 구간별 예측 정확도(MAPE)
+
 ### ✅ 다음 할 일 (2026/02/09)
 - [] LSTM 성능 개선
+- [] LSTM 특성에 target 컬럼의 lagging 추가
 
 ---
 

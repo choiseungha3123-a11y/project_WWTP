@@ -21,33 +21,31 @@ import pandas as pd
 DATA_LEAKAGE_CONFIG = {
     "flow": {
         "target": ["Q_in"],
-        # FLOW는 독립적인 변수이므로 다른 프로세스 변수 포함 가능
-        "safe_process_features": ["FLUX_VU", "TOC_VU", "SS_VU", "TN_VU", "TP_VU", "PH_VU"]
+        "safe_process_features": ["level_TankA", "level_TankB"]
     },
     "toc": {
         "target": ["TOC_VU"],
-        # TOC 예측 시 동시 측정되는 다른 TMS 지표는 제외
-        "safe_process_features": ["FLUX_VU"]  # FLUX만 사용 (다른 TMS 지표 제외)
+        "safe_process_features": ["FLUX_VU", "SS_VU", "TN_VU", "TP_VU", "PH_VU"]
     },
     "ss": {
         "target": ["SS_VU"],
-        "safe_process_features": ["FLUX_VU"]
+        "safe_process_features": ["FLUX_VU", "TOC_VU", "TN_VU", "TP_VU", "PH_VU"]
     },
     "tn": {
         "target": ["TN_VU"],
-        "safe_process_features": ["FLUX_VU"]
+        "safe_process_features": ["FLUX_VU", "TOC_VU", "SS_VU", "TP_VU", "PH_VU"]
     },
     "tp": {
         "target": ["TP_VU"],
-        "safe_process_features": ["FLUX_VU"]
+        "safe_process_features": ["FLUX_VU", "TOC_VU", "SS_VU", "TN_VU", "PH_VU"]
     },
     "flux": {
         "target": ["FLUX_VU"],
-        "safe_process_features": ["Q_in"]  # 유입량만 사용 (TMS 제외)
+        "safe_process_features": ["TOC_VU", "SS_VU", "TN_VU", "TP_VU", "PH_VU"] 
     },
     "ph": {
         "target": ["PH_VU"],
-        "safe_process_features": ["FLUX_VU"]
+        "safe_process_features": ["FLUX_VU", "TOC_VU", "SS_VU", "TN_VU", "TP_VU"]
     },
 }
 

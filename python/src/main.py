@@ -11,6 +11,7 @@ import torch.nn as nn
 import pandas as pd
 from pathlib import Path
 
+
 # 프로젝트 루트를 sys.path에 추가
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
@@ -22,7 +23,8 @@ app = FastAPI(title="Flow Prediction API", version="0.2.0")
 
 # ====== 경로 설정 ======
 MODEL_DIR = BASE_DIR / "model"
-RESULTS_DIR = BASE_DIR / "results" / "DL"
+DATA_DIR = BASE_DIR / "data"
+FEATURE_DIR = DATA_DIR / "recommand_features"
 
 # ====== LSTM 모델 정의 (LSTM.ipynb와 동일해야 함) ======
 class LSTMRegressor(nn.Module):
@@ -93,7 +95,7 @@ print("Loading model and scalers...")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 추천 특성 목록 로드
-recommended_features_df = pd.read_csv(RESULTS_DIR / "flow_recommended_features.csv")
+recommended_features_df = pd.read_csv(FEATURE_DIR / "flow_recommended_features.csv")
 FEATURE_NAMES = recommended_features_df["feature_name"].tolist()
 N_FEATURES = len(FEATURE_NAMES)
 
@@ -112,13 +114,15 @@ checkpoint = torch.load(MODEL_DIR / "flow_lstm_model.pth", map_location=device)
 model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()
 
-# 스케일러 로드
+# 스케일러 로드 (pickle 호환성을 위해 현재 모듈의 StandardScaler를 등록)
+sys.modules['__main__'].StandardScaler = StandardScaler
+
 with open(MODEL_DIR / "X_scaler_flow.pkl", "rb") as f:
     x_scaler = pickle.load(f)
 with open(MODEL_DIR / "y_scaler_flow.pkl", "rb") as f:
     y_scaler = pickle.load(f)
 
-print("✓ Model and scalers loaded successfully")
+print("Model and scalers loaded successfully")
 
 # ====== CORS 설정 ======
 origins = [
