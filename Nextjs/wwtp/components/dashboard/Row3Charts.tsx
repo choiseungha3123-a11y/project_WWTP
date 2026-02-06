@@ -52,6 +52,15 @@ export default function Row3Charts() {
     }));
   }, [items]);
 
+  // [추가] 데이터의 날짜 추출 (YYYY-MM-DD)
+  // 데이터가 있다면 첫 번째 데이터의 날짜를 기준 날짜로 사용
+  const dataDate = useMemo(() => {
+    if (items.length > 0 && items[0].SYS_TIME) {
+        return items[0].SYS_TIME.split("T")[0]; 
+    }
+    return "";
+  }, [items]);
+
   if (loading) return <div className="h-64 flex items-center justify-center text-slate-500">차트 로딩 중...</div>;
 
   return (
@@ -60,7 +69,15 @@ export default function Row3Charts() {
       
       {/* 1. 유입유량(FLUX) 차트 */}
       <div className="bg-slate-800/40 p-4 rounded-2xl border border-white/5 flex flex-col h-87.5">
-        <h3 className="text-sm font-bold mb-4 text-blue-400">유입유량 트렌드 (FLUX)</h3>
+        <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-bold text-blue-400">
+                유입유량 트렌드 (FLUX)
+                {/* [추가] 날짜 표시 */}
+                <span className="ml-2 text-[10px] text-slate-500 font-normal">
+                    {dataDate}
+                </span>
+            </h3>
+        </div>
         <div className="flex-1 w-full min-h-0"> 
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
@@ -80,7 +97,15 @@ export default function Row3Charts() {
 
       {/* 2. 수질 통합 차트 */}
       <div className="bg-slate-800/40 p-4 rounded-2xl border border-white/5 flex flex-col h-87.5">
-        <h3 className="text-sm font-bold mb-4 text-emerald-400">수질 통합 분석 (TOC/TN/TP/SS)</h3>
+        <div className="flex justify-between items-center mb-4">
+             <h3 className="text-sm font-bold text-emerald-400">
+                수질 통합 분석 (TOC/TN/TP/SS)
+                 {/* [추가] 날짜 표시 */}
+                <span className="ml-2 text-[10px] text-slate-500 font-normal">
+                    {dataDate}
+                </span>
+            </h3>
+        </div>
         <div className="flex-1 w-full min-h-0">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>

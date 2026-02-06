@@ -9,8 +9,9 @@ interface Member {
   userNo: number;
   userId: string;
   userName: string;
-  userEmail: string; // [추가] 백엔드 필드명 매칭
+  userEmail: string; // 백엔드 필드명 매칭
   role: string;
+  validateEmail: boolean; // 인증 여부 확인용
 }
 
 export default function MemberManagementPage() {
@@ -26,7 +27,7 @@ export default function MemberManagementPage() {
     try {
       const response = await fetch("/api/member/list", { 
         headers: { 
-          "Authorization": `Bearer ${localStorage.getItem('accessToken')}` // Bearer 접두사 추가 권장
+          "Authorization": `Bearer ${localStorage.getItem('accessToken')}`
         }
       });
       const result = await response.json();
@@ -50,6 +51,33 @@ export default function MemberManagementPage() {
     fetchMembers();
   }, []);
 
+  // 이메일 인증 발송 핸들러
+  const handleSendAuthEmail = async (userNo: number, userEmail: string) => {
+    if (!confirm(`${userEmail} 주소로 인증 메일을 발송하시겠습니까?`)) return;
+
+    try {
+      const res = await fetch("/api/member/validateEmail", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem('accessToken')}`
+        },
+        // 백엔드 validEmailDTO가 { userNo: long } 형태이므로 이에 맞춤
+        body: JSON.stringify({ userNo: userNo })
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        alert("인증 메일이 성공적으로 발송되었습니다.");
+      } else {
+        alert(result.errorMsg || "메일 발송에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("메일 발송 오류:", error);
+      alert("서버 통신 중 오류가 발생했습니다.");
+    }
+  };
 
   const handleResetPassword = async (userNo: number, userId: string) => {
     const newPassword = `${userId}1234`;
@@ -157,14 +185,34 @@ export default function MemberManagementPage() {
           >
             <td className="p-6 text-center text-slate-500 text-sm">{mem.userNo}</td>
             <td className="p-6 text-center font-bold text-blue-100">{mem.userId}</td>
+            
+            {/* 이메일 셀 */}
             <td className="p-6 text-center">
-              <div 
-                className="max-w-xs mx-auto text-slate-400 text-sm italic truncate" 
-                title={mem.userEmail} 
-              >
-                {mem.userEmail || "-"}
+              <div className="flex flex-col items-center justify-center gap-1.5">
+                <div 
+                  className="max-w-xs text-slate-400 text-sm italic truncate" 
+                  title={mem.userEmail} 
+                >
+                  {mem.userEmail || "-"}
+                </div>
+                {/* 이메일이 있고 인증되지 않았을 때만 버튼 표시 */}
+                {mem.userEmail && (
+                  mem.validateEmail ? (
+                    <span className="text-[10px] bg-green-500/10 text-green-400 px-2 py-0.5 rounded border border-green-500/20">
+                      인증 완료됨
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handleSendAuthEmail(mem.userNo, mem.userEmail)}
+                      className="text-[10px] bg-blue-500/10 hover:bg-blue-500/30 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 transition-all"
+                    >
+                      📩 인증 메일 발송
+                    </button>
+                  )
+                )}
               </div>
             </td>
+            
             <td className="p-6 text-center text-slate-300 font-medium">{mem.userName}</td>
             <td className="p-6 text-center text-sm">
               <span className={`inline-block px-3 py-1 rounded-full text-xs ${mem.role === 'ROLE_ADMIN' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>

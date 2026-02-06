@@ -25,6 +25,9 @@ export default function DashboardPage() {
   });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  
+  // [추가] 오늘 날짜 상태 관리
+  const [todayDate, setTodayDate] = useState("");
 
   // 인증 및 로컬스토리지 데이터 로드
   useEffect(() => {
@@ -39,6 +42,17 @@ export default function DashboardPage() {
       userName: localStorage.getItem('userName') || "사용자",
       userRole: savedRole
     });
+    
+    // [추가] 날짜 포맷팅 (YYYY년 MM월 DD일 요일)
+    const now = new Date();
+    const formattedDate = now.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long'
+    });
+    setTodayDate(formattedDate);
+
     setIsAuthChecked(true);
   }, [router]);
 
@@ -61,6 +75,13 @@ export default function DashboardPage() {
             <span className="text-blue-500">●</span> Smart WWTP Monitoring
           </h1>
           <p className="text-slate-500 text-[10px] uppercase tracking-widest font-medium">Integrated Operation Dashboard</p>
+        </div>
+
+        {/* [추가] 중앙 날짜 표시 영역 */}
+        <div className="hidden md:block absolute left-1/2 transform -translate-x-1/2">
+          <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/5 text-slate-300 text-sm font-medium flex items-center gap-2 shadow-inner">
+            <span className="text-blue-400">📅</span> {todayDate}
+          </div>
         </div>
 
         <div className="relative flex items-center gap-4">
