@@ -186,18 +186,94 @@ Response (200 OK):
 ---
 
 ## 9. Repository Structure
-```powershell
-코드 복사
+```
 ├── data/                     # 원천 및 전처리 데이터
+│   ├── actual/              # 실측 데이터
+│   ├── processed/           # 전처리된 데이터
+│   └── pred/                # 예측 결과
 ├── model/                    # 학습된 모델
 ├── notebook/                 # EDA 및 분석 노트북
-│   ├── linear_regression/    # 선형 회귀 코드
-│   ├── collect/              # 데이터 수집 코드
-│   └── preprocess/           # 전처리 코드
-├── src/                      # fastAPI 실행
-├── TODO.md
+│   ├── ML/                  # 머신러닝 모델
+│   │   ├── primary/         # 기본 베이스라인
+│   │   └── improved/        # 개선 모델
+│   ├── DL/                  # 딥러닝 모델 (LSTM)
+│   ├── collect/             # 데이터 수집
+│   ├── preprocess/          # 전처리
+│   └── feature/             # 피처 엔지니어링
+├── src/                      # 파이프라인 모듈
+│   ├── io.py                # 데이터 로드
+│   ├── preprocess.py        # 전처리
+│   ├── features.py          # 피처 생성
+│   ├── split.py             # 데이터 분할
+│   ├── models.py            # 모델 정의
+│   ├── metrics.py           # 평가 지표
+│   └── pipeline.py          # 파이프라인 실행
+├── scripts/                  # 실행 스크립트
+│   └── train.py             # CLI 학습 스크립트
+├── results/                  # 실험 결과
+├── requirements.txt          # 의존성 패키지
+├── QUICK_START.md           # 빠른 시작 가이드
 └── README.md
 ```
+
+---
+
+## 10. ML Pipeline 사용법
+
+### CLI로 학습 실행
+
+```bash
+# FLOW 모드 (유량 예측)
+python scripts/train.py --mode flow --data-root data/actual
+
+# TMS 모드 (수질 예측)
+python scripts/train.py --mode tms --data-root data/actual
+
+# 전체 모드 (유량 + 수질)
+python scripts/train.py --mode all --data-root data/actual --plot
+
+# 커스텀 설정
+python scripts/train.py \
+  --mode flow \
+  --data-root data/actual \
+  --resample 5min \
+  --train-ratio 0.7 \
+  --valid-ratio 0.15 \
+  --test-ratio 0.15 \
+  --random-state 42
+```
+
+### Python 코드에서 사용
+
+```python
+from src.io import load_csvs, prep_flow, prep_aws
+from src.pipeline import run_pipeline
+from src.features import FeatureConfig
+from src.split import SplitConfig
+
+# 데이터 로드
+df_flow, df_tms, df_aws_368, df_aws_541, df_aws_569 = load_csvs("data/actual")
+df_flow = prep_flow(df_flow)
+df_aws = prep_aws(df_aws_368, df_aws_541, df_aws_569)
+
+dfs = {"flow": df_flow, "tms": df_tms, "aws": df_aws}
+time_col_map = {"flow": "SYS_TIME", "tms": "SYS_TIME", "aws": "datetime"}
+
+# 파이프라인 실행
+result = run_pipeline(
+    dfs,
+    mode="flow",
+    time_col_map=time_col_map,
+    resample_rule="1h",
+    resample_agg="mean",
+    random_state=42
+)
+
+# 결과 확인
+print(result["metric_table"])
+```
+
+자세한 사용법은 `QUICK_START.md`를 참고하세요.
 
 ---
 

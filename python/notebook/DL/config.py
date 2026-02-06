@@ -1,87 +1,85 @@
 """
-Configuration file for WWTP Deep Learning Prediction System
+하수처리장 딥러닝 예측 시스템 설정 파일
 
-This module contains all hyperparameters, file paths, and system settings
-for the LSTM-based prediction models.
+이 모듈은 LSTM 기반 예측 모델을 위한 모든 하이퍼파라미터, 파일 경로,
+시스템 설정을 포함합니다.
 
-Requirements: 1.2, 1.3, 1.4, 6.5, 10.4
+요구사항: 1.2, 1.3, 1.4, 6.5, 10.4
 """
 
 import os
 from pathlib import Path
 
 # ============================================================================
-# Directory Paths
+# 디렉토리 경로
 # ============================================================================
 
-# Base directories
+# 기본 디렉토리
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = BASE_DIR / "data"
 MODEL_DIR = BASE_DIR / "model"
 RESULTS_DIR = BASE_DIR / "results" / "DL"
 NOTEBOOK_DIR = BASE_DIR / "notebook" / "DL"
 
-# Data subdirectories (Requirements 1.2, 1.3, 1.4)
+# 데이터 하위 디렉토리 (요구사항 1.2, 1.3, 1.4)
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
-FLOW_DATA_PATH = PROCESSED_DATA_DIR / "flow_proc.csv"
-TMS_DATA_PATH = PROCESSED_DATA_DIR / "tms_proc.csv"
-ALL_DATA_PATH = PROCESSED_DATA_DIR / "all_proc.csv"
 
-# Model save directory (Requirement 6.5)
+# 모델 저장 디렉토리 (요구사항 6.5)
 MODEL_SAVE_DIR = MODEL_DIR
 SCALER_SAVE_DIR = MODEL_DIR
 
-# Results save directory (Requirement 10.4)
+# 결과 저장 디렉토리 (요구사항 10.4)
 RESULTS_SAVE_DIR = RESULTS_DIR
 PLOTS_SAVE_DIR = RESULTS_DIR / "plots"
 METRICS_SAVE_DIR = RESULTS_DIR / "metrics"
 
 # ============================================================================
-# Model Hyperparameters
+# 모델 하이퍼파라미터
 # ============================================================================
 
-# LSTM Architecture
+# LSTM 구조
 LSTM_CONFIG = {
-    "hidden_size": 64,          # Number of LSTM hidden units
-    "num_layers": 2,            # Number of stacked LSTM layers
-    "dropout": 0.2,             # Dropout rate for regularization
-    "output_size": 1,           # Output dimension (single target)
+    "hidden_size": 64,          # LSTM 은닉층 유닛 수
+    "num_layers": 2,            # 쌓인 LSTM 레이어 수
+    "dropout": 0.2,             # 정규화를 위한 드롭아웃 비율
+    "output_size": 1,           # 출력 차원 (단일 타겟)
+    "bidirectional": False,     # 양방향 LSTM 사용 여부
 }
 
-# Sliding Window
-WINDOW_SIZE = 24                # Number of time steps in input sequence
+# 슬라이딩 윈도우
+WINDOW_SIZE = 24                # 입력 시퀀스의 시간 스텝 수
 
 # ============================================================================
-# Training Hyperparameters
+# 학습 하이퍼파라미터
 # ============================================================================
 
 TRAINING_CONFIG = {
-    "batch_size": 32,           # Batch size for training
-    "learning_rate": 0.001,     # Learning rate for optimizer
-    "num_epochs": 100,          # Maximum number of training epochs
-    "patience": 10,             # Early stopping patience
-    "optimizer": "adam",        # Optimizer type: 'adam', 'rmsprop', 'sgd'
-    "loss_function": "mse",     # Loss function: 'mse' or 'mae'
+    "batch_size": 32,           # 학습 배치 크기
+    "learning_rate": 0.001,     # 옵티마이저 학습률
+    "num_epochs": 100,          # 최대 학습 에포크 수
+    "patience": 10,             # 조기 종료 patience
+    "optimizer": "adam",        # 옵티마이저 타입: 'adam', 'rmsprop', 'sgd'
+    "loss_function": "mse",     # 손실 함수: 'mse' 또는 'mae'
 }
 
 # ============================================================================
-# Data Split Ratios
+# 데이터 분할 비율
 # ============================================================================
 
 SPLIT_RATIOS = {
-    "train": 0.7,               # Training set ratio
-    "val": 0.15,                # Validation set ratio
-    "test": 0.15,               # Test set ratio
+    "train": 0.7,               # 학습 세트 비율
+    "val": 0.15,                # 검증 세트 비율
+    "test": 0.15,               # 테스트 세트 비율
 }
 
 # ============================================================================
-# Target Variables
+# 타겟 변수
 # ============================================================================
 
-# Flow prediction target
+# 유량 예측 타겟
 FLOW_TARGET = "Q_in"
 
-# TMS prediction targets
+# TMS 예측 타겟
 TMS_TARGETS = [
     "TOC_VU",
     "PH_VU",
@@ -92,51 +90,51 @@ TMS_TARGETS = [
 ]
 
 # ============================================================================
-# Device Configuration
+# 디바이스 설정
 # ============================================================================
 
-# GPU/CPU device selection (auto-detect)
+# GPU/CPU 디바이스 선택 (자동 감지)
 DEVICE_CONFIG = {
-    "use_gpu": True,            # Try to use GPU if available
-    "gpu_id": 0,                # GPU device ID
+    "use_gpu": True,            # 가능한 경우 GPU 사용 시도
+    "gpu_id": 0,                # GPU 디바이스 ID
 }
 
 # ============================================================================
-# Visualization Settings
+# 시각화 설정
 # ============================================================================
 
 VISUALIZATION_CONFIG = {
-    "dpi": 300,                 # Plot resolution
-    "figsize": (10, 6),         # Figure size (width, height)
-    "font_family": "Malgun Gothic",  # Korean font support
-    "grid": True,               # Show grid in plots
+    "dpi": 300,                 # 플롯 해상도
+    "figsize": (10, 6),         # 그림 크기 (너비, 높이)
+    "font_family": "Malgun Gothic",  # 한글 폰트 지원
+    "grid": True,               # 플롯에 그리드 표시
 }
 
 # ============================================================================
-# Random Seed for Reproducibility
+# 재현성을 위한 랜덤 시드
 # ============================================================================
 
 RANDOM_SEED = 42
 
 # ============================================================================
-# Performance Targets
+# 성능 목표
 # ============================================================================
 
 PERFORMANCE_TARGETS = {
-    "Q_in_r2": 0.95,            # R² target for flow prediction
-    "TMS_r2": 0.90,             # R² target for TMS predictions
+    "Q_in_r2": 0.95,            # 유량 예측 R² 목표
+    "TMS_r2": 0.90,             # TMS 예측 R² 목표
 }
 
 # ============================================================================
-# Utility Functions
+# 유틸리티 함수
 # ============================================================================
 
 def create_directories():
     """
-    Create all necessary directories if they don't exist.
+    필요한 모든 디렉토리가 없으면 생성합니다.
     
-    This function ensures that model save directories and results
-    directories are available before training begins.
+    이 함수는 학습 시작 전에 모델 저장 디렉토리와 결과 디렉토리가
+    사용 가능한지 확인합니다.
     """
     directories = [
         MODEL_SAVE_DIR,
@@ -148,19 +146,19 @@ def create_directories():
     
     for directory in directories:
         directory.mkdir(parents=True, exist_ok=True)
-        print(f"✓ Directory ready: {directory}")
+        print(f"✓ 디렉토리 준비 완료: {directory}")
 
 
 def get_model_path(target_variable: str, suffix: str = "") -> Path:
     """
-    Get the file path for saving/loading a model.
+    모델 저장/로드를 위한 파일 경로를 가져옵니다.
     
     Args:
-        target_variable: Name of the target variable (e.g., 'Q_in', 'TOC_VU')
-        suffix: Optional suffix to add to filename (e.g., 'best', 'final')
+        target_variable: 타겟 변수 이름 (예: 'Q_in', 'TOC_VU')
+        suffix: 파일명에 추가할 선택적 접미사 (예: 'best', 'final')
     
     Returns:
-        Path object for the model file
+        모델 파일의 Path 객체
     """
     filename = f"lstm_{target_variable}"
     if suffix:
@@ -172,13 +170,13 @@ def get_model_path(target_variable: str, suffix: str = "") -> Path:
 
 def get_scaler_path(scaler_name: str) -> Path:
     """
-    Get the file path for saving/loading a scaler.
+    스케일러 저장/로드를 위한 파일 경로를 가져옵니다.
     
     Args:
-        scaler_name: Name of the scaler (e.g., 'X_scaler', 'y_scaler_Q_in')
+        scaler_name: 스케일러 이름 (예: 'X_scaler', 'y_scaler_Q_in')
     
     Returns:
-        Path object for the scaler file
+        스케일러 파일의 Path 객체
     """
     filename = f"{scaler_name}.pkl"
     return SCALER_SAVE_DIR / filename
@@ -186,14 +184,14 @@ def get_scaler_path(scaler_name: str) -> Path:
 
 def get_plot_path(plot_name: str, target_variable: str = None) -> Path:
     """
-    Get the file path for saving a plot.
+    플롯 저장을 위한 파일 경로를 가져옵니다.
     
     Args:
-        plot_name: Name of the plot (e.g., 'training_history', 'predictions')
-        target_variable: Optional target variable name
+        plot_name: 플롯 이름 (예: 'training_history', 'predictions')
+        target_variable: 선택적 타겟 변수 이름
     
     Returns:
-        Path object for the plot file
+        플롯 파일의 Path 객체
     """
     filename = plot_name
     if target_variable:
@@ -205,13 +203,13 @@ def get_plot_path(plot_name: str, target_variable: str = None) -> Path:
 
 def get_metrics_path(target_variable: str) -> Path:
     """
-    Get the file path for saving evaluation metrics.
+    평가 지표 저장을 위한 파일 경로를 가져옵니다.
     
     Args:
-        target_variable: Name of the target variable
+        target_variable: 타겟 변수 이름
     
     Returns:
-        Path object for the metrics file
+        지표 파일의 Path 객체
     """
     filename = f"metrics_{target_variable}.json"
     return METRICS_SAVE_DIR / filename
@@ -219,69 +217,69 @@ def get_metrics_path(target_variable: str) -> Path:
 
 def validate_config():
     """
-    Validate configuration parameters.
+    설정 파라미터를 검증합니다.
     
     Raises:
-        ValueError: If any configuration parameter is invalid
+        ValueError: 설정 파라미터가 유효하지 않은 경우
     """
-    # Validate LSTM config
+    # LSTM 설정 검증
     if LSTM_CONFIG["hidden_size"] < 1:
-        raise ValueError(f"Invalid hidden_size: {LSTM_CONFIG['hidden_size']}")
+        raise ValueError(f"유효하지 않은 hidden_size: {LSTM_CONFIG['hidden_size']}")
     if LSTM_CONFIG["num_layers"] < 1:
-        raise ValueError(f"Invalid num_layers: {LSTM_CONFIG['num_layers']}")
+        raise ValueError(f"유효하지 않은 num_layers: {LSTM_CONFIG['num_layers']}")
     if not (0 <= LSTM_CONFIG["dropout"] <= 1):
-        raise ValueError(f"Invalid dropout: {LSTM_CONFIG['dropout']}")
+        raise ValueError(f"유효하지 않은 dropout: {LSTM_CONFIG['dropout']}")
     
-    # Validate window size
+    # 윈도우 크기 검증
     if WINDOW_SIZE < 1:
-        raise ValueError(f"Invalid window_size: {WINDOW_SIZE}")
+        raise ValueError(f"유효하지 않은 window_size: {WINDOW_SIZE}")
     
-    # Validate training config
+    # 학습 설정 검증
     if TRAINING_CONFIG["batch_size"] < 1:
-        raise ValueError(f"Invalid batch_size: {TRAINING_CONFIG['batch_size']}")
+        raise ValueError(f"유효하지 않은 batch_size: {TRAINING_CONFIG['batch_size']}")
     if TRAINING_CONFIG["learning_rate"] <= 0:
-        raise ValueError(f"Invalid learning_rate: {TRAINING_CONFIG['learning_rate']}")
+        raise ValueError(f"유효하지 않은 learning_rate: {TRAINING_CONFIG['learning_rate']}")
     if TRAINING_CONFIG["num_epochs"] < 1:
-        raise ValueError(f"Invalid num_epochs: {TRAINING_CONFIG['num_epochs']}")
+        raise ValueError(f"유효하지 않은 num_epochs: {TRAINING_CONFIG['num_epochs']}")
     if TRAINING_CONFIG["patience"] < 1:
-        raise ValueError(f"Invalid patience: {TRAINING_CONFIG['patience']}")
+        raise ValueError(f"유효하지 않은 patience: {TRAINING_CONFIG['patience']}")
     
-    # Validate split ratios
+    # 분할 비율 검증
     total_ratio = sum(SPLIT_RATIOS.values())
-    if not (0.99 <= total_ratio <= 1.01):  # Allow small floating point error
-        raise ValueError(f"Split ratios must sum to 1.0, got {total_ratio}")
+    if not (0.99 <= total_ratio <= 1.01):  # 작은 부동소수점 오차 허용
+        raise ValueError(f"분할 비율의 합은 1.0이어야 합니다. 현재: {total_ratio}")
     
-    print("✓ Configuration validated successfully")
+    print("✓ 설정 검증 완료")
 
 
 if __name__ == "__main__":
     """
-    Run this script to create directories and validate configuration.
+    이 스크립트를 실행하여 디렉토리를 생성하고 설정을 검증합니다.
     """
     print("=" * 60)
-    print("WWTP Deep Learning Prediction System - Configuration")
+    print("하수처리장 딥러닝 예측 시스템 - 설정")
     print("=" * 60)
     print()
     
-    print("Creating directories...")
+    print("디렉토리 생성 중...")
     create_directories()
     print()
     
-    print("Validating configuration...")
+    print("설정 검증 중...")
     validate_config()
     print()
     
-    print("Configuration Summary:")
-    print(f"  Window Size: {WINDOW_SIZE}")
-    print(f"  LSTM Hidden Size: {LSTM_CONFIG['hidden_size']}")
-    print(f"  LSTM Layers: {LSTM_CONFIG['num_layers']}")
-    print(f"  Dropout: {LSTM_CONFIG['dropout']}")
-    print(f"  Batch Size: {TRAINING_CONFIG['batch_size']}")
-    print(f"  Learning Rate: {TRAINING_CONFIG['learning_rate']}")
-    print(f"  Max Epochs: {TRAINING_CONFIG['num_epochs']}")
-    print(f"  Early Stopping Patience: {TRAINING_CONFIG['patience']}")
+    print("설정 요약:")
+    print(f"  윈도우 크기: {WINDOW_SIZE}")
+    print(f"  LSTM 은닉층 크기: {LSTM_CONFIG['hidden_size']}")
+    print(f"  LSTM 레이어 수: {LSTM_CONFIG['num_layers']}")
+    print(f"  드롭아웃: {LSTM_CONFIG['dropout']}")
+    print(f"  배치 크기: {TRAINING_CONFIG['batch_size']}")
+    print(f"  학습률: {TRAINING_CONFIG['learning_rate']}")
+    print(f"  최대 에포크: {TRAINING_CONFIG['num_epochs']}")
+    print(f"  조기 종료 Patience: {TRAINING_CONFIG['patience']}")
     print()
     
     print("=" * 60)
-    print("Setup complete!")
+    print("설정 완료!")
     print("=" * 60)
