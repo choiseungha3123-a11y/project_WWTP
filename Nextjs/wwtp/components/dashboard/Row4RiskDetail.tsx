@@ -7,10 +7,10 @@ export default function Row4RiskDetail() {
   // 샘플 데이터 (실제로는 API나 상위 props에서 전달)
   const riskScore = 72;
   const riskFactors = [
-    { label: "기준 초과 확률", value: 85, weight: "high", color: "bg-red-500" },
+    { label: "예상 초과 확률", value: 85, weight: "high", color: "bg-red-500" },
     { label: "기준 대비 여유도(Margin)", value: 40, weight: "medium", color: "bg-orange-500" },
-    { label: "변화 속도(급변성)", value: 65, weight: "medium", color: "bg-yellow-500" },
-    { label: "데이터 신뢰도(결측·이상)", value: 95, weight: "low", color: "bg-emerald-500" },
+    { label: "예상 변화량", value: 65, weight: "medium", color: "bg-yellow-500" },
+    { label: "데이터 신뢰도", value: 95, weight: "low", color: "bg-emerald-500" },
     { label: "외생요인(강우·계절)", value: 30, weight: "low", color: "bg-blue-500" },
   ];
 

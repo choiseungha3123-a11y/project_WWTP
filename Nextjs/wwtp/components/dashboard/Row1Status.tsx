@@ -19,6 +19,8 @@ interface WeatherRecord {
 }
 
 export default function Row1Status() {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
   const [tmsData, setTmsData] = useState<TmsRecord | null>(null);
   const [weatherData, setWeatherData] = useState<WeatherRecord | null>(null);
   const [isSystemOk, setIsSystemOk] = useState<boolean>(false);
@@ -27,7 +29,7 @@ export default function Row1Status() {
   // 1. TMS 및 날씨 데이터를 가져오는 함수 (30분 주기)
   const fetchTmsAndWeather = async () => {
     try {
-      const response = await fetch("http://10.125.121.176:8081/api/tmsOrigin/tmsList");
+      const response = await fetch(`${API_BASE_URL}/api/tmsOrigin/tmsList`);
       const json = await response.json();
 
       if (json.success && json.dataList) {
@@ -47,7 +49,7 @@ export default function Row1Status() {
   // 2. 시스템 상태를 체크하는 함수 (30초 주기)
   const fetchHealthCheck = async () => {
     try {
-      const response = await fetch("http://10.125.121.176:8081/api/member/health");
+      const response = await fetch(`${API_BASE_URL}/api/member/health`);
       const json = await response.json();
       setIsSystemOk(json.success === true);
     } catch (error) {
@@ -65,7 +67,7 @@ export default function Row1Status() {
 
     // 각각의 인터벌 설정
     const tmsTimer = setInterval(fetchTmsAndWeather, 30 * 60 * 1000); // 30분
-    const healthTimer = setInterval(fetchHealthCheck, 30 * 1000);    // 30초
+    const healthTimer = setInterval(fetchHealthCheck, 10 * 1000);    // 15초
 
     // 클린업: 컴포넌트 언마운트 시 타이머 제거
     return () => {

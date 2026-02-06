@@ -5,8 +5,8 @@ import { AlertTriangle, Activity, Droplets, DatabaseZap } from "lucide-react";
 
 export default function Row2Alerts() {
   const alerts = [
-    { id: 1, title: "유입 급증 감지", status: "danger", icon: <Activity className="w-4 h-4" /> },
-    { id: 2, title: "조정조 수위 급상승", status: "warning", icon: <Droplets className="w-4 h-4" /> },
+    { id: 1, title: "유입유량 기준초과", status: "danger", icon: <Activity className="w-4 h-4" /> },
+    { id: 2, title: "조정조 수위 기준초과", status: "warning", icon: <Droplets className="w-4 h-4" /> },
     { id: 3, title: "TOC/TN/TP 안전 기준 근접 및 초과", status: "danger", icon: <AlertTriangle className="w-4 h-4" /> },
     { id: 4, title: "센서 이상 / 데이터 결측", status: "normal", icon: <DatabaseZap className="w-4 h-4" /> },
   ];

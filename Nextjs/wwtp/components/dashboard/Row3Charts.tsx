@@ -23,13 +23,15 @@ interface TmsRecord {
 }
 
 export default function Row3Charts() {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
   const [items, setItems] = useState<TmsRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("http://10.125.121.176:8081/api/tmsOrigin/tmsList");
+        const res = await fetch(`${API_BASE_URL}/api/tmsOrigin/tmsList`);
         const json = await res.json();
         if (json.success && json.dataList[0]) {
           setItems(json.dataList[0]);
