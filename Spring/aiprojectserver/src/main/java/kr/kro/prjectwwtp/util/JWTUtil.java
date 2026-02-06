@@ -23,7 +23,6 @@ public class JWTUtil {
 	private static final long ACCESS_TOKEN_MSEC = 60 * (60 * 1000);	// 1시간
 	//private static final long ACCESS_TOKEN_MSEC = (60 * 1000);	// 1분
 	private static String JWT_KEY;
-	//private static final String JWT_KEY = "kr.kro.projectwwtp";
 	
 	public static final String prefix = "Bearer ";
 	public static final String usernoClaim = "Userno";

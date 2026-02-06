@@ -72,7 +72,6 @@ public class CompleteWeather implements ApplicationRunner {
 	
 
 	@Scheduled(cron = "${scheduler.gether.cron}")
-	@Scheduled(fixedDelayString  = "${scheduler.complete.delay}") 
 	public void completeWeatherData() {
 		if(isFirst) {
 			isFirst = false;

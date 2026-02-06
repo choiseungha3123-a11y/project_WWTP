@@ -2,6 +2,7 @@ package kr.kro.prjectwwtp.controller;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -295,6 +296,9 @@ public class MemberController {
 		private long userNo;
 	}
 	
+	@Value("{spring.EmailAPI.URI}")
+	private String emailAPIDomain;
+	
 	@PostMapping("/validateEmail")
 	@Operation(summary="Email 인증 수행", description = "Email 인증 수행")
 	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
@@ -335,10 +339,8 @@ public class MemberController {
 		System.out.println("key : " + key);
 		
 		memberService.addEmailKey(validateMember.getUserNo(), key);
-		
-		String domain = "http://10.125.121.176:8081";
 		String subject = "Email 인증 From FlowWater"; 
-		String link = domain + "/api/member/validateKey?keyValue="+key;
+		String link = emailAPIDomain + "/api/member/validateKey?keyValue="+key;
 		String body = "<div style=\"font-family: 'Apple SD Gothic Neo', 'sans-serif' !important; width: 540px; height: 600px; border-top: 4px solid #3498db; margin: 100px auto; padding: 30px 0; box-sizing: border-box;\">" +
 	              "    <h1 style=\"margin: 0; padding: 0 5px; font-size: 28px; font-weight: 400;\">" +
 	              "        <span style=\"color: #3498db;\">" + subject + "</span> 안내" +

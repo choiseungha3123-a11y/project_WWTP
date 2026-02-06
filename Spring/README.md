@@ -165,7 +165,7 @@ npm start
 
 
 
-7.PM2 
+7.PM2
 
 \# 프로세스 관리를 위한 프로그램(백그라운드에서 실행되어 관리가 용이)
 
@@ -211,27 +211,28 @@ pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" --name "FlowWater-Fastap
 
 https://내도메인.한국/
 
-\#AWS Route 53 연결 
+\#AWS Route 53 연결
 
 \#Let's Encrypt에서 인증서를 발급받는 경우(실패)
 
 https://letsencrypt.org/ko/
 
-\#Certbot 설치: 
+\#Certbot 설치:
 
 sudo dnf install python3-certbot-nginx -y
 
-\#인증서 발급: 
+\#인증서 발급:
 
 \# 참조 블로그
 https://jun-codinghistory.tistory.com/651
-sudo certbot certonly -d *.도메인네임.???.??? --manual --preferred-challenges dns
+sudo certbot certonly -d \*.도메인네임.???.??? --manual --preferred-challenges dns
 
 # 발급 성공시 인증서의 자동 저장 위치
+
 /etc/letsencrypt/live/projectwwtp.kro.kr/fullchain.pem
 /etc/letsencrypt/live/projectwwtp.kro.kr/privkey.pem
 
-\#자동 갱신: 
+\#자동 갱신:
 sudo certbot renew --dry-run
 
 \#ZeroSSL에서 인증서를 발급 받는 경우
@@ -263,15 +264,151 @@ sudo nginx -t
 sudo systemctl restart nginx
 
 
+
 9.메일서버 구축
-#메일서버 설치
- yum -y install sendmail sendmail-cf
-#설정파일 수정 etc/mail/sendmail.mc
-# TRUST_AUTH_MECH, define(`confAUTH_MECHANISMS의 주석 제거
-# 앞의 dns 글자를 삭제
-# DAEMON_OPTIONS(`Port=smtp,Addr=127.0.0.1, Name=MTA')dnl
-# 의 127.0.0.1 -> 0.0.0.0으로 수정
-# 적용을 위해서 super 권한이 필요해서 아래 명령어 실행
+# 시스템 업데이트
+
+sudo dnf update -y
+
+\# Sendmail 및 필수 패키지 설치
+
+sudo dnf install -y sendmail sendmail-cf m4
+
+\# Sendmail 서비스 활성화
+
+sudo systemctl enable sendmail
+
+
+
+\# 127.0.0.1 부분을 찾아서 주석 처리하거나 변경
+
+dnl DAEMON\_OPTIONS(`Port=smtp,Addr=127.0.0.1, Name=MTA')dnl
+
+\# 위 줄을 아래처럼 변경 (외부 접속 허용)
+
+DAEMON\_OPTIONS(`Port=smtp, Name=MTA')dnl
+
+\# 도메인 설정 추가
+
+MASQUERADE\_AS(`projectwwtp.kro.kr')dnl
+
+FEATURE(masquerade\_envelope)dnl
+
+FEATURE(masquerade\_entire\_domain)dnl
+
+
+
+\# sendmail.cf 재생성
+
 sudo sh -c "m4 /etc/mail/sendmail.mc > /etc/mail/sendmail.cf"
-# 변경된 설정대로 메일서버 재실행
-systemctl restart sendmail
+
+
+
+\# local-host-names 설정
+
+sudo vi /etc/mail/local-host-names
+
+\*\*추가할 내용:\*\*
+
+```
+
+projectwwtp.kro.kr
+
+www.projectwwtp.kro.kr
+
+mail.projectwwtp.kro.kr
+
+localhost
+
+
+
+\# admin 사용자 생성 (시스템 계정)
+
+sudo useradd -m -s /sbin/nologin admin
+
+
+
+\# 비밀번호 설정
+
+sudo passwd admin
+
+
+
+\# 메일 디렉토리 권한 확인
+
+sudo mkdir -p /var/spool/mail
+
+sudo chmod 1777 /var/spool/mail
+
+
+
+\# firewalld 설치
+
+sudo dnf install -y firewalld
+
+
+
+\# 서비스 시작 및 활성화
+
+sudo systemctl start firewalld
+
+sudo systemctl enable firewalld
+
+
+
+\# 포트 25 (SMTP) 오픈
+
+sudo firewall-cmd --permanent --add-service=smtp
+
+sudo firewall-cmd --reload
+
+
+
+\# Sendmail 시작
+
+sudo systemctl start sendmail
+
+sudo systemctl status sendmail
+
+
+
+\# Sendmail 시작
+
+sudo systemctl start sendmail
+
+sudo systemctl status sendmail
+
+
+
+\# 메일 큐 확인
+
+sudo mailq# mailx 패키지 설치
+
+sudo dnf install -y mailx
+
+
+
+
+
+\# 테스트 메일 발송
+
+echo "테스트 메일입니다" | mail -s "테스트" admin@projectwwtp.kro.kr
+
+
+
+\# 메일 최근로그 확인
+
+sudo journalctl -u sendmail -n 50
+
+\# 메일 전체 로그 확인
+
+sudo journalctl | grep -i mail
+
+
+
+\# 메일함 확인
+
+sudo mail -u admin
+
+
+
