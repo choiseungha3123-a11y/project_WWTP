@@ -13,29 +13,52 @@ import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
 import kr.kro.prjectwwtp.domain.FakeDate;
+import kr.kro.prjectwwtp.domain.FlowSummary;
 import kr.kro.prjectwwtp.domain.TmsSummary;
 import kr.kro.prjectwwtp.persistence.FakeDateRepository;
+import kr.kro.prjectwwtp.persistence.FlowSummaryRepository;
 import kr.kro.prjectwwtp.persistence.TmsSummaryRepository;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class TmsSummaryService {
-	private final TmsSummaryRepository repo;
+	private final TmsSummaryRepository tmsRepo;
+	private final FlowSummaryRepository flowRepo;
 	private final FakeDateRepository fakeDateRepo;
 	
 	@PostConstruct
 	public void init() {
 		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
 	}
-	
-	public List<Date> getFakeDatesList() {
+
+	int checkNum = 2600;
+	public List<Date> getFakeTmsDatesList() {
 		List<Date> retList = new ArrayList<Date>();
-		List<TmsSummary> summaries = repo.findAll();
-		int checkNum = 2600;
+		List<TmsSummary> summaries = tmsRepo.findAll();
 		
 		TmsSummary pre = null;
 		for(TmsSummary summary : summaries) {
+			if(pre == null) {
+				pre = summary;
+				continue;
+			}
+			if( pre.getCount() + summary.getCount() >= checkNum &&
+					ChronoUnit.DAYS.between(pre.getTime().toInstant(), summary.getTime().toInstant()) == 1) {
+				// 하루전 날짜와의 합계가 checkNum 이상인 경우
+				retList.add(summary.getTime());
+				}
+			pre = summary;
+		}
+		return retList;
+	}
+	
+	public List<Date> getFakeFlowDatesList() {
+		List<Date> retList = new ArrayList<Date>();
+		List<FlowSummary> summaries = flowRepo.findAll();
+		
+		FlowSummary pre = null;
+		for(FlowSummary summary : summaries) {
 			if(pre == null) {
 				pre = summary;
 				continue;
@@ -55,23 +78,32 @@ public class TmsSummaryService {
 		// 등록된 값이 오늘 생성한 날짜면 그냥 사용
 		if(fakeDate != null
 				&& fakeDate.getToday().isAfter(LocalDateTime.now().withHour(0).withMinute(0))) {
-			System.out.println("fakeDate.getFakeDate() : " + fakeDate.getFakeDate());
-			return fakeDate.getFakeDate();
+			System.out.println("fakeDate.getFakeDate() : " + fakeDate.getTmsDate());
+			return fakeDate.getTmsDate();
 		}
 		
-		List<Date> fakeDates = getFakeDatesList();
+		List<Date> fakeDates = getFakeTmsDatesList();
 		Random rand = new Random();
 		int idx = rand.nextInt(fakeDates.size());
 		Date retDate = fakeDates.get(idx);
-		LocalDateTime time = retDate.toInstant() 
+		LocalDateTime tmsTime = retDate.toInstant() 
 								.atZone(ZoneId.systemDefault())
 								.toLocalDateTime();
+		
+		fakeDates = getFakeFlowDatesList();
+		idx = rand.nextInt(fakeDates.size());
+		retDate = fakeDates.get(idx);
+		LocalDateTime flowTime = retDate.toInstant() 
+				.atZone(ZoneId.systemDefault())
+				.toLocalDateTime();
+		
 		fakeDateRepo.save(FakeDate.builder()
 				.today(LocalDateTime.now())
-				.fakeDate(time)
+				.tmsDate(tmsTime)
+				.flowDate(flowTime)
 				.build());
-		System.out.println("new fakeDate : " + time);
-		return time;
+		System.out.println("new tmsDate : " + tmsTime + ", " + flowTime);
+		return tmsTime;
 				
 	}
 }

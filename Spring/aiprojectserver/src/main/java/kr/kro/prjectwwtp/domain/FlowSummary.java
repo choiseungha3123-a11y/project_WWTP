@@ -1,6 +1,6 @@
 package kr.kro.prjectwwtp.domain;
 
-import java.time.LocalDateTime;
+import java.util.Date;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.Entity;
@@ -19,12 +19,12 @@ import lombok.ToString;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-public class FakeDate {
+public class FlowSummary {
 	@Id
-	@Schema(description = "임시 날짜를 조회한 오늘 날짜", example = "2026-01-30T15:04:05")
-	private LocalDateTime today;
-	@Schema(description = "Tms 날짜", example = "2026-01-15")
-	private LocalDateTime tmsDate;
-	@Schema(description = "Flow 날짜", example = "2026-01-15")
-	private LocalDateTime flowDate;
+	@Schema(description = "날짜", example = "2026-01-30")
+	private Date time;
+	@Schema(description = "데이터수", example = "0~")
+	private int count;
+	
+
 }

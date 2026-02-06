@@ -31,33 +31,26 @@ import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.controller.WeatherController.WeatherDTO;
 import kr.kro.prjectwwtp.domain.FlowImputate;
+import kr.kro.prjectwwtp.domain.FlowLog;
+import kr.kro.prjectwwtp.domain.FlowOrigin;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
-import kr.kro.prjectwwtp.domain.TmsImputate;
-import kr.kro.prjectwwtp.domain.TmsLog;
-import kr.kro.prjectwwtp.domain.TmsOrigin;
 import kr.kro.prjectwwtp.domain.responseDTO;
-import kr.kro.prjectwwtp.persistence.TmsLogRepository;
+import kr.kro.prjectwwtp.persistence.FlowLogRepository;
 import kr.kro.prjectwwtp.service.FlowOriginService;
 import kr.kro.prjectwwtp.service.FlowSummaryService;
-import kr.kro.prjectwwtp.service.TmsOriginService;
-import kr.kro.prjectwwtp.service.TmsSummaryService;
-import kr.kro.prjectwwtp.service.WeatherService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RestControllerAdvice
-@RequestMapping("/api/tmsOrigin")
+@RequestMapping("/api/flowOrigin")
 @RequiredArgsConstructor
-@Tag(name="TmsOriginController", description = "TMS 수치 처리 API")
-public class TmsOriginController {
-	private final TmsOriginService tmsOriginService;
+@Tag(name="FlowOriginController", description = "유량 수치 처리 API")
+public class FlowOriginController {
 	private final FlowOriginService flowOriginService;
-	private final TmsLogRepository logRepository;
-	private final TmsSummaryService tmsSummaryService;
+	private final FlowLogRepository logRepository;
 	private final FlowSummaryService flowSummaryService;
-	private final WeatherService weatherService;
 	
 	@Value("${spring.FastAPI.URI}")
 	private String fastAPIURI;
@@ -98,7 +91,7 @@ public class TmsOriginController {
 	@Operation(summary="실제 측정 데이터 upload", description = ".csv 파일을 업로드하여 실제 측정 데이터를 저장합니다.")
 	@Parameter(name = "file", description= ".csv 파일명", schema = @Schema(implementation = MultipartFile.class))
 	@ApiResponse(description = "dataList[0]에 saveCount : XXXX 로 저장된 수를 전달", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
-	public ResponseEntity<Object> postTmsOriginUpload(
+	public ResponseEntity<Object> postFlowOriginUpload(
 			HttpServletRequest request,
 			MultipartFile file) {
 		responseDTO res = responseDTO.builder()
@@ -123,8 +116,8 @@ public class TmsOriginController {
 			return ResponseEntity.ok().body(res);
 		}
 		try {
-			int saveCount = tmsOriginService.saveFromCsv(file);
-			logRepository.save(TmsLog.builder()
+			int saveCount = flowOriginService.saveFromCsv(file);
+			logRepository.save(FlowLog.builder()
 									.type("upload")
 									.member(member)
 									.count(saveCount)
@@ -142,9 +135,9 @@ public class TmsOriginController {
 	@Parameter(name = "time", description= "조회날짜(yyyyMMdd)", example = "20240101")
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "결과", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class))),
-		@ApiResponse(responseCode = "201", description = "dataList[]", content = @Content(mediaType = "application/json", schema = @Schema(implementation = TmsOrigin.class)))
+		@ApiResponse(responseCode = "201", description = "dataList[]", content = @Content(mediaType = "application/json", schema = @Schema(implementation = FlowOrigin.class)))
 	})
-	public ResponseEntity<Object> getTmsOriginList(
+	public ResponseEntity<Object> getFlowOriginList(
 			HttpServletRequest request,
 			@RequestParam String time) {
 		responseDTO res = responseDTO.builder()
@@ -169,11 +162,11 @@ public class TmsOriginController {
 			return ResponseEntity.ok().body(res);
 		}
 		try {
-			List<TmsOrigin> list = tmsOriginService.getTmsOriginListByDate(time);
-			for(TmsOrigin t : list) {
+			List<FlowOrigin> list = flowOriginService.getFlowOriginListByDate(time);
+			for(FlowOrigin t : list) {
 				res.addData(t);
 			}
-			logRepository.save(TmsLog.builder()
+			logRepository.save(FlowLog.builder()
 					.type("list")
 					.member(member)
 					.time(time)
@@ -194,43 +187,28 @@ public class TmsOriginController {
 				.errorMsg(null)
 				.build();
 		System.out.println("makeFakeDate");
+		LocalDateTime fakeNow = flowSummaryService.getFakeNow();
+		System.out.println("fakeNow : " + fakeNow);
 		LocalDateTime now = LocalDateTime.now();
-		LocalDateTime fakeTmeNow = tmsSummaryService.getFakeNow()
-									.withHour(now.getHour())
-									.withMinute(now.getMinute());
-		System.out.println("fakeTmeNow : " + fakeTmeNow);
+		fakeNow = fakeNow.withHour(now.getHour());
+		fakeNow = fakeNow.withMinute(now.getMinute());
 		
-		// 조회할 날짜(fakeTmeNow를 기준으로 이전 날짜와 해당 날짜의 보간 데이터 구성
-		if(!tmsOriginService.existsByTmsTime(fakeTmeNow)) {
-			List<TmsImputate> list = tmsOriginService.imputate(fakeTmeNow);
-			tmsOriginService.saveTmsImputateList(list);
-		}
-		if(!tmsOriginService.existsByTmsTime(fakeTmeNow.minusDays(1))) {
-			List<TmsImputate> list = tmsOriginService.imputate(fakeTmeNow.minusDays(1));
-			tmsOriginService.saveTmsImputateList(list);
-		}
-		
-		LocalDateTime fakeFlowNow = flowSummaryService.getFakeNow()
-				.withHour(now.getHour())
-				.withMinute(now.getMinute());
-		System.out.println("fakeFlowNow : " + fakeFlowNow);
-				
-		// 조회할 날짜(fakeTmeNow를 기준으로 이전 날짜와 해당 날짜의 보간 데이터 구성
-		if(!flowOriginService.existsByFlowTime(fakeFlowNow)) {
-			List<FlowImputate> list = flowOriginService.imputate(fakeFlowNow);
+		// 조회할 날짜(fakeNow를 기준으로 이전 날짜와 해당 날짜의 보간 데이터 구성
+		if(!flowOriginService.existsByFlowTime(fakeNow)) {
+			List<FlowImputate> list = flowOriginService.imputate(fakeNow);
 			flowOriginService.saveFlowImputateList(list);
 		}
-		if(!flowOriginService.existsByFlowTime(fakeFlowNow.minusDays(1))) {
-			List<FlowImputate> list = flowOriginService.imputate(fakeFlowNow.minusDays(1));
+		if(!flowOriginService.existsByFlowTime(fakeNow.minusDays(1))) {
+			List<FlowImputate> list = flowOriginService.imputate(fakeNow.minusDays(1));
 			flowOriginService.saveFlowImputateList(list);
 		}
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@GetMapping("/tmsList")
+	@GetMapping("/flowList")
 	@Operation(summary="어제부터의 실시간 정보와 내일까지의 예상 정보를 요청", description = "결측/이상 값을 처리한 데이터를 조회합니다. 데이터가 없으면 보간을 수행합니다.")
 /*
-	public ResponseEntity<Object> getTmsList(
+	public ResponseEntity<Object> getFlowList(
 			HttpServletRequest request) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
@@ -255,20 +233,20 @@ public class TmsOriginController {
 		}
 		
 		try {
-			LocalDateTime fakeNow = tmsSummaryService.getFakeNow();
+			LocalDateTime fakeNow = flowSummaryService.getFakeNow();
 			LocalDateTime now = LocalDateTime.now();
 			fakeNow = fakeNow.withHour(now.getHour());
 			fakeNow = fakeNow.withMinute(now.getMinute());
 			
-			List<TmsImputate> list = tmsOriginService.getTmsImputateListByDate(fakeNow);
+			List<FlowImputate> list = flowOriginService.getFlowImputateListByDate(fakeNow);
 						
 //			String csvFilePath = "Downloads/imputated_data_" + time + ".csv";
-//			tmsOriginService.saveToCsv(list, csvFilePath);
+//			flowOriginService.saveToCsv(list, csvFilePath);
 			
-			for(TmsImputate t : list) {
+			for(FlowImputate t : list) {
 				res.addData(t);
 			}
-			logRepository.save(TmsLog.builder()
+			logRepository.save(FlowLog.builder()
 					.type("imputate")
 					.member(member)
 					.time(fakeNow.toString())
@@ -283,31 +261,23 @@ public class TmsOriginController {
 	}
 */	
 	
-	public ResponseEntity<Object> getTmsList() {
+	public ResponseEntity<Object> getFlowList() {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
 				.build();
 		try {
 			LocalDateTime now = LocalDateTime.now();
-			LocalDateTime fakeTmsNow = tmsSummaryService.getFakeNow()
+			LocalDateTime fakeNow = flowSummaryService.getFakeNow()
 									.withHour(now.getHour())
 									.withMinute(now.getMinute());
-			LocalDateTime tmsTmsStart = fakeTmsNow.minusDays(1).plusMinutes(1);
-			LocalDateTime fakeFlowNow = flowSummaryService.getFakeNow()
-									.withHour(now.getHour())
-									.withMinute(now.getMinute());
-			
-			List<TmsImputate> tmsList = tmsOriginService.getTmsImputateListByDate(fakeTmsNow);
-			System.out.println("tmsList size : " + tmsList.size());
-			List<FlowImputate> flowList = flowOriginService.getFlowImputateListByDate(fakeFlowNow);
-			System.out.println("flowList size : " + flowList.size());
-//			List<WeatherDTO> weatherList = weatherService.findByLogTimeBetween(tmsTmsStart, fakeTmsNow);
-//			System.out.println("weatherList size : " + weatherList.size());
-//			res.addData(tmsList);
-//			res.addData(flowList);
-//			res.addData(weatherList);
-			requestFlow(flowList);
+			List<FlowImputate> flowList = flowOriginService.getFlowImputateListByDate(fakeNow);
+			res.addData(flowList);
+			logRepository.save(FlowLog.builder()
+					.type("imputate")
+					.time(fakeNow.toString())
+					.count(flowList.size())
+					.build());
 								
 		} catch (Exception e) {
 			res.setSuccess(false);
@@ -316,7 +286,7 @@ public class TmsOriginController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	public void requestFlow(List<FlowImputate> list) {
+	public void requestFlow(List<WeatherDTO> list) {
 		String url = fastAPIURI + "flow";
 		RestClient restClient = RestClient.create();
 		

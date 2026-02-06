@@ -263,4 +263,15 @@ sudo nginx -t
 sudo systemctl restart nginx
 
 
-
+9.메일서버 구축
+#메일서버 설치
+ yum -y install sendmail sendmail-cf
+#설정파일 수정 etc/mail/sendmail.mc
+# TRUST_AUTH_MECH, define(`confAUTH_MECHANISMS의 주석 제거
+# 앞의 dns 글자를 삭제
+# DAEMON_OPTIONS(`Port=smtp,Addr=127.0.0.1, Name=MTA')dnl
+# 의 127.0.0.1 -> 0.0.0.0으로 수정
+# 적용을 위해서 super 권한이 필요해서 아래 명령어 실행
+sudo sh -c "m4 /etc/mail/sendmail.mc > /etc/mail/sendmail.cf"
+# 변경된 설정대로 메일서버 재실행
+systemctl restart sendmail

@@ -19,13 +19,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import kr.kro.prjectwwtp.domain.TmsImputate;
-import kr.kro.prjectwwtp.domain.TmsLog;
-import kr.kro.prjectwwtp.domain.TmsOrigin;
-import kr.kro.prjectwwtp.persistence.TmsImputateRepository;
-import kr.kro.prjectwwtp.persistence.TmsLogRepository;
-import kr.kro.prjectwwtp.persistence.TmsInsertRepository;
-import kr.kro.prjectwwtp.persistence.TmsOriginRepository;
+import kr.kro.prjectwwtp.domain.FlowImputate;
+import kr.kro.prjectwwtp.domain.FlowLog;
+import kr.kro.prjectwwtp.domain.FlowOrigin;
+import kr.kro.prjectwwtp.persistence.FlowImputateRepository;
+import kr.kro.prjectwwtp.persistence.FlowInsertRepository;
+import kr.kro.prjectwwtp.persistence.FlowLogRepository;
+import kr.kro.prjectwwtp.persistence.FlowOriginRepository;
 import kr.kro.prjectwwtp.service.TmsImputateService.ImputationConfig;
 import kr.kro.prjectwwtp.service.TmsImputateService.OutlierConfig;
 import kr.kro.prjectwwtp.util.Util;
@@ -33,16 +33,16 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class TmsOriginService {
+public class FlowOriginService {
 
-	private final TmsOriginRepository tmsOriginRepo;
-	private final TmsImputateRepository tmsImputateRepo;
-	private final TmsLogRepository logRepo;
-	private final TmsInsertRepository insertRepo;
+	private final FlowOriginRepository flowOriginRepo;
+	private final FlowImputateRepository flowImputateRepo;
+	private final FlowLogRepository logRepo;
+	private final FlowInsertRepository insertRepo;
 
 	/**
-	 * Parse CSV file and save TmsOrigin entries.
-	 * Returns detailed import statistics in TmsImportResult.
+	 * Parse CSV file and save FlowOrigin entries.
+	 * Returns detailed import statistics in FlowImportResult.
 	 */
 	@Transactional
 	public int saveFromCsv(MultipartFile file) throws Exception {
@@ -51,7 +51,7 @@ public class TmsOriginService {
 
 		int addCount = 0;
 		int lineNo = 0;
-		List<TmsOrigin> list = new ArrayList<>();
+		List<FlowOrigin> list = new ArrayList<>();
 		String line;
 		try (BufferedReader br = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"))) {
 			while ((line = br.readLine()) != null) {
@@ -60,29 +60,25 @@ public class TmsOriginService {
 					continue;
 				}
 				// 첫 라인이 컬럼이면 skip
-				if(lineNo == 1 && (line.contains("SYS_TIME") || line.contains("TOC_VU") || line.contains("PH_VU"))) {
+				if(lineNo == 1 && (line.contains("data_save_dt") || line.contains("유량조정조A") || line.contains("유량조정조B"))) {
 					continue;
 				}
 				String[] cols = line.split(",");
 				// 데이터가 모자를 때 skip 유찬씨랑 상의해서 수정 
-				if(cols.length < 7) {
+				if(cols.length < 5) {
 					continue; // 
 				}
-				LocalDateTime tmsTime = Util.parseDateTime(cols[0]);
-				Double toc = Util.parseDoubleOrNullEmptyOk(cols[1]);
-				Double ph = Util.parseDoubleOrNullEmptyOk(cols[2]);
-				Double ss = Util.parseDoubleOrNullEmptyOk(cols[3]);
-				Integer flux = Util.parseIntOrNullEmptyOk(cols[4]);
-				Double tn = Util.parseDoubleOrNullEmptyOk(cols[5]);
-				Double tp = Util.parseDoubleOrNullEmptyOk(cols[6]);
-				TmsOrigin t = TmsOrigin.builder()
-					.tmsTime(tmsTime)
-					.toc(toc)
-					.ph(ph)
-					.ss(ss)
-					.flux(flux)
-					.tn(tn)
-					.tp(tp)
+				LocalDateTime flowTime = Util.parseDateTime(cols[0]);
+				Double flowA = Util.parseDoubleOrNullEmptyOk(cols[1]);
+				Double flowB = Util.parseDoubleOrNullEmptyOk(cols[2]);
+				Double levelA = Util.parseDoubleOrNullEmptyOk(cols[3]);
+				Double levelB = Util.parseDoubleOrNullEmptyOk(cols[4]);
+				FlowOrigin t = FlowOrigin.builder()
+					.flowTime(flowTime)
+					.flowA(flowA)
+					.flowB(flowB)
+					.levelA(levelA)
+					.levelB(levelB)
 					.build();
 				list.add(t);		
 				
@@ -99,7 +95,7 @@ public class TmsOriginService {
 				System.out.println("addCount: " + addCount);
 				list.clear();
 			}
-			logRepo.save(TmsLog.builder()
+			logRepo.save(FlowLog.builder()
 				.type("upload")
 				.count(list.size())
 				.build());
@@ -110,51 +106,51 @@ public class TmsOriginService {
 		}
 	}
 	
-	public int saveBatch(List<TmsOrigin> list) {
+	public int saveBatch(List<FlowOrigin> list) {
 		if(list == null || list.size() == 0) return 0;
-		LocalDateTime firstTime = list.get(0).getTmsTime();
-		LocalDateTime lastTime = list.get(list.size()-1).getTmsTime();
-		List<TmsOrigin> existing = tmsOriginRepo.findByTmsTimeBetween(firstTime, lastTime);
-		for(TmsOrigin e : existing) {
-			list.removeIf(tms -> tms.getTmsTime().isEqual(e.getTmsTime()));
+		LocalDateTime firstTime = list.get(0).getFlowTime();
+		LocalDateTime lastTime = list.get(list.size()-1).getFlowTime();
+		List<FlowOrigin> existing = flowOriginRepo.findByFlowTimeBetween(firstTime, lastTime);
+		for(FlowOrigin e : existing) {
+			list.removeIf(flow -> flow.getFlowTime().isEqual(e.getFlowTime()));
 		}
 		int ret = list.size();
-		insertRepo.TmsOriginInsert(list);
+		insertRepo.FlowOriginInsert(list);
 		return ret;
 	}
 	
-	public List<TmsOrigin> getTmsOriginListByDate(String dateStr) {
+	public List<FlowOrigin> getFlowOriginListByDate(String dateStr) {
 		LocalDateTime start = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
 		LocalDateTime end = LocalDateTime.of(start.getYear(), start.getMonth(), start.getDayOfMonth(), 23, 59, 59);
-		List<TmsOrigin> list = tmsOriginRepo.findByTmsTimeBetween(start, end);
-		System.out.println("getTmsOriginListByDate size : " + list.size());
+		List<FlowOrigin> list = flowOriginRepo.findByFlowTimeBetween(start, end);
+		System.out.println("getFlowOriginListByDate size : " + list.size());
 		return list;
 	}
 	
-	public boolean existsByTmsTime(LocalDateTime tmsTime) {
-		return tmsImputateRepo.existsByTmsTime(tmsTime);
+	public boolean existsByFlowTime(LocalDateTime flowTime) {
+		return flowImputateRepo.existsByFlowTime(flowTime);
 	}
 	
-	public List<TmsImputate> getTmsImputateListByDate(LocalDateTime end) {
+	public List<FlowImputate> getFlowImputateListByDate(LocalDateTime end) {
 		LocalDateTime start = end.minusDays(1).plusMinutes(1);
-		List<TmsImputate> list = tmsImputateRepo.findByTmsTimeBetweenOrderByTmsTime(start, end);
+		List<FlowImputate> list = flowImputateRepo.findByFlowTimeBetweenOrderByFlowTime(start, end);
 		System.out.println("start : " + start.toString());
 		System.out.println("end : " + end.toString());
-		System.out.println("getTmsImputateListByDate size : " + list.size());
+		System.out.println("getFlowImputateListByDate size : " + list.size());
 		return list;
 	}
 	
-	public List<TmsImputate> imputate(LocalDateTime today) {
+	public List<FlowImputate> imputate(LocalDateTime today) {
 		LocalDateTime start = today.withHour(0).withMinute(0);
 		LocalDateTime end = today.withHour(23).withMinute(59);
-		List<TmsOrigin> origin = tmsOriginRepo.findByTmsTimeBetween(start, end);
+		List<FlowOrigin> origin = flowOriginRepo.findByFlowTimeBetween(start, end);
 		
 		System.out.println("[imputate] origin size=" + origin.size());
 		
 		// 1분 단위로 1440개의 데이터를 가진 Map 생성
-		Map<LocalDateTime, TmsOrigin> dataMap = new HashMap<>();
-		for (TmsOrigin tms : origin) {
-			dataMap.put(tms.getTmsTime(), tms);
+		Map<LocalDateTime, FlowOrigin> dataMap = new HashMap<>();
+		for (FlowOrigin flow : origin) {
+			dataMap.put(flow.getFlowTime(), flow);
 		}
 		
 		// 시간 초기화
@@ -164,31 +160,25 @@ public class TmsOriginService {
 		}
 		
 		// 데이터 NaN으로 초기화
-		double[] toc = new double[1440];
-		double[] ph = new double[1440];
-		double[] ss = new double[1440];
-		double[] flux = new double[1440];
-		double[] tn = new double[1440];
-		double[] tp = new double[1440];
+		double[] flowA = new double[1440];
+		double[] flowB = new double[1440];
+		double[] levelA = new double[1440];
+		double[] levelB = new double[1440];
 		
-		Arrays.fill(toc, Double.NaN);
-		Arrays.fill(ph, Double.NaN);
-		Arrays.fill(ss, Double.NaN);
-		Arrays.fill(flux, Double.NaN);
-		Arrays.fill(tn, Double.NaN);
-		Arrays.fill(tp, Double.NaN);
+		Arrays.fill(flowA, Double.NaN);
+		Arrays.fill(flowB, Double.NaN);
+		Arrays.fill(levelA, Double.NaN);
+		Arrays.fill(levelB, Double.NaN);
 		
 		// origin 데이터 채우기
 		for (int i = 0; i < 1440; i++) {
 			LocalDateTime t = times.get(i);
-			TmsOrigin orig = dataMap.get(t);
+			FlowOrigin orig = dataMap.get(t);
 			if (orig != null) {
-				if (orig.getToc() != null) toc[i] = orig.getToc();
-				if (orig.getPh() != null) ph[i] = orig.getPh();
-				if (orig.getSs() != null) ss[i] = orig.getSs();
-				if (orig.getFlux() != null) flux[i] = orig.getFlux();
-				if (orig.getTn() != null) tn[i] = orig.getTn();
-				if (orig.getTp() != null) tp[i] = orig.getTp();
+				if (orig.getFlowA() != null) flowA[i] = orig.getFlowA();
+				if (orig.getFlowB() != null) flowB[i] = orig.getFlowB();
+				if (orig.getLevelA() != null) levelA[i] = orig.getLevelA();
+				if (orig.getLevelB() != null) levelB[i] = orig.getLevelB();
 			}
 		}
 		
@@ -196,38 +186,31 @@ public class TmsOriginService {
 		
 		// 2) 결측치 보간
 		ImputationConfig impConfig = new ImputationConfig();
-		toc = TmsImputateService.imputeMissingWithStrategy(toc, impConfig);
-		ph = TmsImputateService.imputeMissingWithStrategy(ph, impConfig);
-		ss = TmsImputateService.imputeMissingWithStrategy(ss, impConfig);
-		flux = TmsImputateService.imputeMissingWithStrategy(flux, impConfig);
-		tn = TmsImputateService.imputeMissingWithStrategy(tn, impConfig);
-		tp = TmsImputateService.imputeMissingWithStrategy(tp, impConfig);
+		flowA = TmsImputateService.imputeMissingWithStrategy(flowA, impConfig);
+		flowB = TmsImputateService.imputeMissingWithStrategy(flowB, impConfig);
+		levelA = TmsImputateService.imputeMissingWithStrategy(levelA, impConfig);
+		levelB = TmsImputateService.imputeMissingWithStrategy(levelB, impConfig);
 		
 		System.out.println("[imputate] 데이터 별로 결측치 보간");
 		
 		// 3) 이상치 탐지 및 처리
 		OutlierConfig outConfig = new OutlierConfig();
-		toc = TmsImputateService.detectAndHandleOutliers(toc, "toc", outConfig);
-		ph = TmsImputateService.detectAndHandleOutliers(ph, "ph", outConfig);
-		ss = TmsImputateService.detectAndHandleOutliers(ss, "ss", outConfig);
-		flux = TmsImputateService.detectAndHandleOutliers(flux, "flux", outConfig);
-		tn = TmsImputateService.detectAndHandleOutliers(tn, "tn", outConfig);
-		tp = TmsImputateService.detectAndHandleOutliers(tp, "tp", outConfig);
+		flowA = TmsImputateService.detectAndHandleOutliers(flowA, "flowA", outConfig);
+		flowB = TmsImputateService.detectAndHandleOutliers(flowB, "flowB", outConfig);
+		levelA = TmsImputateService.detectAndHandleOutliers(levelA, "levelA", outConfig);
+		levelB = TmsImputateService.detectAndHandleOutliers(levelB, "levelB", outConfig);
 		
 		System.out.println("[imputate] 이상치 처리");
 		
-		// 4) List<TmsImputate>으로 변환
-		List<TmsImputate> result = new ArrayList<>();
+		// 4) List<FlowImputate>으로 변환
+		List<FlowImputate> result = new ArrayList<>();
 		for (int i = 0; i < 1440; i++) {
-			TmsImputate t = new TmsImputate();
-			t.setTmsTime(times.get(i));
-			t.setToc(Double.isNaN(toc[i]) ? null : toc[i]);
-			t.setPh(Double.isNaN(ph[i]) ? null : ph[i]);
-			t.setSs(Double.isNaN(ss[i]) ? null : ss[i]);
-			Double fluxValue = Double.isNaN(flux[i]) ? null : flux[i];
-			t.setFlux((int)fluxValue.doubleValue());
-			t.setTn(Double.isNaN(tn[i]) ? null : tn[i]);
-			t.setTp(Double.isNaN(tp[i]) ? null : tp[i]);
+			FlowImputate t = new FlowImputate();
+			t.setFlowTime(times.get(i));
+			t.setFlowA(Double.isNaN(flowA[i]) ? null : flowA[i]);
+			t.setFlowB(Double.isNaN(flowB[i]) ? null : flowB[i]);
+			t.setLevelA(Double.isNaN(levelA[i]) ? null : levelA[i]);
+			t.setLevelB(Double.isNaN(levelB[i]) ? null : levelB[i]);
 			result.add(t);
 		}
 		
@@ -237,63 +220,57 @@ public class TmsOriginService {
 	}
 	
 	/**
-	 * TmsOrigin 리스트의 NULL 값 분석
+	 * FlowOrigin 리스트의 NULL 값 분석
 	 * 각 필드별 NULL 개수와 비율을 출력
 	 * 
-	 * @param list TmsOrigin 리스트
+	 * @param list FlowOrigin 리스트
 	 */
-	private void checkNullValues(List<TmsImputate> list) {
+	private void checkNullValues(List<FlowImputate> list) {
 		if (list == null || list.isEmpty()) {
 			System.out.println("[NULL Check] 리스트가 비어있습니다");
 			return;
 		}
 		
 		int totalRows = list.size();
-		int tocNullCount = 0;
-		int phNullCount = 0;
-		int ssNullCount = 0;
-		int fluxNullCount = 0;
-		int tnNullCount = 0;
-		int tpNullCount = 0;
+		int flowANullCount = 0;
+		int flowBNullCount = 0;
+		int levelANullCount = 0;
+		int levelBNullCount = 0;
 		
 		// NULL 값 개수 계산
-		for (TmsImputate tms : list) {
-			if (tms.getToc() == null) tocNullCount++;
-			if (tms.getPh() == null) phNullCount++;
-			if (tms.getSs() == null) ssNullCount++;
-			if (tms.getFlux() == null) fluxNullCount++;
-			if (tms.getTn() == null) tnNullCount++;
-			if (tms.getTp() == null) tpNullCount++;
+		for (FlowImputate flow : list) {
+			if (flow.getFlowA() == null) flowANullCount++;
+			if (flow.getFlowB() == null) flowBNullCount++;
+			if (flow.getLevelA() == null) levelANullCount++;
+			if (flow.getLevelB() == null) levelBNullCount++;
 		}
 		
 		// 결과 출력
-		System.out.println("=== TmsOrigin NULL 값 분석 ===");
+		System.out.println("=== FlowOrigin NULL 값 분석 ===");
 		System.out.println("총 행 수: " + totalRows);
 		System.out.println();
-		System.out.printf("toc   - NULL: %4d / %4d (%.2f%%)%n", tocNullCount, totalRows, (double) tocNullCount / totalRows * 100);
-		System.out.printf("ph    - NULL: %4d / %4d (%.2f%%)%n", phNullCount, totalRows, (double) phNullCount / totalRows * 100);
-		System.out.printf("ss    - NULL: %4d / %4d (%.2f%%)%n", ssNullCount, totalRows, (double) ssNullCount / totalRows * 100);
-		System.out.printf("flux  - NULL: %4d / %4d (%.2f%%)%n", fluxNullCount, totalRows, (double) fluxNullCount / totalRows * 100);
-		System.out.printf("tn    - NULL: %4d / %4d (%.2f%%)%n", tnNullCount, totalRows, (double) tnNullCount / totalRows * 100);
-		System.out.printf("tp    - NULL: %4d / %4d (%.2f%%)%n", tpNullCount, totalRows, (double) tpNullCount / totalRows * 100);
+		System.out.printf("flowA   - NULL: %4d / %4d (%.2f%%)%n", flowANullCount, totalRows, (double) flowANullCount / totalRows * 100);
+		System.out.printf("flowB    - NULL: %4d / %4d (%.2f%%)%n", flowBNullCount, totalRows, (double) flowBNullCount / totalRows * 100);
+		System.out.printf("levelA    - NULL: %4d / %4d (%.2f%%)%n", levelANullCount, totalRows, (double) levelANullCount / totalRows * 100);
+		System.out.printf("levelB  - NULL: %4d / %4d (%.2f%%)%n", levelBNullCount, totalRows, (double) levelBNullCount / totalRows * 100);
 		System.out.println();
 		
 		// 전체 NULL 개수
-		int totalNulls = tocNullCount + phNullCount + ssNullCount + fluxNullCount + tnNullCount + tpNullCount;
+		int totalNulls = flowANullCount + flowBNullCount + levelANullCount + levelBNullCount;
 		int totalFields = totalRows * 6;
 		System.out.printf("전체 NULL: %d / %d (%.2f%%)%n", totalNulls, totalFields, (double) totalNulls / totalFields * 100);
 		System.out.println("==============================");
 	}
 	
 	/**
-	 * TmsOrigin 리스트를 CSV 파일로 저장
+	 * FlowOrigin 리스트를 CSV 파일로 저장
 	 * 
-	 * @param list TmsOrigin 리스트
+	 * @param list FlowOrigin 리스트
 	 * @param filePath 저장할 파일 경로 (상대 경로 또는 절대 경로)
 	 * @return 저장 성공 여부
 	 * @throws Exception 파일 저장 중 발생하는 예외
 	 */
-	public boolean saveToCsv(List<TmsImputate> list, String filePath) throws Exception {
+	public boolean saveToCsv(List<FlowImputate> list, String filePath) throws Exception {
 		if (list == null || list.isEmpty()) {
 			System.out.println("[saveToCsv] 저장할 데이터가 없습니다");
 			return false;
@@ -324,21 +301,19 @@ public class TmsOriginService {
 					new OutputStreamWriter(new FileOutputStream(file.getAbsolutePath()), "UTF-8"))) {
 				
 				// 헤더 작성
-				//bw.write("tmsNo,tmsTime,toc,ph,ss,flux,tn,tp");
-				bw.write("SYS_TIME,TOC_VU,PH_VU,SS_VU,FLUX_VU,TN_VU,TP_VU");
+				bw.write("SYS_TIME,flow_TankA,flow_TankB,level_TankA,level_TankB,Q_in");
 				bw.newLine();
 				
 				// 데이터 작성
-				for (TmsImputate tms : list) {
+				for (FlowImputate flow : list) {
 					StringBuilder sb = new StringBuilder();
-					//sb.append(tms.getTmsNo()).append(",");
-					sb.append(Util.formatDateTime(tms.getTmsTime())).append(",");
-					sb.append(Util.formatDouble(tms.getToc())).append(",");
-					sb.append(Util.formatDouble(tms.getPh())).append(",");
-					sb.append(Util.formatDouble(tms.getSs())).append(",");
-					sb.append(Util.formatInteger(tms.getFlux())).append(",");
-					sb.append(Util.formatDouble(tms.getTn())).append(",");
-					sb.append(Util.formatDouble(tms.getTp()));
+					//sb.append(flow.getFlowNo()).append(",");
+					sb.append(Util.formatDateTime(flow.getFlowTime())).append(",");
+					sb.append(Util.formatDouble(flow.getFlowA())).append(",");
+					sb.append(Util.formatDouble(flow.getFlowB())).append(",");
+					sb.append(Util.formatDouble(flow.getLevelA())).append(",");
+					sb.append(Util.formatDouble(flow.getLevelB())).append(",");
+					sb.append(Util.formatDouble(flow.getSum()));
 					
 					bw.write(sb.toString());
 					bw.newLine();
@@ -357,14 +332,14 @@ public class TmsOriginService {
 	}
 	
 	/**
-	 * CSV 파일로부터 TmsOrigin 리스트를 로드
+	 * CSV 파일로부터 FlowOrigin 리스트를 로드
 	 * 
 	 * @param filePath 로드할 파일 경로 (상대 경로 또는 절대 경로)
-	 * @return 로드된 TmsOrigin 리스트
+	 * @return 로드된 FlowOrigin 리스트
 	 * @throws Exception 파일 로드 중 발생하는 예외
 	 */
-	public List<TmsImputate> loadFromCsv(String filePath) {
-		List<TmsImputate> list = new ArrayList<>();
+	public List<FlowImputate> loadFromCsv(String filePath) {
+		List<FlowImputate> list = new ArrayList<>();
 		
 		try {
 			// 파일 경로 해석 (홈 디렉토리, 상대 경로, 절대 경로 모두 지원)
@@ -399,7 +374,7 @@ public class TmsOriginService {
 					}
 					
 					// 헤더 라인 스킵
-					if (lineNo == 1 && line.contains("tmsNo")) {
+					if (lineNo == 1 && line.contains("flowNo")) {
 						continue;
 					}
 					
@@ -411,27 +386,23 @@ public class TmsOriginService {
 					}
 					
 					try {
-						Long tmsNo = Util.parseLongOrNull(cols[0]);
-						LocalDateTime tmsTime = Util.parseDateTime(cols[1]);
-						Double toc = Util.parseDoubleOrNullEmptyOk(cols[2]);
-						Double ph = Util.parseDoubleOrNullEmptyOk(cols[3]);
-						Double ss = Util.parseDoubleOrNullEmptyOk(cols[4]);
-						Integer flux = Util.parseIntOrNullEmptyOk(cols[5]);
-						Double tn = Util.parseDoubleOrNullEmptyOk(cols[6]);
-						Double tp = Util.parseDoubleOrNullEmptyOk(cols[7]);
+						Long flowNo = Util.parseLongOrNull(cols[0]);
+						LocalDateTime flowTime = Util.parseDateTime(cols[1]);
+						Double flowA = Util.parseDoubleOrNullEmptyOk(cols[2]);
+						Double flowB = Util.parseDoubleOrNullEmptyOk(cols[3]);
+						Double levelA = Util.parseDoubleOrNullEmptyOk(cols[4]);
+						Double levelB = Util.parseDoubleOrNullEmptyOk(cols[5]);
 						
-						TmsImputate tms = TmsImputate.builder()
-							.tmsNo(tmsNo)
-							.tmsTime(tmsTime)
-							.toc(toc)
-							.ph(ph)
-							.ss(ss)
-							.flux(flux)
-							.tn(tn)
-							.tp(tp)
+						FlowImputate flow = FlowImputate.builder()
+							.flowNo(flowNo)
+							.flowTime(flowTime)
+							.flowA(flowA)
+							.flowB(flowB)
+							.levelA(levelA)
+							.levelB(levelB)
 							.build();
 						
-						list.add(tms);
+						list.add(flow);
 						
 					} catch (Exception e) {
 						System.out.println("[loadFromCsv] 경고: 라인 " + lineNo + " 파싱 중 오류 발생 - " + e.getMessage() + ", 스킵");
@@ -452,14 +423,14 @@ public class TmsOriginService {
 		}
 	}
 	
-	public void saveTmsImputateList(List<TmsImputate> list) {
+	public void saveFlowImputateList(List<FlowImputate> list) {
 		if(list == null || list.size() == 0) return;
-		List<TmsImputate> addList = new ArrayList<>();
-		for(TmsImputate tms : list) {
-			if(!tmsImputateRepo.existsByTmsTime(tms.getTmsTime())) {
+		List<FlowImputate> addList = new ArrayList<>();
+		for(FlowImputate tms : list) {
+			if(!flowImputateRepo.existsByFlowTime(tms.getFlowTime())) {
 				addList.add(tms);
 			}
 		}
-		insertRepo.TmsImputateInsert(addList);
+		insertRepo.FlowImputateInsert(addList);
 	}
 }

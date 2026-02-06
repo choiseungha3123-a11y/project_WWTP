@@ -1,5 +1,8 @@
 package kr.kro.prjectwwtp.util;
 
+import java.io.File;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
 import com.auth0.jwt.JWT;
@@ -81,6 +84,128 @@ public class Util {
 			userNo = -1L;
 		}
 		return userNo;
+	}
+
+
+	// parse helpers that treat empty string as null (explicit)
+	public static Double parseDoubleOrNullEmptyOk(String s) {
+		if (s == null) return null;
+		String t = s.trim();
+		if (t.length() == 0) return null;
+		if (t.equalsIgnoreCase("NA") || t.equalsIgnoreCase("null") || t.equalsIgnoreCase("-99.0") || t.equalsIgnoreCase("-99.9")) return null;
+		return Double.parseDouble(t);
+	}
+
+	public static Integer parseIntOrNullEmptyOk(String s) {
+		if (s == null) return null;
+		String t = s.trim();
+		if (t.length() == 0) return null;
+		if (t.equalsIgnoreCase("NA") || t.equalsIgnoreCase("null")) return null;
+		return Integer.parseInt(t);
+	}
+
+	public static Long parseLongOrNull(String s) {
+		if (s == null) return null;
+		String t = s.trim();
+		if (t.length() == 0) return null;
+		if (t.equalsIgnoreCase("NA") || t.equalsIgnoreCase("null")) return null;
+		try {
+			return Long.parseLong(t);
+		} catch (NumberFormatException e) {
+			return null;
+		}
+	}
+
+	public static LocalDateTime parseDateTime(String s) {
+		String str = s.trim();
+		// try several common patterns
+		String[] patterns = new String[] {
+			"yyyy-MM-dd HH:mm:ss",
+			"M/d/yy H:mm",
+			"yyyy-MM-dd'T'HH:mm:ss",
+			"yyyyMMddHHmm",
+			"yyyyMMddHHmmss",
+		};
+		for (String p : patterns) {
+			try {
+				DateTimeFormatter f = DateTimeFormatter.ofPattern(p);
+				return LocalDateTime.parse(str, f);
+			} catch (Exception e) {
+				// try next
+			}
+		}
+		// try ISO parse
+		try {
+			return LocalDateTime.parse(str);
+		} catch (Exception e) {
+			throw new IllegalArgumentException("날짜 형식이 올바르지 않습니다: " + s);
+		}
+	}
+	
+	/**
+	 * LocalDateTime을 문자열로 포맷
+	 * 
+	 * @param dateTime LocalDateTime 객체
+	 * @return 포맷된 문자열 (yyyy-MM-dd HH:mm:ss)
+	 */
+	public static String formatDateTime(LocalDateTime dateTime) {
+		if (dateTime == null) {
+			return "";
+		}
+		return dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+	}
+	
+	/**
+	 * Double 값을 문자열로 포맷
+	 * 
+	 * @param value Double 값
+	 * @return 포맷된 문자열 (null이면 빈 문자열)
+	 */
+	public static String formatDouble(Double value) {
+		if (value == null || value.isNaN()) {
+			return "";
+		}
+		return String.valueOf(value);
+	}
+	
+	/**
+	 * Integer 값을 문자열로 포맷
+	 * 
+	 * @param value Integer 값
+	 * @return 포맷된 문자열 (null이면 빈 문자열)
+	 */
+	public static String formatInteger(Integer value) {
+		if (value == null) {
+			return "";
+		}
+		return String.valueOf(value);
+	}
+	
+	/**
+	 * 파일 경로를 정규화하여 절대 경로로 변환
+	 * ~/Downloads/ 형태의 홈 디렉토리 경로도 처리
+	 * 
+	 * @param filePath 파일 경로 (상대/절대/홈 디렉토리 경로)
+	 * @return 절대 경로 File 객체
+	 */
+	public static File resolveFilePath(String filePath) {
+		File file = new File(filePath);
+		
+		// 이미 절대 경로인 경우
+		if (file.isAbsolute()) {
+			return file;
+		}
+		
+		// 홈 디렉토리 경로 처리 (~/ 또는 ~\)
+		if (filePath.startsWith("~" + File.separator) || filePath.startsWith("~/")) {
+			String userHome = System.getProperty("user.home");
+			String relativePath = filePath.substring(2); // ~/ 제거
+			return new File(userHome, relativePath);
+		}
+		
+		// 상대 경로인 경우 현재 작업 디렉토리 기준
+		String workingDir = System.getProperty("user.dir");
+		return new File(workingDir, filePath);
 	}
 
 }

@@ -20,6 +20,9 @@ pm2 start npm --name "FlowWater-app-dev" -- run dev
 pm2 restart 6 --update-env
 pm2 restart all
 pm2 list
+-pm2에 등록된 내용을 서버 재시작 시에도 자동으로 실행-
+pm2 startup
+pm2 unstartup
 
 -NGINX(포트 포워딩용) 관련-
 sudo systemctl enable nginx
@@ -118,3 +121,4 @@ http://10.125.121.176:8081/swagger-ui/index.html
 -2026-02-06	ASW 데이터 수집 검증 완료
 -2026-02-06	TMS 데이터를 실시간 처럼 보이기 위한 처리 상의 오류 수정
 -2026-02-06	이메일 인증 추가
+-2026-02-06	유입량도 TMS 측정과 동일하게 가상 날짜 및 보정 처리 추가

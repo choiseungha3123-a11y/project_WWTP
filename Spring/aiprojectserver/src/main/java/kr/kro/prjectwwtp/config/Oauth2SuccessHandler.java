@@ -131,6 +131,7 @@ public class Oauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler{
 		} else if(provider.equalsIgnoreCase("kakao")) {		// kakao
 			Map<String, String> properties = (Map<String, String>)user.getAttributes().get("properties");  
 			name = properties.get("nickname");
+			email = "unknown";
 		}
 		//System.out.println("[OAuth2SuccessHandler]email: " + email);
 		return Map.of("provider", provider, "name", name);
