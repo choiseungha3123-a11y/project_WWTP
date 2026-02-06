@@ -29,7 +29,7 @@ public class MemberService {
 		return member;
 	}
 	
-	public Member getByNo(long userNo) {
+	public Member findByNo(long userNo) {
 		Optional<Member> opt = memberRepo.findById(userNo);
 		if(opt.isEmpty()) {
 			return null;
@@ -59,13 +59,18 @@ public class MemberService {
 				.build());
 	}
 	
-	public void modifyMember(Member member, String userId, String password, String userName, Role role) {
+	public void modifyMember(Member member, String userId, String password, String userName, String userEmail, Role role) {
 		if(userId != null && userId.length() > 0)
 			member.setUserId(userId);
 		if(password != null && password.length() > 0)
 			member.setPassword(encoder.encode(password));
 		if(userName != null && userName.length() > 0)
 			member.setUserName(userName);
+		if(userEmail != null && userEmail.length() > 0) {
+			member.setUserEmail(userEmail);
+			member.setValidateEmail(false);
+			member.setValidateKey(null);
+		}
 		if(role != null)
 			member.setRole(role);
 		memberRepo.save(member);
@@ -92,6 +97,19 @@ public class MemberService {
 	
 	public void deleteMember(Member member) {
 		memberRepo.delete(member);
+	}
+	
+	public void addEmailKey(Long userNo, String key) {
+		Member member = findByNo(userNo);
+		member.setValidateKey(key);
+		memberRepo.save(member);
+	}
+	
+	public void validEmail(Long userNo) {
+		Member member = findByNo(userNo);
+		member.setValidateEmail(true);
+		member.setValidateKey(null);
+		memberRepo.save(member);
 	}
 
 }

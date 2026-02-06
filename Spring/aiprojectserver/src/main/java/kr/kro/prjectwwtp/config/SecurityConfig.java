@@ -82,6 +82,7 @@ public class SecurityConfig {
 			
 			.requestMatchers("/api/member/login").permitAll()
 			.requestMatchers("/api/member/checkId").permitAll()
+			.requestMatchers("/api/member/validateKey").permitAll()
 			.requestMatchers("/api/weather/list").permitAll()
 			.requestMatchers("/api/tmsOrigin/tmsList").permitAll()
 			
@@ -93,6 +94,7 @@ public class SecurityConfig {
 			// 관리자 권한 필요
 			.requestMatchers("/api/member/list").hasRole("ADMIN")
 			.requestMatchers("/api/member/create").hasRole("ADMIN")
+			.requestMatchers("/api/member/validateEmail").hasRole("ADMIN")
 			.requestMatchers("/api/memo/**").hasAnyRole("MEMBER", "ADMIN")
 			.requestMatchers("/api/tmsOrigin/**").hasRole("ADMIN")
 			.requestMatchers("/api/weather/modify").hasRole("ADMIN")

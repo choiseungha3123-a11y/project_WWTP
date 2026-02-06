@@ -2,11 +2,13 @@ package kr.kro.prjectwwtp.util;
 
 import java.util.Date;
 import java.util.Optional;
+import java.util.TimeZone;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Claim;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.config.TokenBlacklistManager;
 import kr.kro.prjectwwtp.domain.Member;
@@ -20,13 +22,23 @@ public class JWTUtil {
 	//private static final long ACCESS_TOKEN_MSEC = 24 * 60 * (60 * 1000);	// 1일
 	private static final long ACCESS_TOKEN_MSEC = 60 * (60 * 1000);	// 1시간
 	//private static final long ACCESS_TOKEN_MSEC = (60 * 1000);	// 1분
-	private static final String JWT_KEY = "kr.kro.projectwwtp";
+	private static String JWT_KEY;
+	//private static final String JWT_KEY = "kr.kro.projectwwtp";
 	
 	public static final String prefix = "Bearer ";
 	public static final String usernoClaim = "Userno";
 	public static final String useridClaim = "Userid";
 	public static final String usernameClaim = "Username";
 	public static final String roleClaim = "Role";
+	
+	@PostConstruct
+	public void init() {
+		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+	}
+	
+	public static void setKey(String key) {
+		JWT_KEY = key;
+	}
 	
 	public static void setTokenBlacklistManager(TokenBlacklistManager manager) {
 		tokenBlacklistManager = manager;
@@ -90,16 +102,16 @@ public class JWTUtil {
 	
 	public static boolean isExpired(HttpServletRequest request)
 	{
+		boolean result = true;
 		try {
 			String token = request.getHeader("Authorization");
-			if(isExpired(token))
-				return true;
+			result = isExpired(token);
 		}
 		catch(Exception e)
 		{
-			return true;
+			result = false;
 		}
-		return false;
+		return result;
 	}
 	
 	public static Member parseToken(HttpServletRequest request) {

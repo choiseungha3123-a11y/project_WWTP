@@ -30,6 +30,7 @@ import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.service.LoginLogService;
+import kr.kro.prjectwwtp.service.MailService;
 import kr.kro.prjectwwtp.service.MemberService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import kr.kro.prjectwwtp.util.Util;
@@ -47,6 +48,7 @@ public class MemberController {
 	private final MemberService memberService;
 	private final LoginLogService logService;
 	private final TokenBlacklistManager tokenBlacklistManager;
+	private final MailService mailService;
 	
 	@ExceptionHandler(MissingServletRequestParameterException.class)
 	public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex) {
@@ -288,6 +290,183 @@ public class MemberController {
 	@Getter
 	@Setter
 	@ToString
+	static public class validEmailDTO {
+		@Schema(description = "고유번호", example = "1~")
+		private long userNo;
+	}
+	
+	@PostMapping("/validateEmail")
+	@Operation(summary="Email 인증 수행", description = "Email 인증 수행")
+	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
+	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = validEmailDTO.class))
+	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
+	public ResponseEntity<Object> postValidateEmail(
+			HttpServletRequest request,
+			@RequestBody validEmailDTO req) {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		if(member.getRole() != Role.ROLE_ADMIN){
+			res.setSuccess(false);
+			res.setErrorMsg("권한이 올바르지 않습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member validateMember = memberService.findByNo(req.userNo);
+		if(validateMember == null || validateMember.getRole() == Role.ROLE_VIEWER ) {
+			res.setSuccess(false);
+			res.setErrorMsg("인증하려는 사용자가 올바르지 않습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		
+		String key = Util.getTempKey(validateMember.getUserNo());
+		System.out.println("key : " + key);
+		
+		memberService.addEmailKey(validateMember.getUserNo(), key);
+		
+		String subject = "Email 인증 From FlowWater"; 
+		String link = "http://localhost:8081/api/member/validateKey?keyValue="+key;
+		String body = "<div style=\"font-family: 'Apple SD Gothic Neo', 'sans-serif' !important; width: 540px; height: 600px; border-top: 4px solid #3498db; margin: 100px auto; padding: 30px 0; box-sizing: border-box;\">" +
+	              "    <h1 style=\"margin: 0; padding: 0 5px; font-size: 28px; font-weight: 400;\">" +
+	              "        <span style=\"color: #3498db;\">" + subject + "</span> 안내" +
+	              "    </h1>" +
+	              "    <p style=\"font-size: 16px; line-height: 26px; margin-top: 50px; padding: 0 5px;\">" +
+	              "        아래 버튼을 클릭하여 인증을 완료해 주세요.<br>" +
+	              "        본 메일은 <b>FlowWater</b> 서비스 이용을 위해 발송되었습니다." +
+	              "        본 메일의 인증은 10분 간만 유효합니다." +
+	              "    </p>" +
+	              "    <a href=\"" + link + "\" style=\"display: inline-block; width: 210px; height: 45px; margin: 30px 5px 40px; background: #3498db; color: #ffffff; text-decoration: none; text-align: center; line-height: 45px; vertical-align: middle; font-size: 16px; border-radius: 5px;\" target=\"_blank\">인증 완료하기</a>" +
+	              "    <div style=\"border-top: 1px solid #DDD; padding: 5px;\">" +
+	              "        <p style=\"font-size: 13px; line-height: 21px; color: #555;\">" +
+	              "            만약 버튼이 작동하지 않는다면 아래 링크를 복사하여 브라우저에 붙여넣어 주세요.<br>" +
+	              "            <span style=\"color: #3498db;\">" + link + "</span>" +
+	              "        </p>" +
+				  "        <p style=\"font-size: 12px; line-height: 21px; color: #777; margin: 0;\">" +
+				  "            도움이 필요하시면 <a href=\"https://www.projectwwtp.kro.kr/support\" style=\"color: #3498db; text-decoration: none;\">고객지원</a>으로 문의 바랍니다." +
+				  "        </p>" +
+	              "    </div>" +
+	              "</div>";
+		
+		mailService.sendEmail(validateMember.getUserEmail(), subject, body);
+		
+		return ResponseEntity.ok().body(res);
+	}
+	
+	public String failMessage(String errorMsg) {
+		String titleText = "FlowWater 인증 실패 안내";
+		String body = "<!DOCTYPE html>" +
+			    "<html>" +
+			    "<head>" +
+			    "    <meta charset=\"UTF-8\">" +
+			    "    <title>" + titleText + "</title>" + // 브라우저 탭 타이틀
+			    "</head>" +
+			    "<body style=\"margin: 0; padding: 0;\">" +
+			    "    <div style=\"font-family: 'Apple SD Gothic Neo', 'sans-serif' !important; width: 540px; border-top: 4px solid #e74c3c; margin: 50px auto; padding: 30px 0; box-sizing: border-box;\">" +
+			    "        <h1 style=\"margin: 0; padding: 0 5px; font-size: 28px; font-weight: 400;\">" +
+			    "            <span style=\"color: #e74c3c;\">인증 실패</span> 안내" +
+			    "        </h1>" +
+			    "        <p style=\"font-size: 16px; line-height: 26px; margin-top: 50px; padding: 0 5px;\">" +
+			    "            안녕하세요, <b>FlowWater</b>입니다.<br>" +
+			    "            요청하신 이메일 인증이 아래와 같은 사유로 완료되지 않았습니다." +
+			    "        </p>" +
+			    "        <div style=\"background-color: #f9f9f9; padding: 20px; border-radius: 5px; margin: 20px 5px;\">" +
+			    "            <p style=\"margin: 0; font-size: 15px; color: #333;\">" +
+			    "                <b>실패 사유:</b> <span style=\"color: #e74c3c;\">" + errorMsg + "</span>" +
+			    "            </p>" +
+			    "        </div>" +
+			    "        <div style=\"border-top: 1px solid #DDD; padding: 15px 5px;\">" +
+			    "            <p style=\"font-size: 12px; line-height: 21px; color: #777; margin: 0;\">" +
+			    "                도움이 필요하시면 <a href=\"https://www.projectwwtp.kro.kr/support\" style=\"color: #3498db; text-decoration: none;\">고객지원</a>으로 문의 바랍니다." +
+			    "            </p>" +
+			    "        </div>" +
+			    "    </div>" +
+			    "</body>" +
+			    "</html>";
+		return body;
+	}
+	
+	public String successMessage(Member member) {
+		String titleText = "FlowWater 가입을 환영합니다!";
+		String mainLink = "https://www.projectwwtp.kro.kr";
+
+		String body = 
+		    "<!DOCTYPE html>" +
+		    "<html>" +
+		    "<head>" +
+		    "    <meta charset=\"UTF-8\">" +
+		    "    <title>" + titleText + "</title>" +
+		    "</head>" +
+		    "<body style=\"margin: 0; padding: 0;\">" +
+		    "    <div style=\"font-family: 'Apple SD Gothic Neo', 'sans-serif' !important; width: 540px; border-top: 4px solid #3498db; margin: 50px auto; padding: 30px 0; box-sizing: border-box;\">" +
+		    "        <h1 style=\"margin: 0; padding: 0 5px; font-size: 28px; font-weight: 400;\">" +
+		    "            <span style=\"color: #3498db;\">인증 성공!</span> 환영합니다" +
+		    "        </h1>" +
+		    "        <p style=\"font-size: 16px; line-height: 26px; margin-top: 50px; padding: 0 5px;\">" +
+		    "            안녕하세요, <b>" + member.getUserName() + "</b>님!<br>" +
+		    "            이메일 인증이 성공적으로 완료되었습니다." +
+		    "        </p>" +
+		    "        <div style=\"background-color: #f0f8ff; padding: 20px; border-radius: 5px; margin: 20px 5px; border: 1px dashed #3498db;\">" +
+		    "            <p style=\"margin: 0; font-size: 15px; color: #333; text-align: center;\">" +
+		    "                <b>\"FlowWater와 함께 깨끗하고 스마트한 시작을 함께하세요!\"</b>" +
+		    "            </p>" +
+		    "        </div>" +
+		    "        <p style=\"font-size: 16px; line-height: 26px; padding: 0 5px;\">" +
+		    "            아래 버튼을 눌러 메인 화면으로 이동해 보세요." +
+		    "        </p>" +
+		    "        <a href=\"" + mainLink + "\" style=\"display: inline-block; width: 210px; height: 45px; margin: 30px 5px 40px; background: #3498db; color: #ffffff; text-decoration: none; text-align: center; line-height: 45px; vertical-align: middle; font-size: 16px; border-radius: 5px; font-weight: bold;\" target=\"_blank\">FlowWater 시작하기</a>" +
+		    "        <div style=\"border-top: 1px solid #DDD; padding: 15px 5px;\">" +
+		    "            <p style=\"font-size: 12px; line-height: 21px; color: #777; margin: 0;\">" +
+		    "                도움이 필요하시면 <a href=\"http://wwws.projectwwtp.kro.kr/support\" style=\"color: #3498db; text-decoration: none;\">고객지원</a>으로 문의 바랍니다." +
+		    "            </p>" +
+		    "        </div>" +
+		    "    </div>" +
+		    "</body>" +
+		    "</html>";
+		return body;
+	}
+	
+	@GetMapping("/validateKey")
+	@Operation(summary="Email 인증 완료", description = "Email 인증 완료")
+	@Parameter(name = "keyValue", description= "자동 발급된 인증키")
+	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
+	public String postValidateKey(
+			@RequestParam String keyValue) {
+		String errorMsg = null;
+		if(Util.isExpired(keyValue)) {
+			errorMsg = "토큰이 만료되었습니다.";
+			return failMessage(errorMsg);
+		}
+		Long userNo = Util.pareKey(keyValue);
+		if(userNo < 0) {
+			errorMsg = "토큰 정보가 올바르지 않습니다.";
+			return failMessage(errorMsg);
+		}
+		Member member = memberService.findByNo(userNo);
+		if(member.getValidateKey() == null ||!member.getValidateKey().equals(keyValue)) {
+			errorMsg = "토큰 정보가 올바르지 않습니다.";
+			return failMessage(errorMsg);
+		}
+		
+		memberService.validEmail(userNo);;
+		
+		return successMessage(member);
+	}
+	
+	@Getter
+	@Setter
+	@ToString
 	static public class memberCreateDTO {
 		@Schema(name = "userId", description = "등록할 사용자 ID", example = "member")
 		private String userId;
@@ -338,6 +517,7 @@ public class MemberController {
 		{
 			res.setSuccess(false);
 			res.setErrorMsg("유효하지 않은 이메일 주소입니다.");
+			return ResponseEntity.ok().body(res);
 		}
 		if(JWTUtil.isExpired(request))
 		{
@@ -384,6 +564,8 @@ public class MemberController {
 		private String password;
 		@Schema(name = "userName", description = "변경할 사용자명", example = "member")
 		private String userName;
+		@Schema(name = "userEmail", description = "변경할 Email", example = "xxx@xxx.xxx")
+		private String userEmail;
 		@Schema(name = "role", description = "변경할 사용자 권한", example = "ROLE_VIEWER")
 		private Role role;
 	}
@@ -410,6 +592,12 @@ public class MemberController {
 			res.setErrorMsg("정보가 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
 		}
+		if(!validateMail(req.userEmail))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("유효하지 않은 이메일 주소입니다.");
+			return ResponseEntity.ok().body(res);
+		}
 		if(JWTUtil.isExpired(request))
 		{
 			res.setSuccess(false);
@@ -427,7 +615,7 @@ public class MemberController {
 			res.setErrorMsg("권한이 없습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		Member modifyMember = memberService.getByNo(req.userNo);
+		Member modifyMember = memberService.findByNo(req.userNo);
 		if(modifyMember == null) {
 			res.setSuccess(false);
 			res.setErrorMsg("존재하지 않는 회원정보입니다.");
@@ -457,7 +645,7 @@ public class MemberController {
 			}
 		}
 		
-		memberService.modifyMember(modifyMember, req.userId, req.password, req.userName, req.role);
+		memberService.modifyMember(modifyMember, req.userId, req.password, req.userName, req.userEmail, req.role);
 		return ResponseEntity.ok().body(res);
 	}
 	
@@ -501,7 +689,7 @@ public class MemberController {
 			res.setErrorMsg("로그인이 필요합니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		Member deleteMember = memberService.getByNo(req.userNo);
+		Member deleteMember = memberService.findByNo(req.userNo);
 		if(deleteMember == null) {
 			res.setSuccess(false);
 			res.setErrorMsg("존재하지 않는 회원정보입니다.");

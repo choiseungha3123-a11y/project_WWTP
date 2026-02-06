@@ -1,5 +1,11 @@
 package kr.kro.prjectwwtp.util;
 
+import java.util.Date;
+
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.Claim;
+
 import jakarta.servlet.http.HttpServletRequest;
 
 public class Util {
@@ -24,6 +30,57 @@ public class Util {
 			ip = ip.split(",")[0].trim();
 		}
 		return ip;
+	}
+	
+	private static String API_KEY;
+	private static final String UserNoClaim = "UserNo";
+	private static final long MSEC = 10 * 60 * 1000;	// 10분
+	
+	public static void setKey(String key) {
+		API_KEY = key;
+	}
+	
+	public static String getTempKey(Long userNo) {
+		String key = JWT.create()
+				.withClaim(UserNoClaim, userNo.toString())
+				.withExpiresAt(new Date(System.currentTimeMillis()+MSEC))
+				.sign(Algorithm.HMAC256(API_KEY));
+		return key;
+	}
+	
+	public static boolean isExpired(String tempKey)
+	{
+		boolean result = true;
+		try {
+			result = JWT.require(Algorithm.HMAC256(API_KEY)).build()
+					.verify(tempKey).getExpiresAt().before(new Date());
+		}
+		catch(Exception e)
+		{
+			System.out.println("토큰 만료");
+			result = false;
+		}
+		return result;
+	}
+	
+	public static String getClaim(String token, String cname) {
+		Claim claim = JWT.require(Algorithm.HMAC256(API_KEY)).build()
+						.verify(token).getClaim(cname);
+		if (claim.isMissing() || claim.isNull()) return null;
+		return claim.asString();
+	}
+		
+	public static Long pareKey(String tempKey) {
+		Long userNo = -1L;
+		try {
+			userNo = Long.parseLong(getClaim(tempKey, UserNoClaim));
+		}
+		catch(Exception e)
+		{
+			System.out.println("토큰 만료");
+			userNo = -1L;
+		}
+		return userNo;
 	}
 
 }

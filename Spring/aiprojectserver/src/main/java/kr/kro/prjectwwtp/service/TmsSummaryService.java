@@ -52,7 +52,10 @@ public class TmsSummaryService {
 	
 	public LocalDateTime getFakeNow() {
 		FakeDate fakeDate = fakeDateRepo.findFirstByOrderByTodayDesc();
-		if(fakeDate != null) {
+		// 등록된 값이 오늘 생성한 날짜면 그냥 사용
+		if(fakeDate != null
+				&& fakeDate.getToday().isAfter(LocalDateTime.now().withHour(0).withMinute(0))) {
+			System.out.println("fakeDate.getFakeDate() : " + fakeDate.getFakeDate());
 			return fakeDate.getFakeDate();
 		}
 		
@@ -67,6 +70,7 @@ public class TmsSummaryService {
 				.today(LocalDateTime.now())
 				.fakeDate(time)
 				.build());
+		System.out.println("new fakeDate : " + time);
 		return time;
 				
 	}

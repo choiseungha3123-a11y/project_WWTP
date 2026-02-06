@@ -31,7 +31,7 @@ public class MailService {
 		Content body = new Content().withCharset("UTF-8").withData(bodyText);
 		
 		Message message = new Message().withSubject(subject)
-				.withBody(new Body().withText(body));
+				.withBody(new Body().withHtml(body));
 		
 		SendEmailRequest  request = new SendEmailRequest()
 			.withSource(sendMailFrom)

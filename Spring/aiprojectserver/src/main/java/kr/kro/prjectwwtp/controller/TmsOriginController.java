@@ -186,7 +186,9 @@ public class TmsOriginController {
 				.success(true)
 				.errorMsg(null)
 				.build();
+		System.out.println("makeFakeDate");
 		LocalDateTime fakeNow = tmsSummaryService.getFakeNow();
+		System.out.println("fakeNow : " + fakeNow);
 		LocalDateTime now = LocalDateTime.now();
 		fakeNow = fakeNow.withHour(now.getHour());
 		fakeNow = fakeNow.withMinute(now.getMinute());

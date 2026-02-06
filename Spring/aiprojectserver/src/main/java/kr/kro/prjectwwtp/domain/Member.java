@@ -2,6 +2,7 @@ package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
 
@@ -40,6 +41,12 @@ public class Member {
 	private String userName;
 	@Schema(description = "회원Email", example = "회원Email")
 	private String userEmail;
+	@JsonIgnore
+	@Schema(description = "Email 인증을 위한 임시키값", example = "ABCDEDF")
+	private String validateKey;
+	@Schema(description = "Email 인증여부", example = "true | false")
+	@Builder.Default
+	private boolean validateEmail = false;
 	@JsonProperty(access = Access.WRITE_ONLY)
 	@Schema(description = "비밀번호", example = "비밀번호는 10~20자이며, 영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.")
 	private String password;
