@@ -1,11 +1,9 @@
 package kr.kro.prjectwwtp.service;
 
 import java.time.Duration;
-import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
@@ -42,10 +40,10 @@ public class FastApiService {
 		System.out.println("initWebClient Complete");
 	}
 	
-	public fastApiResponseDTO getPrectFlow(Object obj) {
+	public fastApiResponseDTO getPredict(String uri, Object obj) {
 		try {
 			fastApiResponseDTO response = webClient.post()
-				.uri("/predict/flow")
+				.uri(uri)
 				.contentType(MediaType.APPLICATION_JSON)
 				.bodyValue(obj)
 				.retrieve()

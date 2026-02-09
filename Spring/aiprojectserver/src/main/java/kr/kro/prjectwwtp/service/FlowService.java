@@ -9,23 +9,31 @@ import java.io.OutputStreamWriter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.annotation.PostConstruct;
+import kr.kro.prjectwwtp.domain.FakeDate;
 import kr.kro.prjectwwtp.domain.FlowImputate;
 import kr.kro.prjectwwtp.domain.FlowLog;
 import kr.kro.prjectwwtp.domain.FlowOrigin;
+import kr.kro.prjectwwtp.domain.FlowSummary;
+import kr.kro.prjectwwtp.persistence.FakeDateRepository;
 import kr.kro.prjectwwtp.persistence.FlowImputateRepository;
 import kr.kro.prjectwwtp.persistence.FlowInsertRepository;
 import kr.kro.prjectwwtp.persistence.FlowLogRepository;
 import kr.kro.prjectwwtp.persistence.FlowOriginRepository;
+import kr.kro.prjectwwtp.persistence.FlowSummaryRepository;
 import kr.kro.prjectwwtp.service.TmsImputateService.ImputationConfig;
 import kr.kro.prjectwwtp.service.TmsImputateService.OutlierConfig;
 import kr.kro.prjectwwtp.util.Util;
@@ -33,17 +41,25 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class FlowOriginService {
+public class FlowService {
 
 	private final FlowOriginRepository flowOriginRepo;
 	private final FlowImputateRepository flowImputateRepo;
 	private final FlowLogRepository logRepo;
 	private final FlowInsertRepository insertRepo;
+	private final FlowSummaryRepository flowSummaryrepo;
+	private final FakeDateRepository fakeDateRepo;
 
 	/**
 	 * Parse CSV file and save FlowOrigin entries.
 	 * Returns detailed import statistics in FlowImportResult.
 	 */
+	
+	@PostConstruct
+	public void init() {
+		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+	}
+	
 	@Transactional
 	public int saveFromCsv(MultipartFile file) throws Exception {
 		if (file == null || file.isEmpty()) return 0;
@@ -139,9 +155,9 @@ public class FlowOriginService {
 			String time = flow.getFlowTime().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
 			flow.setStrtime(time);
 		}
-		System.out.println("start : " + start.toString());
-		System.out.println("end : " + end.toString());
-		System.out.println("getFlowImputateListByDate size : " + list.size());
+		//System.out.println("start : " + start.toString());
+		//System.out.println("end : " + end.toString());
+		//System.out.println("getFlowImputateListByDate size : " + list.size());
 		return list;
 	}
 	
@@ -437,5 +453,31 @@ public class FlowOriginService {
 			}
 		}
 		insertRepo.FlowImputateInsert(addList);
+	}
+	
+	public List<Date> getFakeDatesList() {
+		List<Date> retList = new ArrayList<Date>();
+		List<FlowSummary> summaries = flowSummaryrepo.findAll();
+		int checkNum = 2600;
+		
+		FlowSummary pre = null;
+		for(FlowSummary summary : summaries) {
+			if(pre == null) {
+				pre = summary;
+				continue;
+			}
+			if( pre.getCount() + summary.getCount() >= checkNum &&
+					ChronoUnit.DAYS.between(pre.getTime().toInstant(), summary.getTime().toInstant()) == 1) {
+				// 하루전 날짜와의 합계가 checkNum 이상인 경우
+				retList.add(summary.getTime());
+				}
+			pre = summary;
+		}
+		return retList;
+	}
+	
+	public LocalDateTime getFakeNow() {
+		FakeDate fakeDate = fakeDateRepo.findFirstByOrderByTodayDesc();
+		return fakeDate.getFlowDate();
 	}
 }

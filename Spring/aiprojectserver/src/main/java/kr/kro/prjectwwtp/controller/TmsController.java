@@ -2,11 +2,12 @@ package kr.kro.prjectwwtp.controller;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,9 +17,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.client.RestClient;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -29,18 +32,23 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
+import kr.kro.prjectwwtp.controller.WeatherController.WeatherDTO;
 import kr.kro.prjectwwtp.domain.FlowImputate;
+import kr.kro.prjectwwtp.domain.Input;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.TmsImputate;
 import kr.kro.prjectwwtp.domain.TmsLog;
 import kr.kro.prjectwwtp.domain.TmsOrigin;
+import kr.kro.prjectwwtp.domain.TmsPredict;
+import kr.kro.prjectwwtp.domain.fastApiResponseDTO;
+import kr.kro.prjectwwtp.domain.predictIn;
 import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.persistence.TmsLogRepository;
-import kr.kro.prjectwwtp.service.FlowOriginService;
-import kr.kro.prjectwwtp.service.FlowSummaryService;
-import kr.kro.prjectwwtp.service.TmsOriginService;
-import kr.kro.prjectwwtp.service.TmsSummaryService;
+import kr.kro.prjectwwtp.persistence.TmsPredictRepository;
+import kr.kro.prjectwwtp.service.FastApiService;
+import kr.kro.prjectwwtp.service.FlowService;
+import kr.kro.prjectwwtp.service.TmsService;
 import kr.kro.prjectwwtp.service.WeatherService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import lombok.RequiredArgsConstructor;
@@ -50,13 +58,13 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/tmsOrigin")
 @RequiredArgsConstructor
 @Tag(name="TmsOriginController", description = "TMS 수치 처리 API")
-public class TmsOriginController {
-	private final TmsOriginService tmsOriginService;
-	private final FlowOriginService flowOriginService;
+public class TmsController {
 	private final TmsLogRepository logRepository;
-	private final TmsSummaryService tmsSummaryService;
-	private final FlowSummaryService flowSummaryService;
+	private final TmsService tmsService;
+	private final TmsPredictRepository tmsPredictRepo;
+	private final FlowService flowService;
 	private final WeatherService weatherService;
+	private final FastApiService apiService;
 	
 	@Value("${spring.FastAPI.URI}")
 	private String fastAPIURI;
@@ -122,7 +130,7 @@ public class TmsOriginController {
 			return ResponseEntity.ok().body(res);
 		}
 		try {
-			int saveCount = tmsOriginService.saveFromCsv(file);
+			int saveCount = tmsService.saveFromCsv(file);
 			logRepository.save(TmsLog.builder()
 									.type("upload")
 									.member(member)
@@ -168,7 +176,7 @@ public class TmsOriginController {
 			return ResponseEntity.ok().body(res);
 		}
 		try {
-			List<TmsOrigin> list = tmsOriginService.getTmsOriginListByDate(time);
+			List<TmsOrigin> list = tmsService.getTmsOriginListByDate(time);
 			for(TmsOrigin t : list) {
 				res.addData(t);
 			}
@@ -194,139 +202,152 @@ public class TmsOriginController {
 				.build();
 		System.out.println("makeFakeDate");
 		LocalDateTime now = LocalDateTime.now();
-		LocalDateTime fakeTmeNow = tmsSummaryService.getFakeNow()
+		LocalDateTime fakeTmeNow = tmsService.getFakeNow()
 									.withHour(now.getHour())
 									.withMinute(now.getMinute());
 		System.out.println("fakeTmeNow : " + fakeTmeNow);
 		
 		// 조회할 날짜(fakeTmeNow를 기준으로 이전 날짜와 해당 날짜의 보간 데이터 구성
-		if(!tmsOriginService.existsByTmsTime(fakeTmeNow)) {
-			List<TmsImputate> list = tmsOriginService.imputate(fakeTmeNow);
-			tmsOriginService.saveTmsImputateList(list);
+		if(!tmsService.existsByTmsTime(fakeTmeNow)) {
+			List<TmsImputate> list = tmsService.imputate(fakeTmeNow);
+			tmsService.saveTmsImputateList(list);
 		}
-		if(!tmsOriginService.existsByTmsTime(fakeTmeNow.minusDays(1))) {
-			List<TmsImputate> list = tmsOriginService.imputate(fakeTmeNow.minusDays(1));
-			tmsOriginService.saveTmsImputateList(list);
+		if(!tmsService.existsByTmsTime(fakeTmeNow.minusDays(1))) {
+			List<TmsImputate> list = tmsService.imputate(fakeTmeNow.minusDays(1));
+			tmsService.saveTmsImputateList(list);
 		}
 		
-		LocalDateTime fakeFlowNow = flowSummaryService.getFakeNow()
+		LocalDateTime fakeFlowNow = flowService.getFakeNow()
 				.withHour(now.getHour())
 				.withMinute(now.getMinute());
 		System.out.println("fakeFlowNow : " + fakeFlowNow);
 				
 		// 조회할 날짜(fakeTmeNow를 기준으로 이전 날짜와 해당 날짜의 보간 데이터 구성
-		if(!flowOriginService.existsByFlowTime(fakeFlowNow)) {
-			List<FlowImputate> list = flowOriginService.imputate(fakeFlowNow);
-			flowOriginService.saveFlowImputateList(list);
+		if(!flowService.existsByFlowTime(fakeFlowNow)) {
+			List<FlowImputate> list = flowService.imputate(fakeFlowNow);
+			flowService.saveFlowImputateList(list);
 		}
-		if(!flowOriginService.existsByFlowTime(fakeFlowNow.minusDays(1))) {
-			List<FlowImputate> list = flowOriginService.imputate(fakeFlowNow.minusDays(1));
-			flowOriginService.saveFlowImputateList(list);
+		if(!flowService.existsByFlowTime(fakeFlowNow.minusDays(1))) {
+			List<FlowImputate> list = flowService.imputate(fakeFlowNow.minusDays(1));
+			flowService.saveFlowImputateList(list);
 		}
 		return ResponseEntity.ok().body(res);
+	}
+	
+	@Scheduled(cron = "0 * * * * *")
+	public void getTmsPredict() {
+		try {
+			LocalDateTime now = LocalDateTime.now();
+			LocalDateTime fakeNow = tmsService.getFakeNow()
+									.withHour(now.getHour())
+									.withMinute(now.getMinute());
+			List<TmsImputate> tmsList = tmsService.getTmsImputateListByDate(fakeNow);
+			List<WeatherDTO> aws368 = weatherService.findWeatherDTOByStnAndLogTimeBetween(368, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
+			List<WeatherDTO> aws541 = weatherService.findWeatherDTOByStnAndLogTimeBetween(541, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
+			List<WeatherDTO> aws569 = weatherService.findWeatherDTOByStnAndLogTimeBetween(569, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
+			
+			requestTms(aws368, aws541, aws569, tmsList);
+								
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 	@GetMapping("/tmsList")
 	@Operation(summary="어제부터의 실시간 정보와 내일까지의 예상 정보를 요청", description = "결측/이상 값을 처리한 데이터를 조회합니다. 데이터가 없으면 보간을 수행합니다.")
-/*
-	public ResponseEntity<Object> getTmsList(
-			HttpServletRequest request) {
-		responseDTO res = responseDTO.builder()
-				.success(true)
-				.errorMsg(null)
-				.build();
-		if(JWTUtil.isExpired(request))
-		{
-			res.setSuccess(false);
-			res.setErrorMsg("토큰이 만료되었습니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		Member member = JWTUtil.parseToken(request);
-		if(member == null){
-			res.setSuccess(false);
-			res.setErrorMsg("로그인이 필요합니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		if(member.getRole() != Role.ROLE_ADMIN) {
-			res.setSuccess(false);
-			res.setErrorMsg("권한이 없습니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		
-		try {
-			LocalDateTime fakeNow = tmsSummaryService.getFakeNow();
-			LocalDateTime now = LocalDateTime.now();
-			fakeNow = fakeNow.withHour(now.getHour());
-			fakeNow = fakeNow.withMinute(now.getMinute());
-			
-			List<TmsImputate> list = tmsOriginService.getTmsImputateListByDate(fakeNow);
-						
-//			String csvFilePath = "Downloads/imputated_data_" + time + ".csv";
-//			tmsOriginService.saveToCsv(list, csvFilePath);
-			
-			for(TmsImputate t : list) {
-				res.addData(t);
-			}
-			logRepository.save(TmsLog.builder()
-					.type("imputate")
-					.member(member)
-					.time(fakeNow.toString())
-					.count(list.size())
-					.build());
-								
-		} catch (Exception e) {
-			res.setSuccess(false);
-			res.setErrorMsg(e.getMessage());
-		}		 		
-		return ResponseEntity.ok().body(res);
-	}
-*/	
-	
 	public ResponseEntity<Object> getTmsList() {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
 				.build();
-		try {
-			LocalDateTime now = LocalDateTime.now();
-			LocalDateTime fakeTmsNow = tmsSummaryService.getFakeNow()
-									.withHour(now.getHour())
-									.withMinute(now.getMinute());
-			LocalDateTime tmsTmsStart = fakeTmsNow.minusDays(1).plusMinutes(1);
-			LocalDateTime fakeFlowNow = flowSummaryService.getFakeNow()
-									.withHour(now.getHour())
-									.withMinute(now.getMinute());
-			
-			List<TmsImputate> tmsList = tmsOriginService.getTmsImputateListByDate(fakeTmsNow);
-			System.out.println("tmsList size : " + tmsList.size());
-			List<FlowImputate> flowList = flowOriginService.getFlowImputateListByDate(fakeFlowNow);
-			System.out.println("flowList size : " + flowList.size());
-//			List<WeatherDTO> weatherList = weatherService.findByLogTimeBetween(tmsTmsStart, fakeTmsNow);
-//			System.out.println("weatherList size : " + weatherList.size());
-//			res.addData(tmsList);
-//			res.addData(flowList);
-//			res.addData(weatherList);
-			requestFlow(flowList);
-								
-		} catch (Exception e) {
-			res.setSuccess(false);
-			res.setErrorMsg(e.getMessage());
-		}		 	
+		LocalDateTime now = LocalDateTime.now().withSecond(0);
+		LocalDateTime end = now.plusDays(1).minusMinutes(1);
+		List<TmsPredict> list = tmsPredictRepo.findByTmsTimeBetweenOrderByTmsTime(now, end);
+		res.addData(list);
 		return ResponseEntity.ok().body(res);
 	}
 	
-	public void requestFlow(List<FlowImputate> list) {
-		String url = fastAPIURI + "flow";
-		RestClient restClient = RestClient.create();
+	public void requestTms(List<WeatherDTO> aws368, List<WeatherDTO> aws541, List<WeatherDTO> aws569, List<TmsImputate>tmsList) {
+		Input<TmsImputate> input = new Input<>(aws368, aws541, aws569, tmsList);
+		predictIn<TmsImputate> pIn = new predictIn<>(input);
 		
-		String response = restClient.post()
-					.uri(url)
-					.contentType(MediaType.APPLICATION_JSON)
-					.body(list)
-					.retrieve()
-					.body(String.class);
-		System.out.println("response = " + response);
+		fastApiResponseDTO response = apiService.getPredict("/predict/tms", pIn);
+		if(response.isOk()) {
+			TmsPredict[] predictions = extractPredictions(response);
+			System.out.println("예측값 (1h~12h): " + java.util.Arrays.toString(predictions));
+			for(int i = 0; i < predictions.length; ++i)
+				tmsPredictRepo.save(predictions[i]);
+		}
+	}
+	
+	/**
+	 * FastAPI 응답에서 predictions 값을 1h~12h 순으로 double 배열로 추출
+	 * @param response FastAPI 응답 DTO
+	 * @return predictions 배열 (크기: 12), 추출 실패 시 null
+	 */
+	private TmsPredict[] extractPredictions(fastApiResponseDTO response) {
+		TmsPredict[] predictions = new TmsPredict[12];
 		
+		ObjectMapper mapper = new ObjectMapper();
+		
+		try {
+			if(response == null || response.getOutput() == null) {
+				System.err.println("응답 또는 output이 null입니다");
+				return null;
+			}
+			
+			Map<String, Object> mapOutput = response.getOutput();
+			Map<String, Object> mapPredictions = mapper.convertValue(mapOutput.get("predictions"),new TypeReference<>() {});
+			Map<String, Object> mapToc = mapper.convertValue(mapPredictions.get("toc"),new TypeReference<>() {});
+			Map<String, Object> mapSs = mapper.convertValue(mapPredictions.get("ss"),new TypeReference<>() {});
+			Map<String, Object> mapTn = mapper.convertValue(mapPredictions.get("tn"),new TypeReference<>() {});
+			Map<String, Object> mapTp = mapper.convertValue(mapPredictions.get("tp"),new TypeReference<>() {});
+			Map<String, Object> mapFlux = mapper.convertValue(mapPredictions.get("flux"),new TypeReference<>() {});
+			Map<String, Object> mapPh = mapper.convertValue(mapPredictions.get("ph"),new TypeReference<>() {});
+			LocalDateTime now = LocalDateTime.now().withSecond(0);
+			
+			// output에서 predictions 데이터 추출
+			for(int hour = 1; hour <= 12; hour++) {
+				String key = hour + "h";
+				Object valueToc = mapToc.get(key);
+				Object valueSs = mapSs.get(key);
+				Object valueTn = mapTn.get(key);
+				Object valueTp = mapTp.get(key);
+				Object valueFlux = mapFlux.get(key);
+				Object valuePh = mapPh.get(key);
+				
+				if(valueToc != null 
+						&& valueSs != null 
+						&& valueTn != null 
+						&& valueTp != null 
+						&& valueFlux != null
+						&& valuePh != null) {
+					predictions[hour - 1] = TmsPredict.builder()
+						.toc(((Number) valueToc).doubleValue())
+						.ss(((Number) valueSs).doubleValue())
+						.tn(((Number) valueTn).doubleValue())
+						.tp(((Number) valueTp).doubleValue())
+						.flux(((Number) valueFlux).doubleValue())
+						.ph(((Number) valuePh).doubleValue())
+						.tmsTime(now.plusHours(hour))
+						.build();
+				} else {
+					System.out.println(response);
+					System.err.println("예측값 누락 (" + key + ")");
+					return null;
+				}
+			}
+			
+			
+			return predictions;
+		} catch (NumberFormatException e) {
+			System.err.println("예측값을 숫자로 변환하는 중 오류 발생: " + e.getMessage());
+			return null;
+		} catch (Exception e) {
+			System.err.println("예측값 추출 중 오류 발생: " + e.getMessage());
+			e.printStackTrace();
+			return null;
+		}
 	}
 
 }

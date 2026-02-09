@@ -8,24 +8,36 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.TimeZone;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.annotation.PostConstruct;
+import kr.kro.prjectwwtp.domain.FakeDate;
+import kr.kro.prjectwwtp.domain.FlowSummary;
 import kr.kro.prjectwwtp.domain.TmsImputate;
 import kr.kro.prjectwwtp.domain.TmsLog;
 import kr.kro.prjectwwtp.domain.TmsOrigin;
+import kr.kro.prjectwwtp.domain.TmsSummary;
+import kr.kro.prjectwwtp.persistence.FakeDateRepository;
+import kr.kro.prjectwwtp.persistence.FlowSummaryRepository;
 import kr.kro.prjectwwtp.persistence.TmsImputateRepository;
 import kr.kro.prjectwwtp.persistence.TmsLogRepository;
 import kr.kro.prjectwwtp.persistence.TmsInsertRepository;
 import kr.kro.prjectwwtp.persistence.TmsOriginRepository;
+import kr.kro.prjectwwtp.persistence.TmsSummaryRepository;
 import kr.kro.prjectwwtp.service.TmsImputateService.ImputationConfig;
 import kr.kro.prjectwwtp.service.TmsImputateService.OutlierConfig;
 import kr.kro.prjectwwtp.util.Util;
@@ -33,12 +45,20 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class TmsOriginService {
+public class TmsService {
 
 	private final TmsOriginRepository tmsOriginRepo;
 	private final TmsImputateRepository tmsImputateRepo;
-	private final TmsLogRepository logRepo;
-	private final TmsInsertRepository insertRepo;
+	private final TmsLogRepository tmsLogRepo;
+	private final TmsInsertRepository tmsInsertRepo;
+	private final TmsSummaryRepository tmsSummaryRepo;
+	private final FlowSummaryRepository flowSummaryRepo;
+	private final FakeDateRepository fakeDateRepo;
+	
+	@PostConstruct
+	public void init() {
+		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+	}
 
 	/**
 	 * Parse CSV file and save TmsOrigin entries.
@@ -99,7 +119,7 @@ public class TmsOriginService {
 				System.out.println("addCount: " + addCount);
 				list.clear();
 			}
-			logRepo.save(TmsLog.builder()
+			tmsLogRepo.save(TmsLog.builder()
 				.type("upload")
 				.count(list.size())
 				.build());
@@ -119,7 +139,7 @@ public class TmsOriginService {
 			list.removeIf(tms -> tms.getTmsTime().isEqual(e.getTmsTime()));
 		}
 		int ret = list.size();
-		insertRepo.TmsOriginInsert(list);
+		tmsInsertRepo.TmsOriginInsert(list);
 		return ret;
 	}
 	
@@ -138,9 +158,13 @@ public class TmsOriginService {
 	public List<TmsImputate> getTmsImputateListByDate(LocalDateTime end) {
 		LocalDateTime start = end.minusDays(1).plusMinutes(1);
 		List<TmsImputate> list = tmsImputateRepo.findByTmsTimeBetweenOrderByTmsTime(start, end);
-		System.out.println("start : " + start.toString());
-		System.out.println("end : " + end.toString());
-		System.out.println("getTmsImputateListByDate size : " + list.size());
+		for(TmsImputate tms : list) {
+			String time = tms.getTmsTime().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+			tms.setStrtime(time);
+		}
+		//System.out.println("start : " + start.toString());
+		//System.out.println("end : " + end.toString());
+		//System.out.println("getTmsImputateListByDate size : " + list.size());
 		return list;
 	}
 	
@@ -459,6 +483,81 @@ public class TmsOriginService {
 				addList.add(tms);
 			}
 		}
-		insertRepo.TmsImputateInsert(addList);
+		tmsInsertRepo.TmsImputateInsert(addList);
+	}
+
+	int checkNum = 2600;
+	public List<Date> getFakeTmsDatesList() {
+		List<Date> retList = new ArrayList<Date>();
+		List<TmsSummary> summaries = tmsSummaryRepo.findAll();
+		
+		TmsSummary pre = null;
+		for(TmsSummary summary : summaries) {
+			if(pre == null) {
+				pre = summary;
+				continue;
+			}
+			if( pre.getCount() + summary.getCount() >= checkNum &&
+					ChronoUnit.DAYS.between(pre.getTime().toInstant(), summary.getTime().toInstant()) == 1) {
+				// 하루전 날짜와의 합계가 checkNum 이상인 경우
+				retList.add(summary.getTime());
+				}
+			pre = summary;
+		}
+		return retList;
+	}
+	
+	public List<Date> getFakeFlowDatesList() {
+		List<Date> retList = new ArrayList<Date>();
+		List<FlowSummary> summaries = flowSummaryRepo.findAll();
+		
+		FlowSummary pre = null;
+		for(FlowSummary summary : summaries) {
+			if(pre == null) {
+				pre = summary;
+				continue;
+			}
+			if( pre.getCount() + summary.getCount() >= checkNum &&
+					ChronoUnit.DAYS.between(pre.getTime().toInstant(), summary.getTime().toInstant()) == 1) {
+				// 하루전 날짜와의 합계가 checkNum 이상인 경우
+				retList.add(summary.getTime());
+				}
+			pre = summary;
+		}
+		return retList;
+	}
+	
+	public LocalDateTime getFakeNow() {
+		FakeDate fakeDate = fakeDateRepo.findFirstByOrderByTodayDesc();
+		// 등록된 값이 오늘 생성한 날짜면 그냥 사용
+		if(fakeDate != null
+				&& fakeDate.getToday().isAfter(LocalDateTime.now().withHour(0).withMinute(0))) {
+			System.out.println("fakeDate.getFakeDate() : " + fakeDate.getTmsDate());
+			return fakeDate.getTmsDate();
+		}
+		
+		List<Date> fakeDates = getFakeTmsDatesList();
+		Random rand = new Random();
+		int idx = rand.nextInt(fakeDates.size());
+		Date retDate = fakeDates.get(idx);
+		LocalDateTime tmsTime = retDate.toInstant() 
+								.atZone(ZoneId.systemDefault())
+								.toLocalDateTime();
+		
+		fakeDates = getFakeFlowDatesList();
+		idx = rand.nextInt(fakeDates.size());
+		retDate = fakeDates.get(idx);
+		LocalDateTime flowTime = retDate.toInstant() 
+				.atZone(ZoneId.systemDefault())
+				.toLocalDateTime();
+		
+		fakeDateRepo.save(FakeDate.builder()
+				.today(LocalDateTime.now())
+				.tmsDate(tmsTime)
+				.flowDate(flowTime)
+				.build());
+		System.out.println("new tmsDate : " + tmsTime + ", " + flowTime);
+		return tmsTime;
+				
 	}
 }

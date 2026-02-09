@@ -1,7 +1,6 @@
 package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.TimeZone;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;

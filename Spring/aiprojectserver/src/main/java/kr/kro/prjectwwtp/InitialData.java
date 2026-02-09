@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import kr.kro.prjectwwtp.config.PasswordEncoder;
-import kr.kro.prjectwwtp.controller.TmsOriginController;
+import kr.kro.prjectwwtp.controller.TmsController;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.persistence.MemberRepository;
@@ -19,7 +19,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class InitialData implements ApplicationRunner {
 	private final MemberRepository memberRepo;
-	private final TmsOriginController tmsController;
+	private final TmsController tmsController;
 	private PasswordEncoder encoder = new PasswordEncoder();
 	
 	@Value("${jwt.key}")
