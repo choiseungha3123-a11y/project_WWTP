@@ -32,6 +32,7 @@ public class FlowOrigin {
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "time", updatable = false)
 	@Schema(description = "데이터의 기록 시간", example = "2026-01-30T15:30:00")
+	//private LocalDateTime flowTime;
 	private LocalDateTime flowTime;
 	@Schema(description = "유량조정조A_유량", example = "double")
 	private Double flowA;

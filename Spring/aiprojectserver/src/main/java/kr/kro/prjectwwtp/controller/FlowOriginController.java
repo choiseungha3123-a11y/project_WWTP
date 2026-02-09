@@ -1,12 +1,16 @@
 package kr.kro.prjectwwtp.controller;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,7 +23,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.netty.channel.ChannelOption;
+import io.netty.handler.timeout.ReadTimeoutHandler;
+import io.netty.handler.timeout.WriteTimeoutHandler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -35,12 +47,19 @@ import kr.kro.prjectwwtp.domain.FlowLog;
 import kr.kro.prjectwwtp.domain.FlowOrigin;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
+import kr.kro.prjectwwtp.domain.fastApiResponseDTO;
 import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.persistence.FlowLogRepository;
+import kr.kro.prjectwwtp.service.FastApiService;
 import kr.kro.prjectwwtp.service.FlowOriginService;
 import kr.kro.prjectwwtp.service.FlowSummaryService;
+import kr.kro.prjectwwtp.service.WeatherService;
 import kr.kro.prjectwwtp.util.JWTUtil;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+import reactor.netty.http.client.HttpClient;
 
 @RestController
 @RestControllerAdvice
@@ -51,9 +70,8 @@ public class FlowOriginController {
 	private final FlowOriginService flowOriginService;
 	private final FlowLogRepository logRepository;
 	private final FlowSummaryService flowSummaryService;
-	
-	@Value("${spring.FastAPI.URI}")
-	private String fastAPIURI;
+	private final WeatherService weaterhService;
+	private final FastApiService apiService;
 	
 	@PostConstruct
 	public void init() {
@@ -179,32 +197,6 @@ public class FlowOriginController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@PostMapping("/makeFakeDate")
-	@Operation(summary="임의의 날짜를 오늘로 처리", description = "현재 실시간 정보를 가져올수 없기 때문에 받아온 FMS 데이터 중에 임의의 날짜를 오늘로 처리하도록 함")
-	public ResponseEntity<Object> postMakeFakeDate() {
-		responseDTO res = responseDTO.builder()
-				.success(true)
-				.errorMsg(null)
-				.build();
-		System.out.println("makeFakeDate");
-		LocalDateTime fakeNow = flowSummaryService.getFakeNow();
-		System.out.println("fakeNow : " + fakeNow);
-		LocalDateTime now = LocalDateTime.now();
-		fakeNow = fakeNow.withHour(now.getHour());
-		fakeNow = fakeNow.withMinute(now.getMinute());
-		
-		// 조회할 날짜(fakeNow를 기준으로 이전 날짜와 해당 날짜의 보간 데이터 구성
-		if(!flowOriginService.existsByFlowTime(fakeNow)) {
-			List<FlowImputate> list = flowOriginService.imputate(fakeNow);
-			flowOriginService.saveFlowImputateList(list);
-		}
-		if(!flowOriginService.existsByFlowTime(fakeNow.minusDays(1))) {
-			List<FlowImputate> list = flowOriginService.imputate(fakeNow.minusDays(1));
-			flowOriginService.saveFlowImputateList(list);
-		}
-		return ResponseEntity.ok().body(res);
-	}
-	
 	@GetMapping("/flowList")
 	@Operation(summary="어제부터의 실시간 정보와 내일까지의 예상 정보를 요청", description = "결측/이상 값을 처리한 데이터를 조회합니다. 데이터가 없으면 보간을 수행합니다.")
 /*
@@ -272,12 +264,17 @@ public class FlowOriginController {
 									.withHour(now.getHour())
 									.withMinute(now.getMinute());
 			List<FlowImputate> flowList = flowOriginService.getFlowImputateListByDate(fakeNow);
-			res.addData(flowList);
-			logRepository.save(FlowLog.builder()
-					.type("imputate")
-					.time(fakeNow.toString())
-					.count(flowList.size())
-					.build());
+			List<WeatherDTO> aws368 = weaterhService.findWeatherDTOByStnAndLogTimeBetween(368, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
+			List<WeatherDTO> aws541 = weaterhService.findWeatherDTOByStnAndLogTimeBetween(541, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
+			List<WeatherDTO> aws569 = weaterhService.findWeatherDTOByStnAndLogTimeBetween(569, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
+			requestFlow(aws368, aws541, aws569, flowList);
+			
+//			res.addData(flowList);
+//			logRepository.save(FlowLog.builder()
+//					.type("imputate")
+//					.time(fakeNow.toString())
+//					.count(flowList.size())
+//					.build());
 								
 		} catch (Exception e) {
 			res.setSuccess(false);
@@ -286,18 +283,50 @@ public class FlowOriginController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	public void requestFlow(List<WeatherDTO> list) {
-		String url = fastAPIURI + "flow";
-		RestClient restClient = RestClient.create();
+	@Getter
+	@Setter
+	@ToString
+	static public class predictIn {
+		private String predictIn;
+		private Input in;
+		public predictIn(Input in) {
+			this.in = in;
+		}
+	}
+	
+	@Getter
+	@Setter
+	@ToString
+	static public class awsListByStd {
+		public List<WeatherDTO> STN_368;
+		public List<WeatherDTO> STN_541;
+		public List<WeatherDTO> STN_569;
+		public awsListByStd(List<WeatherDTO> aws368, List<WeatherDTO> aws541, List<WeatherDTO> aws569) {
+			this.STN_368 = aws368;
+			this.STN_541 = aws541;
+			this.STN_569 = aws569;
+		}
+	}
+	
+	@Getter
+	@Setter
+	@ToString
+	static public class Input {
+		public awsListByStd awsList;
+		public List<FlowImputate> dataList;
+		public Input(List<WeatherDTO> aws368, List<WeatherDTO> aws541, List<WeatherDTO> aws569, List<FlowImputate> flowList) {
+			this.awsList = new awsListByStd( aws368, aws541, aws569);
+			this.dataList = flowList;
+		}
+	}
+	
+	
+	public void requestFlow(List<WeatherDTO> aws368, List<WeatherDTO> aws541, List<WeatherDTO> aws569, List<FlowImputate>flowList) {
+		Input input = new Input(aws368, aws541, aws569, flowList);
+		predictIn pIn = new predictIn(input);
 		
-		String response = restClient.post()
-					.uri(url)
-					.contentType(MediaType.APPLICATION_JSON)
-					.body(list)
-					.retrieve()
-					.body(String.class);
-		System.out.println("response = " + response);
-		
+		fastApiResponseDTO response = apiService.getPrectFlow(pIn);
+		System.out.println(response);
 	}
 
 }

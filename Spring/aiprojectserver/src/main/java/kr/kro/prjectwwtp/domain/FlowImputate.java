@@ -1,11 +1,14 @@
 package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.TimeZone;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.PostConstruct;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -28,6 +31,11 @@ import lombok.ToString;
 @NoArgsConstructor
 @Entity
 public class FlowImputate {
+	@PostConstruct
+	public void init() {
+		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+	}
+	
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@JsonIgnore
@@ -35,9 +43,11 @@ public class FlowImputate {
 	private long flowNo;
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "time", updatable = false)
-	@JsonProperty("SYS_TIME")
+	@JsonIgnore
 	@Schema(description = "데이터의 기록 시간", example = "2026-01-30T15:30:00")
 	private LocalDateTime flowTime;
+	@JsonProperty("SYS_TIME")
+	private String strtime;
 	@JsonProperty("flow_TankA")
 	@Schema(description = "유량조정조A_유량", example = "double")
 	private Double flowA;

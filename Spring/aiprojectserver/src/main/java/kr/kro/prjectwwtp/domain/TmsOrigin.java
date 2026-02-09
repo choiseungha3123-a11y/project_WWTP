@@ -40,7 +40,7 @@ public class TmsOrigin {
 	@Schema(description = "부유물질", example = "double")
 	private Double ss;
 	@Schema(description = "유량", example = "int")
-	private Integer flux;
+	private Double flux;
 	@Schema(description = "총질소", example = "double")
 	private Double tn;
 	@Schema(description = "총인", example = "double")

@@ -134,6 +134,11 @@ public class FlowOriginService {
 	public List<FlowImputate> getFlowImputateListByDate(LocalDateTime end) {
 		LocalDateTime start = end.minusDays(1).plusMinutes(1);
 		List<FlowImputate> list = flowImputateRepo.findByFlowTimeBetweenOrderByFlowTime(start, end);
+		for(FlowImputate flow : list) {
+			flow.setSum(flow.getFlowA() + flow.getFlowB());
+			String time = flow.getFlowTime().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+			flow.setStrtime(time);
+		}
 		System.out.println("start : " + start.toString());
 		System.out.println("end : " + end.toString());
 		System.out.println("getFlowImputateListByDate size : " + list.size());

@@ -49,7 +49,7 @@ public class TmsImputate {
 	private Double ss;
 	@JsonProperty("FLUX_VU")
 	@Schema(description = "유량", example = "int")
-	private Integer flux;
+	private Double flux;
 	@JsonProperty("TN_VU")
 	@Schema(description = "총질소", example = "double")
 	private Double tn;

@@ -72,7 +72,7 @@ public class TmsOriginService {
 				Double toc = Util.parseDoubleOrNullEmptyOk(cols[1]);
 				Double ph = Util.parseDoubleOrNullEmptyOk(cols[2]);
 				Double ss = Util.parseDoubleOrNullEmptyOk(cols[3]);
-				Integer flux = Util.parseIntOrNullEmptyOk(cols[4]);
+				Double flux = Util.parseDoubleOrNullEmptyOk(cols[4]);
 				Double tn = Util.parseDoubleOrNullEmptyOk(cols[5]);
 				Double tp = Util.parseDoubleOrNullEmptyOk(cols[6]);
 				TmsOrigin t = TmsOrigin.builder()
@@ -224,8 +224,7 @@ public class TmsOriginService {
 			t.setToc(Double.isNaN(toc[i]) ? null : toc[i]);
 			t.setPh(Double.isNaN(ph[i]) ? null : ph[i]);
 			t.setSs(Double.isNaN(ss[i]) ? null : ss[i]);
-			Double fluxValue = Double.isNaN(flux[i]) ? null : flux[i];
-			t.setFlux((int)fluxValue.doubleValue());
+			t.setFlux(Double.isNaN(flux[i]) ? null : flux[i]);
 			t.setTn(Double.isNaN(tn[i]) ? null : tn[i]);
 			t.setTp(Double.isNaN(tp[i]) ? null : tp[i]);
 			result.add(t);
@@ -336,7 +335,7 @@ public class TmsOriginService {
 					sb.append(Util.formatDouble(tms.getToc())).append(",");
 					sb.append(Util.formatDouble(tms.getPh())).append(",");
 					sb.append(Util.formatDouble(tms.getSs())).append(",");
-					sb.append(Util.formatInteger(tms.getFlux())).append(",");
+					sb.append(Util.formatDouble(tms.getFlux())).append(",");
 					sb.append(Util.formatDouble(tms.getTn())).append(",");
 					sb.append(Util.formatDouble(tms.getTp()));
 					
@@ -416,7 +415,7 @@ public class TmsOriginService {
 						Double toc = Util.parseDoubleOrNullEmptyOk(cols[2]);
 						Double ph = Util.parseDoubleOrNullEmptyOk(cols[3]);
 						Double ss = Util.parseDoubleOrNullEmptyOk(cols[4]);
-						Integer flux = Util.parseIntOrNullEmptyOk(cols[5]);
+						Double flux = Util.parseDoubleOrNullEmptyOk(cols[5]);
 						Double tn = Util.parseDoubleOrNullEmptyOk(cols[6]);
 						Double tp = Util.parseDoubleOrNullEmptyOk(cols[7]);
 						

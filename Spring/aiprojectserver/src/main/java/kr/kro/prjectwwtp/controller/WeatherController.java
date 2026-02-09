@@ -95,9 +95,9 @@ public class WeatherController {
 		@JsonProperty("SYS_TIME")
 		@Schema(description = "데이터의 기록 시간", example = "2026-01-30T15:30:00")
 		String time;
-		@JsonProperty("STN")
-		@Schema(description = "측정소 고유번호", example = "368 : 구리 수택동, 569 : 구리 토평동, 541 : 남양주 배양리")
-		int stn;
+//		@JsonProperty("STN")
+//		@Schema(description = "측정소 고유번호", example = "368 : 구리 수택동, 569 : 구리 토평동, 541 : 남양주 배양리")
+//		int stn;
 		@JsonProperty("TA")
 		@Schema(description = "1분 평균 기온 (C)")
 		double ta;
@@ -119,11 +119,14 @@ public class WeatherController {
 		@JsonProperty("TD")
 		@Schema(description = "이슬점온도 (C)")
 		double td; 
+		@JsonProperty("distance")
+		@Schema(description = "처리장과의 거리")
+		double distance;
 		
 		public WeatherDTO(Weather data) {
 			this.dataNo = data.getDataNo();
 			this.time = data.getLogTime().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-			this.stn = data.getStn();
+//			this.stn = data.getStn();
 			this.ta = data.getTa();
 			this.rn15m = data.getRn15m();
 			this.rn60m = data.getRn60m();
@@ -131,6 +134,17 @@ public class WeatherController {
 			this.rnday = data.getRnday();
 			this.hm = data.getHm();
 			this.td = data.getTd();
+			switch(data.getStn()) {
+				case 368:
+					this.distance = 1.02f;
+					break;
+				case 541:
+					this.distance = 4.61f;
+					break;
+				case 569:
+					this.distance = 1.24f;
+					break;
+			}
 		}
 	}
 	
@@ -154,8 +168,7 @@ public class WeatherController {
 		LocalDateTime end = LocalDateTime.parse(tm2, formatter);
 		System.out.println("start : " + start);
 		System.out.println("end : " + end);
-		//List<Weather> list = weatherRepo.findByTimeBetweenOrderByDataNoDesc(start, end);
-		List<WeatherDTO> list = weatherService.findByLogTimeBetween(start, end);
+		List<WeatherDTO> list = weatherService.findWeatherDTOByLogTimeBetween(start, end);
 		for(WeatherDTO data : list)
 		{
 			res.addData(data);

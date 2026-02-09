@@ -36,11 +36,11 @@ public class WeatherService {
 		weatherRepo.deleteAll(list);
 	}
 	
-//	public List<Weather> findByLogTimeBetween(LocalDateTime start, LocalDateTime end) {
-//		return weatherRepo.findByLogTimeBetween(start, end);
-//	}
+	public List<Weather> findByLogTimeBetween(LocalDateTime start, LocalDateTime end) {
+		return weatherRepo.findByLogTimeBetween(start, end);
+	}
 	
-	public List<WeatherDTO> findByLogTimeBetween(LocalDateTime start, LocalDateTime end) {
+	public List<WeatherDTO> findWeatherDTOByLogTimeBetween(LocalDateTime start, LocalDateTime end) {
 		List<Weather> list = weatherRepo.findByLogTimeBetween(start, end);
 		List<WeatherDTO> ret = new ArrayList<>();
 		for(Weather w : list)
@@ -50,6 +50,14 @@ public class WeatherService {
 	
 	public List<Weather> findByStnAndLogTimeBetween(int stn, LocalDateTime start, LocalDateTime end) {
 		return weatherRepo.findByStnAndLogTimeBetween(stn, start, end);
+	}
+	
+	public List<WeatherDTO> findWeatherDTOByStnAndLogTimeBetween(int stn, LocalDateTime start, LocalDateTime end) {
+		List<Weather> list = weatherRepo.findByStnAndLogTimeBetween(stn, start, end); 
+		List<WeatherDTO> ret = new ArrayList<>();
+		for(Weather w : list)
+			ret.add(new WeatherDTO(w));
+		return ret;
 	}
 	
 	public void modifyWeahter(Weather data, double ta, double rn15m, double rn60m, double rn12h, double rnday, double hm, double td) {
