@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import sys
 import pickle
 import time
@@ -185,33 +185,67 @@ def apply_feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     # df_features = feat_eng.add_interaction_features(df_features)  # LSTM.ipynb에서 주석 처리됨
     df_features = feat_eng.add_time_features(df_features)
 
-    # NaN 처리: ffill -> bfill -> 0
-    df_features = df_features.fillna(method="ffill").fillna(method="bfill").fillna(0)
+    # NaN 처리: ffill -> 0
+    df_features = df_features.ffill().fillna(0)
 
     return df_features
 
-def preprocess_input(data_list: list[dict]) -> torch.Tensor:
+def preprocess_input(data_list, aws368, aws541, aws569) -> torch.Tensor:
     """
     백엔드 입력 데이터를 모델 입력 형식으로 변환
 
     Args:
         data_list: 1분 단위 24시간 데이터 (1440개 레코드)
+        aws368: 368번 AWS 데이터
+        aws541: 541번 AWS 데이터
+        aws569: 569번 AWS 데이터
 
     Returns:
         tensor: (1, 48, n_features) - 30분 단위 24시간
     """
-    if not data_list:
-        raise ValueError("dataList is empty")
+    if not data_list or not aws368 or not aws541 or not aws569:
+        raise ValueError("dataList and awsList are empty")
 
     # DataFrame 생성
     df = pd.DataFrame(data_list)
+    aws368 = pd.DataFrame(aws368)
+    aws541 = pd.DataFrame(aws541)
+    aws569 = pd.DataFrame(aws569)
 
     # 시간 컬럼 처리
     if "SYS_TIME" in df.columns:
         df["SYS_TIME"] = pd.to_datetime(df["SYS_TIME"], errors="coerce")
         df = df.set_index("SYS_TIME").sort_index()
     else:
-        raise ValueError("SYS_TIME column is required")
+        raise ValueError("SYS_TIME column is required in dataList")
+    
+    if "SYS_TIME" in aws368.columns:
+        aws368["SYS_TIME"] = pd.to_datetime(aws368["SYS_TIME"], errors="coerce")
+        aws368 = aws368.set_index("SYS_TIME").sort_index()
+    else:
+        raise ValueError("SYS_TIME column is required in aws368")
+
+    if "SYS_TIME" in aws541.columns:
+        aws541["SYS_TIME"] = pd.to_datetime(aws541["SYS_TIME"], errors="coerce")
+        aws541 = aws541.set_index("SYS_TIME").sort_index()
+    else:
+        raise ValueError("SYS_TIME column is required in aws541")
+
+    if "SYS_TIME" in aws569.columns:
+        aws569["SYS_TIME"] = pd.to_datetime(aws569["SYS_TIME"], errors="coerce")
+        aws569 = aws569.set_index("SYS_TIME").sort_index()
+    else:
+        raise ValueError("SYS_TIME column is required in aws569")
+    
+    # AWS 데이터 병합
+    aws = aws368.add_suffix("_368").join(
+        aws541.add_suffix("_541"), how="inner"
+    ).join(
+        aws569.add_suffix("_569"), how="inner"
+    )
+
+    # AWS 데이터와 병합 (내부 조인)
+    df = df.join(aws, how="inner")
 
     # 30분 리샘플링
     df_resampled = resample_to_30min(df)
@@ -282,9 +316,42 @@ def autoregressive_predict(input_tensor: torch.Tensor, n_steps: int) -> list[flo
     return predictions
 
 # ====== API 모델 정의 ======
+class FlowInput(BaseModel):
+    SYS_TIME: str
+    flow_TankA: float
+    flow_TankB: float
+    level_TankA: float
+    level_TankB: float
+    Q_in: float
+
+class TMSInput(BaseModel):
+    SYS_TIME: str
+    TOC_VU: float
+    PH_VU: float
+    SS_VU: float
+    FLUX_VU: float
+    TN_VU: float
+    TP_VU: float
+
+class AWSInput(BaseModel):
+    SYS_TIME: str
+    TA: float
+    RN_15m: float
+    RN_60m: float
+    RN_12H: float
+    RN_DAY: float
+    HM: float
+    TD: float
+    distance: float
+
+class PredinctInput(BaseModel):
+    dataList: list[FlowInput] | list[TMSInput]
+    awsList: dict[str, list[AWSInput]]  # {"stn_368": [...], "stn_541": [...], "stn_569": [...]}
+
 class PredictIn(BaseModel):
+    model_config = {"populate_by_name": True}
     request_id: str | None = None
-    input: dict
+    input: PredinctInput = Field(alias="in")
 
 class PredictOut(BaseModel):
     request_id: str
@@ -310,21 +377,46 @@ def ready():
         "horizon_unit": "30min"
     }
 
-@app.post("/predict/flow", response_model=PredictOut)
+@app.post("/debug/flow")
+async def debug_flow(request: Request):
+    raw = await request.body()
+    headers = dict(request.headers)
+
+    print("=== HEADERS ===")
+    for k in ["content-type", "content-length", "transfer-encoding", "connection", "upgrade", "host"]:
+        print(f"{k}: {headers.get(k)}")
+
+    print(f"=== RAW BODY LENGTH: {len(raw)} bytes ===")
+    return {
+        "content_type": headers.get("content-type"),
+        "content_length": headers.get("content-length"),
+        "transfer_encoding": headers.get("transfer-encoding"),
+        "connection": headers.get("connection"),
+        "upgrade": headers.get("upgrade"),
+        "body_length": len(raw),
+        "preview": raw[:500].decode("utf-8", errors="replace"),
+    }
+
+@app.post("/predict/tms", response_model=PredictOut)
 def predict(x: PredictIn):
     try:
         t0 = time.perf_counter()
         rid = x.request_id or str(uuid.uuid4())
+    
+        tms_list = [item.model_dump() for item in x.input.dataList]
+        # Backend sends lowercase keys (stn_368), fallback to uppercase (STN_368)
+        aws368 = [item.model_dump() for item in (x.input.awsList.get("stn_368") or x.input.awsList.get("STN_368", []))]
+        aws541 = [item.model_dump() for item in (x.input.awsList.get("stn_541") or x.input.awsList.get("STN_541", []))]
+        aws569 = [item.model_dump() for item in (x.input.awsList.get("stn_569") or x.input.awsList.get("STN_569", []))]
 
-        data_list = x.input.get("dataList") if isinstance(x.input, dict) else None
-        if data_list is None:
-            raise ValueError("input.dataList is required")
+        if not tms_list or not aws368 or not aws541 or not aws569:
+            raise ValueError("input.dataList and input.awsList (STN_368, STN_541, STN_569) are required")
 
-        if len(data_list) < 48:  # 최소 24시간 필요 (1분 단위 1440개 -> 30분 단위 48개)
-            raise ValueError(f"dataList requires at least 1440 records (24 hours), got {len(data_list)}")
+        if len(tms_list) != 1440 or len(aws368) != 1440 or len(aws541) != 1440 or len(aws569) != 1440:  # 최소 24시간 필요 (1분 단위 1440개 -> 30분 단위 48개)
+            raise ValueError(f"tmsList and awsList require exactly 1440 records (24 hours), got {len(tms_list)}, {len(aws368)}, {len(aws541)}, {len(aws569)}")
 
         # 데이터 전처리
-        input_tensor = preprocess_input(data_list)
+        input_tensor = preprocess_input(tms_list, aws368, aws541, aws569)
 
         # Autoregressive 예측
         # 1시간 후 = 2 steps (30분 × 2)
@@ -367,7 +459,85 @@ def predict(x: PredictIn):
                 "metadata": {
                     "window_size": 48,
                     "n_features": N_FEATURES,
-                    "input_records": len(data_list),
+                    "input_records": len(tms_list),
+                    "resampled_steps": input_tensor.shape[1],
+                }
+            },
+            latency_ms=latency,
+            error=None
+        )
+    except Exception as e:
+        import traceback
+        error_detail = {
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }
+        raise HTTPException(status_code=400, detail=error_detail)
+
+
+@app.post("/predict/flow", response_model=PredictOut)
+def predict(x: PredictIn):
+    try:
+        t0 = time.perf_counter()
+        rid = x.request_id or str(uuid.uuid4())
+    
+        flow_list = [item.model_dump() for item in x.input.dataList]
+        # Backend sends lowercase keys (stn_368), fallback to uppercase (STN_368)
+        aws368 = [item.model_dump() for item in (x.input.awsList.get("stn_368") or x.input.awsList.get("STN_368", []))]
+        aws541 = [item.model_dump() for item in (x.input.awsList.get("stn_541") or x.input.awsList.get("STN_541", []))]
+        aws569 = [item.model_dump() for item in (x.input.awsList.get("stn_569") or x.input.awsList.get("STN_569", []))]
+
+        if not flow_list or not aws368 or not aws541 or not aws569:
+            raise ValueError("input.dataList and input.awsList (STN_368, STN_541, STN_569) are required")
+
+        if len(flow_list) != 1440 or len(aws368) != 1440 or len(aws541) != 1440 or len(aws569) != 1440:  # 최소 24시간 필요 (1분 단위 1440개 -> 30분 단위 48개)
+            raise ValueError(f"flowList and awsList require exactly 1440 records (24 hours), got {len(flow_list)}, {len(aws368)}, {len(aws541)}, {len(aws569)}")
+
+        # 데이터 전처리
+        input_tensor = preprocess_input(flow_list, aws368, aws541, aws569)
+
+        # Autoregressive 예측
+        # 1시간 후 = 2 steps (30분 × 2)
+        pred_1h = autoregressive_predict(input_tensor, n_steps=2)
+        pred_2h = autoregressive_predict(input_tensor, n_steps=4)
+        pred_3h = autoregressive_predict(input_tensor, n_steps=6)
+        pred_4h = autoregressive_predict(input_tensor, n_steps=8)
+        pred_5h = autoregressive_predict(input_tensor, n_steps=10)
+        pred_6h = autoregressive_predict(input_tensor, n_steps=12)
+        pred_7h = autoregressive_predict(input_tensor, n_steps=14)
+        pred_8h = autoregressive_predict(input_tensor, n_steps=16)
+        pred_9h = autoregressive_predict(input_tensor, n_steps=18)
+        pred_10h = autoregressive_predict(input_tensor, n_steps=20)
+        pred_11h = autoregressive_predict(input_tensor, n_steps=22)
+        pred_12h = autoregressive_predict(input_tensor, n_steps=24)
+
+        latency = int((time.perf_counter() - t0) * 1000)
+
+        return PredictOut(
+            request_id=rid,
+            ok=True,
+            output={
+                "predictions": {
+                    "1h": pred_1h[-1],   # 1시간 후 최종 예측값
+                    "2h": pred_2h[-1],   # 2시간 후 최종 예측값
+                    "3h": pred_3h[-1],   # 3시간 후 최종 예측값
+                    "4h": pred_4h[-1],   # 4시간 후 최종 예측값
+                    "5h": pred_5h[-1],   # 5시간 후 최종 예측값
+                    "6h": pred_6h[-1],   # 6시간 후 최종 예측값
+                    "7h": pred_7h[-1],   # 7시간 후 최종 예측값
+                    "8h": pred_8h[-1],   # 8시간 후 최종 예측값
+                    "9h": pred_9h[-1],   # 9시간 후 최종 예측값
+                    "10h": pred_10h[-1], # 10시간 후 최종 예측값
+                    "11h": pred_11h[-1], # 11시간 후 최종 예측값
+                    "12h": pred_12h[-1], # 12시간 후 최종 예측값
+                },
+                "trajectories": {
+                    "12h": pred_12h, # 12시간까지의 전체 궤적 (30분 간격 24개 값)
+                },
+                "metadata": {
+                    "window_size": 48,
+                    "n_features": N_FEATURES,
+                    "input_records": len(flow_list),
                     "resampled_steps": input_tensor.shape[1],
                 }
             },

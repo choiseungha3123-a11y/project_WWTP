@@ -741,6 +741,82 @@ def add_weather_features(df):
     return df_out
 
 
+def add_target_lag_features(df, target_cols, min_lag=1):
+    """
+    타겟 변수의 시차(lag) 특성 추가
+    - Lag features (shift)
+    - Rolling 통계 (mean, std, max, min)
+    - Difference / 변화율
+    - EWMA (지수가중이동평균)
+
+    타겟 분리 전에 호출하여, lag 특성은 base에 남기고 raw 타겟만 y로 분리.
+    shift(min_lag) 적용으로 미래 정보 누수 방지.
+
+    주기: 30분 리샘플링 기준 (1시간 = 2 steps)
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        타겟 컬럼을 포함한 DataFrame (datetime index)
+    target_cols : list of str
+        타겟 컬럼명 리스트
+    min_lag : int, default=1
+        최소 시차 (미래 정보 누수 방지, 최소 1 이상 권장)
+
+    Returns
+    -------
+    pd.DataFrame
+        타겟 lag 특성이 추가된 DataFrame
+    """
+    df_out = df.copy()
+    new_cols = {}
+
+    # 30분 리샘플링 기준
+    lags = [2, 4, 6, 12, 24, 48, 72]   # 1h, 2h, 3h, 6h, 12h, 24h, 36h
+    roll_windows = [6, 12, 24, 72]         # 3h, 6h, 12h, 36h
+    ewma_spans = [6, 12, 24]               # 3h, 6h, 12h
+
+    for col in target_cols:
+        if col not in df_out.columns:
+            continue
+
+        series = df_out[col]
+
+        # ====== 1) Lag features ======
+        for lag in lags:
+            actual_lag = max(lag, min_lag)
+            new_cols[f"{col}_tlag_{actual_lag}"] = series.shift(actual_lag)
+
+        # ====== 2) Rolling 통계 (shift(min_lag)로 미래 정보 방지) ======
+        shifted = series.shift(min_lag)
+        for w in roll_windows:
+            minp = max(1, w // 2)
+            r = shifted.rolling(w, min_periods=minp)
+            new_cols[f"{col}_troll_mean_{w}"] = r.mean()
+            new_cols[f"{col}_troll_std_{w}"] = r.std(ddof=0)
+            new_cols[f"{col}_troll_max_{w}"] = r.max()
+            new_cols[f"{col}_troll_min_{w}"] = r.min()
+
+        # ====== 3) Difference features ======
+        new_cols[f"{col}_tdiff_1"] = series.diff(1)
+        new_cols[f"{col}_tdiff_2"] = series.diff(2)
+        new_cols[f"{col}_tdiff_6"] = series.diff(6)
+
+        # ====== 4) 변화율 (percent change) ======
+        eps = 1e-8
+        new_cols[f"{col}_tpct_1"] = series.pct_change(1).clip(-10, 10)
+        new_cols[f"{col}_tpct_6"] = series.pct_change(6).clip(-10, 10)
+
+        # ====== 5) EWMA (지수가중이동평균) ======
+        for span in ewma_spans:
+            new_cols[f"{col}_tewma_{span}"] = shifted.ewm(span=span, adjust=False).mean()
+
+    if new_cols:
+        df_out = pd.concat([df_out, pd.DataFrame(new_cols, index=df_out.index)], axis=1)
+
+    return df_out
+
+
 def add_time_features(df):
     """
     시간 기반 특성 추가

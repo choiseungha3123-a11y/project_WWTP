@@ -8,12 +8,69 @@
 
 ### 📂 작업 파일
 ```
+src/main.py
+notebook/DL/LSTM_FLOW.ipynb
+notebook/DL/LSTM_TMS.ipynb
+notebook/feature/feature_engineering.py
+```
+
+### backend와 연결
+
+- 지난 주에 타입 정의가 맞지 않아 422 오류가 발생
+- 이를 해결하기 위해 코드 수정
+
+### LSTM_TMS의 성능 향상 시도
+
+- tms 지표에 대한 성능이 평균보다 못 하기 때문
+- feature_engineering.py: add_target_lag_features() 추가
+  - Lag: k = 2, 4, 6, 12, 24, 48, 72 steps (1시간~36시간)
+  - Rolling: mean/std/max/min, 윈도우 = 6, 12, 24, 72 steps
+  - Diff: k = 1, 2, 6 steps 차분
+  - 변화율: k = 1, 6 steps
+  - EWMA: span = 6, 12 ,24
+
+**결과**:
+- OUTLIER_CONFIG(zscore, both=False)
+  - TOC_VU: R2 -1.8612 -> 0.2973
+  - SS_VU: R2 -0.5181 -> 0.1989
+  - TN_VU: R2 -0.1558 -> 0.7872
+  - TP_VU: R2 -2.1524 -> -0.4059
+  - FLUX_VU: R2 -0.0079 -> -0.0074
+  - PH_VU: R2 -0.1669 -> 0.5301
+
+**걸리는 점**:
+- 선택된 특성 대부분이 target에 의해서 결정됨
+- TP와 FLUX를 제외한 나머지 tms 지표에 대해서는 이전보다 좋은 성능
+- TP와 FLUX 성능 최우선 개선 필요
+
+### TP와 FLUX 성능 향상 시도
+
+- preproceess_data() 특성 선택 비활성화
+  - MODE == "tp" | "flux"일 때 WF 특성 선택 건너뛰고 전체 특성 사용
+  - 기존 2 ~ 4개 특성 -> 전체 특성 사용
+
+- main() 모드별 모델/손실 함수
+  - TP/FLUX: Attention 활성화(많은 특성에서 중요 패턴 추출)
+  - TP: HuberLoss(delta = 0.5)
+  - FLUX: 역변환 후 음수 클램핑
+
+### ✅ 다음 할 일 (2026/02/10)
+- [] LSTM 성능 개선
+- [] backend와 연결하기
+
+---
+
+## 📅 2026년 2월 6일
+
+### 📂 작업 파일
+```
 notebook/DL/LSTM_FLOW.ipynb
 notebook/DL/LSTM_TMS.ipynb
 notebook/DL/analyze_predictions.py
 notebook/feature/WF_feature_selection.py
 notebook/feature/feature_engineering.py
 archive
+src/main.py
 ```
 
 ### LSTM_FLOW 모델 성능 향상
@@ -56,7 +113,6 @@ archive
   - FLUX_VU: R2 -0.0079
   - PH_VU: R2 -0.1669
 
-
 ### LSTM 파일 MAPE 값 수정
 
 **내용**:
@@ -93,9 +149,15 @@ archive
   - 예측 에러 시계열
   - 구간별 예측 정확도(MAPE)
 
+### src/main.py 수정
+
+- backend에 모델이 예측한 값이 serving하기 위해 model에 데이터가 입력되는 형식에 맞게 전처리 코드 작성
+- backend json과 동일한 타입으로 predict 받기
+
 ### ✅ 다음 할 일 (2026/02/09)
-- [] LSTM 성능 개선
-- [] LSTM 특성에 target 컬럼의 lagging 추가
+- [X] LSTM 성능 개선
+- [X] LSTM 특성에 target 컬럼의 lagging 추가
+- [] backend와 연결하기
 
 ---
 
