@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 plt.rcParams['font.family'] = 'Malgun Gothic'
 plt.rcParams['axes.unicode_minus'] = False
 
-mode = "tp" # flow, toc, ss, tn, tp, ph, flux
+mode = "flux" # flow, toc, ss, tn, tp, ph, flux
 
 # 데이터 로드
-df = pd.read_csv(f"C:/project_WWTP/python/data/output/{mode}_predictions.csv")
+df = pd.read_csv(f"C:/project_WWTP/python/data/output/save/{mode}_predictions.csv")
 
 print("="*70)
 print("예측 결과 상세 분석")

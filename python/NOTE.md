@@ -4,7 +4,7 @@
 
 ---
 
-## 📅 2026년 2월 6일
+## 📅 2026년 2월 9일
 
 ### 📂 작업 파일
 ```
@@ -19,6 +19,15 @@ notebook/feature/feature_engineering.py
 - 지난 주에 타입 정의가 맞지 않아 422 오류가 발생
 - 이를 해결하기 위해 코드 수정
 
+**어려운 점**:
+- fastAPI가 http2를 지원하지 않아 body의 내용이 사라지는 현상 발생
+-> 
+
+**결과**:
+- 저장된 scaler, recommand feature, model을 로드
+- backend에서 WebClient 사용하여 해결
+- flow와 tms 예측에 따른 json 형태 맞춤
+
 ### LSTM_TMS의 성능 향상 시도
 
 - tms 지표에 대한 성능이 평균보다 못 하기 때문
@@ -28,35 +37,36 @@ notebook/feature/feature_engineering.py
   - Diff: k = 1, 2, 6 steps 차분
   - 변화율: k = 1, 6 steps
   - EWMA: span = 6, 12 ,24
+- 이상치 처리에서 EWMA 계산값이 실제 데이터에 반영되도록 수정
+- FLUX: `FLUX_VU_tdiff_*` 차분 특성이 특성 선택 결과와 무관하게 학습 입력에 반드시 포함되도록 강제 로직 추가
+- FLOW: 필수 시간 특성 강제 포함 (`hour_sin`, `hour_cos`, `weekday`, `hour_x_weekday`)
+- PH: 필수 시간 특성 강제 포함 (`month`, `iso_week`, `hour_sin`, `hour_cos`)
+- 공통 보강: `weekday`, `iso_week`, `hour_x_weekday`가 없을 때 안전하게 생성하는 보강 코드 추가
 
 **결과**:
 - OUTLIER_CONFIG(zscore, both=False)
   - TOC_VU: R2 -1.8612 -> 0.2973
-  - SS_VU: R2 -0.5181 -> 0.1989
-  - TN_VU: R2 -0.1558 -> 0.7872
+  - SS_VU: R2 -0.5181 -> 0.2133
+  - TN_VU: R2 -0.1558 -> 0.7769
   - TP_VU: R2 -2.1524 -> -0.4059
-  - FLUX_VU: R2 -0.0079 -> -0.0074
-  - PH_VU: R2 -0.1669 -> 0.5301
+  - FLUX_VU: R2 -0.0079 -> -0.0069
+  - PH_VU: R2 -0.1669 -> 0.5567
 
 **걸리는 점**:
 - 선택된 특성 대부분이 target에 의해서 결정됨
 - TP와 FLUX를 제외한 나머지 tms 지표에 대해서는 이전보다 좋은 성능
 - TP와 FLUX 성능 최우선 개선 필요
+- 일부 지표에 대한 learning curve plot의 val plot이 이상함(거의 0에 수렴)
 
 ### TP와 FLUX 성능 향상 시도
 
 - preproceess_data() 특성 선택 비활성화
   - MODE == "tp" | "flux"일 때 WF 특성 선택 건너뛰고 전체 특성 사용
-  - 기존 2 ~ 4개 특성 -> 전체 특성 사용
-
-- main() 모드별 모델/손실 함수
-  - TP/FLUX: Attention 활성화(많은 특성에서 중요 패턴 추출)
-  - TP: HuberLoss(delta = 0.5)
-  - FLUX: 역변환 후 음수 클램핑
+  - 기존 2 ~ 4개 특성 -> 최소 10개 이상 
 
 ### ✅ 다음 할 일 (2026/02/10)
 - [] LSTM 성능 개선
-- [] backend와 연결하기
+- [] 성능이 맞은 지표에 대한 EDA
 
 ---
 
@@ -157,7 +167,7 @@ src/main.py
 ### ✅ 다음 할 일 (2026/02/09)
 - [X] LSTM 성능 개선
 - [X] LSTM 특성에 target 컬럼의 lagging 추가
-- [] backend와 연결하기
+- [X] backend와 연결하기
 
 ---
 
