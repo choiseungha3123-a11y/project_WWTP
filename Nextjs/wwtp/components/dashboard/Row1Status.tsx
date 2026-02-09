@@ -26,7 +26,6 @@ export default function Row1Status() {
   const [isSystemOk, setIsSystemOk] = useState<boolean>(false);
   const [isClient, setIsClient] = useState(false);
 
-  // 1. TMS 및 날씨 데이터를 가져오는 함수
   const fetchTmsAndWeather = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/tmsOrigin/tmsList`);
@@ -44,7 +43,6 @@ export default function Row1Status() {
     }
   };
 
-  // 2. 시스템 상태 체크
   const fetchHealthCheck = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/member/health`);
@@ -72,10 +70,8 @@ export default function Row1Status() {
 
   if (!isClient) return <div className="grid grid-cols-3 gap-4 h-24 animate-pulse bg-slate-900/50 rounded-2xl" />;
 
-  // 시간 포맷팅 헬퍼 함수
   const formatTime = (timeStr?: string) => {
     if (!timeStr) return "";
-
     if (timeStr.length === 14 && !timeStr.includes("-") && !isNaN(Number(timeStr))) {
       const y = timeStr.substring(0, 4);
       const m = timeStr.substring(4, 6);
@@ -84,30 +80,28 @@ export default function Row1Status() {
       const min = timeStr.substring(10, 12);
       return `${y}-${m}-${d} ${h}:${min}`;
     }
-
     if (timeStr.includes("T")) {
       return timeStr.replace("T", " ").substring(0, 16);
     }
-
     return timeStr;
   };
 
   const items = [
     { 
       label: "유입유량", 
-      value: tmsData ? `${tmsData.FLUX_VU.toLocaleString()}` : "-", 
+      value: tmsData ? `${tmsData.FLUX_VU.toLocaleString()}` : "Loading...", 
       status: "normal",
       time: tmsData?.SYS_TIME 
     },
     { 
       label: "pH | FLUX", 
-      value: tmsData ? `${tmsData.PH_VU.toFixed(1)} | ${tmsData.FLUX_VU}` : "-", 
+      value: tmsData ? `${tmsData.PH_VU.toFixed(1)} | ${tmsData.FLUX_VU}` : "Loading...", 
       status: (tmsData && (tmsData.PH_VU > 8 || tmsData.PH_VU < 6)) ? "warning" : "normal",
       time: tmsData?.SYS_TIME
     },
     { 
       label: "TMS (TOC/TN/TP/SS)", 
-      value: tmsData ? `${tmsData.TOC_VU.toFixed(1)} / ${tmsData.TN_VU.toFixed(1)} / ${tmsData.TP_VU.toFixed(1)} / ${tmsData.SS_VU.toFixed(1)}` : "-", 
+      value: tmsData ? `${tmsData.TOC_VU.toFixed(1)} / ${tmsData.TN_VU.toFixed(1)} / ${tmsData.TP_VU.toFixed(1)} / ${tmsData.SS_VU.toFixed(1)}` : "Loading...", 
       status: "normal",
       time: tmsData?.SYS_TIME
     },
@@ -115,9 +109,9 @@ export default function Row1Status() {
       label: "기온 | 강우", 
       value: weatherData 
         ? `${weatherData.TA}°C | ${weatherData.RN_15m > 0 ? `${weatherData.RN_15m}mm` : "맑음"}` 
-        : "-", 
+        : "Loading...", 
       status: (weatherData && weatherData.RN_15m > 5) ? "danger" : (weatherData && weatherData.RN_15m > 0) ? "warning" : "normal",
-      time: weatherData?.SYS_TIME // "20250205154100" 형태가 넘어감 -> formatTime에서 변환
+      time: weatherData?.SYS_TIME 
     },
     { 
       label: "데이터 상태", 
@@ -134,24 +128,37 @@ export default function Row1Status() {
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {items.map((item, i) => (
-        <div key={i} className="bg-slate-800/40 p-4 rounded-2xl border border-white/5 flex flex-col items-center justify-center relative">
+        <div key={i} className="bg-slate-800/40 p-5 rounded-2xl border border-white/5 flex flex-col justify-between relative shadow-sm hover:border-white/10 transition-colors group h-28">
           
-          {/* 날짜 표시 영역 */}
-          {item.time && (
-            <div className="absolute top-3 left-4 text-[10px] text-slate-500 font-mono tracking-tighter">
-              {formatTime(item.time)}
-            </div>
-          )}
+          {/* 상단 라벨 영역: 기존 text-[10px] -> text-sm font-bold 로 변경 */}
+          <div className="flex justify-between items-start mb-1">
+            <h3 className="text-slate-400 text-sm font-bold uppercase tracking-widest group-hover:text-slate-300 transition-colors">
+              {item.label}
+            </h3>
+            
+            {/* 상태 표시 점 (우측 상단) */}
+            <span className={`w-2 h-2 rounded-full ${
+                item.status === 'warning' ? 'bg-orange-500 animate-pulse' : 
+                item.status === 'danger' ? 'bg-red-500 animate-ping' : 'bg-emerald-500'
+            }`}></span>
+          </div>
 
-          <span className="text-slate-400 text-[10px] mb-1 uppercase tracking-widest mt-2">{item.label}</span>
-          <span className={`text-lg font-black ${
+          {/* 데이터 값 영역: 글자가 커진 만큼 Value도 text-xl로 키움 */}
+          <div className={`text-xl font-black mt-1 ${
             item.status === 'warning' ? 'text-orange-400' : 
             item.status === 'danger' ? 'text-red-400' : 'text-emerald-400'
           }`}>
             {item.value}
-          </span>
+          </div>
+
+          {/* 하단 시간 표시 영역 */}
+          {item.time && (
+            <div className="text-[10px] text-slate-600 font-mono tracking-tighter mt-auto text-right">
+              {formatTime(item.time)} UPDATE
+            </div>
+          )}
         </div>
       ))}
     </div>

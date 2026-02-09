@@ -61,34 +61,34 @@ export default function Row3Charts() {
     return "";
   }, [items]);
 
-  if (loading) return <div className="h-64 flex items-center justify-center text-slate-500">차트 로딩 중...</div>;
+  if (loading) return <div className="h-full flex items-center justify-center text-slate-500">차트 로딩 중...</div>;
 
   return (
-    // min-h-0과 flex-1을 사용하여 공간을 확보합니다.
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full h-full min-h-87.5">
+    // h-full과 flex-1을 주어 부모가 주는 공간을 꽉 채우게 합니다.
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full h-full min-h-0">
       
       {/* 1. 유입유량(FLUX) 차트 */}
-      <div className="bg-slate-800/40 p-4 rounded-2xl border border-white/5 flex flex-col h-87.5">
-        <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-bold text-blue-400">
+      {/* 고정 h-87.5 제거, flex-1 추가 */}
+      <div className="bg-slate-800/40 p-4 rounded-2xl border border-white/5 flex flex-col min-h-0 flex-1">
+        <div className="flex justify-between items-center mb-2">
+            <h3 className="text-[13px] font-bold text-blue-400">
                 유입유량 트렌드 (FLUX)
-                {/* [추가] 날짜 표시 */}
-                <span className="ml-2 text-[10px] text-slate-500 font-normal">
-                    {dataDate}
-                </span>
+                <span className="ml-2 text-[10px] text-slate-500 font-normal">{dataDate}</span>
             </h3>
         </div>
         <div className="flex-1 w-full min-h-0"> 
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+            {/* bottom: 0 -> 5로 조정하여 x축 라벨 공간 확보 */}
+            <LineChart data={chartData} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-              <XAxis dataKey="displayTime" tick={{fontSize: 10}} stroke="#475569" />
-              <YAxis tick={{fontSize: 10}} stroke="#475569" />
+              <XAxis dataKey="displayTime" tick={{fontSize: 9}} stroke="#475569" />
+              <YAxis tick={{fontSize: 9}} stroke="#475569" />
               <Tooltip 
-                contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', fontSize: '12px' }}
-                itemStyle={{ color: '#fff' }}
+                contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', fontSize: '11px' }}
+                itemStyle={{ color: '#fff', padding: '2px 0' }}
               />
-              <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+              {/* Legend의 paddingTop을 줄여 차트 영역 확보 */}
+              <Legend verticalAlign="top" align="right" wrapperStyle={{ fontSize: '9px', top: -10 }} />
               <Line type="monotone" dataKey="FLUX_VU" name="유량" stroke="#3b82f6" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
@@ -96,28 +96,25 @@ export default function Row3Charts() {
       </div>
 
       {/* 2. 수질 통합 차트 */}
-      <div className="bg-slate-800/40 p-4 rounded-2xl border border-white/5 flex flex-col h-87.5">
-        <div className="flex justify-between items-center mb-4">
-             <h3 className="text-sm font-bold text-emerald-400">
-                수질 통합 분석 (TOC/TN/TP/SS)
-                 {/* [추가] 날짜 표시 */}
-                <span className="ml-2 text-[10px] text-slate-500 font-normal">
-                    {dataDate}
-                </span>
+      <div className="bg-slate-800/40 p-4 rounded-2xl border border-white/5 flex flex-col min-h-0 flex-1">
+        <div className="flex justify-between items-center mb-2">
+             <h3 className="text-[13px] font-bold text-emerald-400">
+                수질 통합 분석
+                <span className="ml-2 text-[10px] text-slate-500 font-normal">{dataDate}</span>
             </h3>
         </div>
         <div className="flex-1 w-full min-h-0">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+            <LineChart data={chartData} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-              <XAxis dataKey="displayTime" tick={{fontSize: 10}} stroke="#475569" />
-              <YAxis tick={{fontSize: 10}} stroke="#475569" />
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', fontSize: '12px' }} />
-              <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-              <Line type="monotone" dataKey="TOC_VU" name="TOC" stroke="#10b981" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="TN_VU" name="T-N" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="TP_VU" name="T-P" stroke="#f59e0b" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="SS_VU" name="SS" stroke="#94a3b8" strokeWidth={2} dot={false} />
+              <XAxis dataKey="displayTime" tick={{fontSize: 9}} stroke="#475569" />
+              <YAxis tick={{fontSize: 9}} stroke="#475569" />
+              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', fontSize: '11px' }} />
+              <Legend verticalAlign="top" align="right" wrapperStyle={{ fontSize: '9px', top: -10 }} />
+              <Line type="monotone" dataKey="TOC_VU" name="TOC" stroke="#10b981" strokeWidth={1.5} dot={false} />
+              <Line type="monotone" dataKey="TN_VU" name="T-N" stroke="#8b5cf6" strokeWidth={1.5} dot={false} />
+              <Line type="monotone" dataKey="TP_VU" name="T-P" stroke="#f59e0b" strokeWidth={1.5} dot={false} />
+              <Line type="monotone" dataKey="SS_VU" name="SS" stroke="#94a3b8" strokeWidth={1.5} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

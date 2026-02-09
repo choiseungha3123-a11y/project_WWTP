@@ -12,20 +12,23 @@ export default function Row2Alerts() {
   ];
 
   return (
-    <div className="bg-slate-800/40 p-5 rounded-3xl border border-white/10">
-      <div className="flex justify-between items-center mb-4">
+    // p-5 -> p-4로 줄여 내부 여백 확보
+    <div className="bg-slate-800/40 p-4 rounded-3xl border border-white/10 h-full flex flex-col">
+      <div className="flex justify-between items-center mb-3">
         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Event Detection</h3>
-        <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full animate-pulse">실시간 추적 중</span>
+        <span className="text-[9px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full animate-pulse font-bold">LIVE</span>
       </div>
       
-      <div className="space-y-3">
+      {/* space-y-3 -> space-y-2로 줄여 세로 공간 절약 */}
+      <div className="space-y-2 flex-1 overflow-y-auto pr-1 custom-scrollbar">
         {alerts.map((alert, index) => (
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: index * 0.1 }}
             key={alert.id}
-            className="flex items-center justify-between p-3 rounded-xl bg-slate-900/50 border border-white/5 hover:border-white/20 transition-all"
+            // p-3 -> p-2.5로 축소
+            className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/50 border border-white/5 hover:border-white/20 transition-all"
           >
             <div className="flex items-center gap-3">
               <div className={`${
@@ -34,9 +37,9 @@ export default function Row2Alerts() {
               }`}>
                 {alert.icon}
               </div>
-              <span className="text-sm font-medium text-slate-200">{alert.id}. {alert.title}</span>
+              <span className="text-[13px] font-medium text-slate-200">{alert.id}. {alert.title}</span>
             </div>
-            <div className={`w-2 h-2 rounded-full ${
+            <div className={`w-1.5 h-1.5 rounded-full ${
               alert.status === 'danger' ? 'bg-red-500 animate-ping' : 
               alert.status === 'warning' ? 'bg-orange-500' : 'bg-blue-500'
             }`} />
