@@ -41,7 +41,7 @@ export default function Row2Alerts() {
             </div>
             <div className={`w-1.5 h-1.5 rounded-full ${
               alert.status === 'danger' ? 'bg-red-500 animate-ping' : 
-              alert.status === 'warning' ? 'bg-orange-500' : 'bg-blue-500'
+              alert.status === 'warning' ? 'bg-orange-500' : 'bg-emerald-500'
             }`} />
           </motion.div>
         ))}
