@@ -30,7 +30,7 @@ export default function Row1Status() {
   const [isClient, setIsClient] = useState(false);
 
   const { data: tmsRaw, error: tmsError } = useSWR(
-    `${API_BASE_URL}/api/tmsOrigin/tmsList`,
+    `${API_BASE_URL}/api/board/boardView`,
     fetcher,
     { 
       refreshInterval: 30 * 60 * 1000, 
@@ -39,9 +39,9 @@ export default function Row1Status() {
   );
 
   const { data: healthRaw } = useSWR(
-    `${API_BASE_URL}/api/member/health`,
+    `${API_BASE_URL}/api/board/health`,
     fetcher,
-    { refreshInterval: 10 * 1000 }
+    { refreshInterval: 30 * 1000 }
   );
 
   useEffect(() => {

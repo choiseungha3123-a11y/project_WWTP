@@ -35,7 +35,7 @@ export default function Row3Charts() {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const { data: rawData, error, isLoading } = useSWR(
-    `${API_BASE_URL}/api/tmsOrigin/tmsList`,
+    `${API_BASE_URL}/api/board/boardView`,
     fetcher,
     {
       refreshInterval: 30 * 60 * 1000,

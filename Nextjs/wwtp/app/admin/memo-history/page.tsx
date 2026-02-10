@@ -30,7 +30,7 @@ export default function MemoHistoryPage() {
 
   const fetchOldMemos = useCallback(async () => {
     try {
-      const res = await fetch("/api/memo/oldList?page=0&count=50", {
+      const res = await fetch("/api/board/memo/OldList?page=0&count=50", {
         headers: getAuthHeaders(),
       });
       const result = await res.json();

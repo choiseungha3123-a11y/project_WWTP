@@ -37,7 +37,7 @@ export default function Row5ActionPanel() {
   // API: 메모 목록 조회
   const fetchMemos = useCallback(async () => {
     try {
-      const res = await fetch("/api/memo/list?page=0&count=10", {
+      const res = await fetch("/api/board/memo/list?page=0&count=10", {
         headers: getAuthHeaders(),
       });
       const result = await res.json();
@@ -60,7 +60,7 @@ export default function Row5ActionPanel() {
     if (!memoInput.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/memo/create", {
+      const res = await fetch("/api/board/memo/create", {
         method: "PUT",
         headers: getAuthHeaders(),
         body: JSON.stringify({ content: memoInput }),
@@ -78,7 +78,7 @@ export default function Row5ActionPanel() {
   const handleUpdate = async (memoNo: number) => {
     if (!editContent.trim()) return;
     try {
-      const res = await fetch("/api/memo/modify", {
+      const res = await fetch("/api/board/memo/modify", {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({ memoNo, content: editContent }),
@@ -96,7 +96,7 @@ export default function Row5ActionPanel() {
   const handleComplete = async (memoNo: number) => {
     if (!confirm("이 조치 사항을 완료 처리하시겠습니까?")) return;
     try {
-      const res = await fetch("/api/memo/disable", {
+      const res = await fetch("/api/board/memo/disable", {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({ memoNo }),
@@ -111,7 +111,7 @@ export default function Row5ActionPanel() {
   const handleDelete = async (memoNo: number) => {
     if (!confirm("기록을 영구 삭제하시겠습니까?")) return;
     try {
-      const res = await fetch("/api/memo/delete", {
+      const res = await fetch("/api/board/memo/delete", {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({ memoNo }),
