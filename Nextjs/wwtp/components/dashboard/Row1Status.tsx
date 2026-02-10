@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import useSWR from "swr";
 
 interface TmsRecord {
   SYS_TIME: string;
@@ -14,61 +15,50 @@ interface TmsRecord {
 
 interface WeatherRecord {
   SYS_TIME: string;
-  TA: number;      // 기온
-  RN_15m: number;  // 강우량
+  TA: number;
+  RN_15m: number;
 }
+
+const fetcher = async (url: string) => {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("API 연결 실패");
+  return response.json();
+};
 
 export default function Row1Status() {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-
-  const [tmsData, setTmsData] = useState<TmsRecord | null>(null);
-  const [weatherData, setWeatherData] = useState<WeatherRecord | null>(null);
-  const [isSystemOk, setIsSystemOk] = useState<boolean>(false);
   const [isClient, setIsClient] = useState(false);
 
-  const fetchTmsAndWeather = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/tmsOrigin/tmsList`);
-      const json = await response.json();
-
-      if (json.success && json.dataList) {
-        const tmsList = json.dataList[0] as TmsRecord[];
-        if (tmsList?.length > 0) setTmsData(tmsList[tmsList.length - 1]);
-
-        const weatherList = json.dataList[1] as WeatherRecord[];
-        if (weatherList?.length > 0) setWeatherData(weatherList[weatherList.length - 1]);
-      }
-    } catch (error) {
-      console.error("TMS Data fetch error:", error);
+  const { data: tmsRaw, error: tmsError } = useSWR(
+    `${API_BASE_URL}/api/tmsOrigin/tmsList`,
+    fetcher,
+    { 
+      refreshInterval: 30 * 60 * 1000, 
+      revalidateOnFocus: true 
     }
-  };
+  );
 
-  const fetchHealthCheck = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/member/health`);
-      const json = await response.json();
-      setIsSystemOk(json.success === true);
-    } catch (error) {
-      console.error("Health check error:", error);
-      setIsSystemOk(false);
-    }
-  };
+  const { data: healthRaw } = useSWR(
+    `${API_BASE_URL}/api/member/health`,
+    fetcher,
+    { refreshInterval: 10 * 1000 }
+  );
 
   useEffect(() => {
     setIsClient(true);
-    fetchTmsAndWeather();
-    fetchHealthCheck();
-
-    const tmsTimer = setInterval(fetchTmsAndWeather, 30 * 60 * 1000);
-    const healthTimer = setInterval(fetchHealthCheck, 10 * 1000);
-
-    return () => {
-      clearInterval(tmsTimer);
-      clearInterval(healthTimer);
-    };
   }, []);
 
   if (!isClient) return <div className="grid grid-cols-3 gap-4 h-24 animate-pulse bg-slate-900/50 rounded-2xl" />;
+
+  const tmsData: TmsRecord | null = (tmsRaw?.success && tmsRaw.dataList?.[0]) 
+    ? tmsRaw.dataList[0][tmsRaw.dataList[0].length - 1] 
+    : null;
+
+  const weatherData: WeatherRecord | null = (tmsRaw?.success && tmsRaw.dataList?.[1]) 
+    ? tmsRaw.dataList[1][tmsRaw.dataList[1].length - 1] 
+    : null;
+
+  const isSystemOk = healthRaw?.success === true;
 
   const formatTime = (timeStr?: string) => {
     if (!timeStr) return "";
@@ -80,51 +70,46 @@ export default function Row1Status() {
       const min = timeStr.substring(10, 12);
       return `${y}-${m}-${d} ${h}:${min}`;
     }
-    if (timeStr.includes("T")) {
-      return timeStr.replace("T", " ").substring(0, 16);
-    }
-    return timeStr;
+    return timeStr.includes("T") ? timeStr.replace("T", " ").substring(0, 16) : timeStr;
   };
 
-  const roundVal = (val: number) => {
-    return val.toFixed(1);
-  };
+  const roundVal = (val: number) => val.toFixed(1);
 
   const items = [
     { 
       label: "유입유량", 
-      value: tmsData ? `${tmsData.FLUX_VU.toLocaleString()}` : "Loading...", 
-      status: "normal",
+      value: tmsError ? "Error" : (tmsData ? `${tmsData.FLUX_VU.toLocaleString()}` : "Loading..."), 
+      status: tmsError ? "danger" : "normal",
       time: tmsData?.SYS_TIME 
     },
     { 
       label: "pH | FLUX", 
       value: tmsData 
         ? `${roundVal(tmsData.PH_VU)} | ${tmsData.FLUX_VU.toLocaleString()}` 
-        : "Loading...", 
-      status: (tmsData && (tmsData.PH_VU > 8 || tmsData.PH_VU < 6)) ? "warning" : "normal",
+        : (tmsError ? "Error" : "Loading..."), 
+      status: (tmsData && (tmsData.PH_VU > 8 || tmsData.PH_VU < 6)) ? "warning" : (tmsError ? "danger" : "normal"),
       time: tmsData?.SYS_TIME
     },
     { 
       label: "TMS (TOC/TN/TP/SS)", 
       value: tmsData 
         ? `${roundVal(tmsData.TOC_VU)} / ${roundVal(tmsData.TN_VU)} / ${roundVal(tmsData.TP_VU)} / ${roundVal(tmsData.SS_VU)}` 
-        : "Loading...", 
-      status: "normal",
+        : (tmsError ? "Error" : "Loading..."), 
+      status: tmsError ? "danger" : "normal",
       time: tmsData?.SYS_TIME
     },
     { 
       label: "기온 | 강우", 
       value: weatherData 
         ? `${roundVal(weatherData.TA)}°C | ${weatherData.RN_15m > 0 ? `${roundVal(weatherData.RN_15m)}mm` : "맑음"}` 
-        : "Loading...", 
-      status: (weatherData && weatherData.RN_15m > 5) ? "danger" : (weatherData && weatherData.RN_15m > 0) ? "warning" : "normal",
+        : (tmsError ? "Error" : "Loading..."), 
+      status: (weatherData && weatherData.RN_15m > 5) ? "danger" : (weatherData && weatherData.RN_15m > 0) ? "warning" : (tmsError ? "danger" : "normal"),
       time: weatherData?.SYS_TIME 
     },
     { 
       label: "데이터 상태", 
-      value: tmsData ? "수신중" : "연결중", 
-      status: tmsData ? "normal" : "warning",
+      value: tmsError ? "수신실패" : (tmsData ? "수신중" : "연결중"), 
+      status: tmsError ? "danger" : (tmsData ? "normal" : "warning"),
       time: tmsData?.SYS_TIME
     },
     { 
@@ -139,12 +124,10 @@ export default function Row1Status() {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {items.map((item, i) => (
         <div key={i} className="bg-slate-800/40 p-5 rounded-2xl border border-white/5 flex flex-col justify-between relative shadow-sm hover:border-white/10 transition-colors group h-28">
-          
           <div className="flex justify-between items-start mb-1">
             <h3 className="text-slate-400 text-sm font-bold uppercase tracking-widest group-hover:text-slate-300 transition-colors">
               {item.label}
             </h3>
-            
             <span className={`w-2 h-2 rounded-full ${
                 item.status === 'warning' ? 'bg-orange-500 animate-pulse' : 
                 item.status === 'danger' ? 'bg-red-500 animate-ping' : 'bg-emerald-500'
@@ -159,8 +142,8 @@ export default function Row1Status() {
           </div>
 
           {item.time && (
-            <div className="text-[10px] text-slate-600 font-mono tracking-tighter mt-auto text-right">
-              {formatTime(item.time)} UPDATE
+            <div className="text-[10px] text-slate-600 font-mono tracking-tighter mt-auto text-right uppercase">
+              {tmsError ? "Fetch Failed" : `${formatTime(item.time)} Update`}
             </div>
           )}
         </div>
