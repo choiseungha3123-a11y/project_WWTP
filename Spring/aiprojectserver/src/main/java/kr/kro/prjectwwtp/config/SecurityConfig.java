@@ -78,26 +78,43 @@ public class SecurityConfig {
 			.requestMatchers("/swagger-resources/**").permitAll()
 			.requestMatchers("/static/**").permitAll()
 			
-			.requestMatchers("/api/member/login").permitAll()
-			.requestMatchers("/api/member/checkId").permitAll()
-			.requestMatchers("/api/member/validateKey").permitAll()
-			.requestMatchers("/api/weather/list").permitAll()
-			.requestMatchers("/api/tmsOrigin/tmsList").permitAll()
+			// 대시보드 컨트롤
+			.requestMatchers("/api/board/**").hasAnyRole("MEMBER", "ADMIN")
 			
-			// 인증 필요 - 이 경로들은 JWT 필터를 통과해야 함
+			// 유입유량(AWS) 관련
+			.requestMatchers("/api/flowOrigin/upload").hasRole("ADMIN")
+			.requestMatchers("/api/flowOrigin/list").hasRole("ADMIN")
+			//.requestMatchers("/api/flowOrigin/flowList").hasAnyRole("MEMBER", "ADMIN")
+			.requestMatchers("/api/flowOrigin/flowList").permitAll()
+			
+			// TMS 관련
+			.requestMatchers("/api/tmsOrigin/upload").hasRole("ADMIN")
+			.requestMatchers("/api/tmsOrigin/list").hasRole("ADMIN")
+			//.requestMatchers("/api/tmsOrigin/tmsList").hasAnyRole("MEMBER", "ADMIN")
+			.requestMatchers("/api/tmsOrigin/flowList").permitAll()
+			
+			// 메일 관련
+			.requestMatchers("/api/mail/sendTo").hasRole("ADMIN")
+			
+			// 맴버 관련
+			.requestMatchers("/api/member/login").permitAll()
 			.requestMatchers("/api/member/logout").authenticated()
+			.requestMatchers("/api/member/list").hasRole("ADMIN")
+			.requestMatchers("/api/member/checkId").permitAll()
+			.requestMatchers("/api/member/checkEmail").permitAll()
+			.requestMatchers("/api/member/validateEmail").hasRole("ADMIN")
+			.requestMatchers("/api/member/validateKey").permitAll()
+			.requestMatchers("/api/member/create").hasRole("ADMIN")
 			.requestMatchers("/api/member/modify").authenticated()
 			.requestMatchers("/api/member/delete").authenticated()
-
-			// 관리자 권한 필요
-			.requestMatchers("/api/member/list").hasRole("ADMIN")
-			.requestMatchers("/api/member/create").hasRole("ADMIN")
-			.requestMatchers("/api/member/validateEmail").hasRole("ADMIN")
-			.requestMatchers("/api/memo/**").hasAnyRole("MEMBER", "ADMIN")
-			.requestMatchers("/api/tmsOrigin/**").hasRole("ADMIN")
+			
+			// OAuth2 관련
+			.requestMatchers("/api/oauth2/**").permitAll()
+			
+			// 날씨 수집 관련
+			.requestMatchers("/api/weather/list").permitAll()
 			.requestMatchers("/api/weather/modify").hasRole("ADMIN")
-			.requestMatchers("/api/admin/**").hasRole("ADMIN")
-			.requestMatchers("/admin/**").hasRole("ADMIN")
+
 			// 그 외는 허용
 			.anyRequest().permitAll());
 		

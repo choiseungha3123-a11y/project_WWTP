@@ -131,7 +131,7 @@ public class JWTUtil {
 		}
 		catch(Exception e)
 		{
-			e.printStackTrace();
+			//e.printStackTrace();
 			System.out.println("token : " + token);
 			System.out.println("쿠키 오류");
 			return null;

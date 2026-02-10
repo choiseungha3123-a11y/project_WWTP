@@ -109,30 +109,37 @@ public class TmsController {
 				.success(true)
 				.errorMsg(null)
 				.build();
-		if(JWTUtil.isExpired(request))
-		{
-			res.setSuccess(false);
-			res.setErrorMsg("토큰이 만료되었습니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		Member member = JWTUtil.parseToken(request);
-		if(member == null){
-			res.setSuccess(false);
-			res.setErrorMsg("로그인이 필요합니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		if(member.getRole() != Role.ROLE_ADMIN) {
-			res.setSuccess(false);
-			res.setErrorMsg("권한이 없습니다.");
-			return ResponseEntity.ok().body(res);
-		}
+		Member member = null;
+		int saveCount = 0;
+		String errorMsg = null;
 		try {
-			int saveCount = tmsService.saveFromCsv(file);
-			logService.addTmsLog(member, "upload", saveCount);
+			if(JWTUtil.isExpired(request))
+			{
+				res.setSuccess(false);
+				errorMsg = "토큰이 만료되었습니다.";
+				res.setErrorMsg(errorMsg);
+				return ResponseEntity.ok().body(res);
+			}
+			member = JWTUtil.parseToken(request);
+			if(member == null){
+				res.setSuccess(false);
+				res.setSuccess(false);
+				errorMsg = "로그인이 필요합니다.";
+				return ResponseEntity.ok().body(res);
+			}
+			if(member.getRole() != Role.ROLE_ADMIN) {
+				res.setSuccess(false);
+				errorMsg = "권한이 없습니다.";
+				res.setErrorMsg(errorMsg);
+				return ResponseEntity.ok().body(res);
+			}
+			saveCount = tmsService.saveFromCsv(file);
 			res.addData("saveCount : " + saveCount);
 		} catch (Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
+		} finally {
+			logService.addTmsLog(member, "upload", saveCount, errorMsg);
 		}
 		return ResponseEntity.ok().body(res);
 	}
@@ -151,43 +158,46 @@ public class TmsController {
 				.success(true)
 				.errorMsg(null)
 				.build();
-		if(JWTUtil.isExpired(request))
-		{
-			res.setSuccess(false);
-			res.setErrorMsg("토큰이 만료되었습니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		Member member = JWTUtil.parseToken(request);
-		if(member == null){
-			res.setSuccess(false);
-			res.setErrorMsg("로그인이 필요합니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		if(member.getRole() != Role.ROLE_ADMIN) {
-			res.setSuccess(false);
-			res.setErrorMsg("권한이 없습니다.");
-			return ResponseEntity.ok().body(res);
-		}
+		Member member = null;
+		int listSize = 0;
+		String errorMsg = null;
 		try {
+			if(JWTUtil.isExpired(request))
+			{
+				res.setSuccess(false);
+				errorMsg = "토큰이 만료되었습니다.";
+				res.setErrorMsg(errorMsg);
+				return ResponseEntity.ok().body(res);
+			}
+			member = JWTUtil.parseToken(request);
+			if(member == null){
+				res.setSuccess(false);
+				errorMsg = "로그인이 필요합니다.";
+				res.setErrorMsg(errorMsg);
+				return ResponseEntity.ok().body(res);
+			}
+			if(member.getRole() != Role.ROLE_ADMIN) {
+				res.setSuccess(false);
+				errorMsg = "권한이 없습니다.";
+				res.setErrorMsg(errorMsg);
+				return ResponseEntity.ok().body(res);
+			}
 			List<TmsOrigin> list = tmsService.getTmsOriginListByDate(time);
 			for(TmsOrigin t : list) {
 				res.addData(t);
 			}
-			logService.addTmsLog(member, "list", list.size());
+			listSize = list.size();
 		} catch (Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
+		} finally {
+			logService.addTmsLog(member, "list", listSize, errorMsg);
 		}
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@PostMapping("/makeFakeDate")
-	@Operation(summary="임의의 날짜를 오늘로 처리", description = "현재 실시간 정보를 가져올수 없기 때문에 받아온 FMS 데이터 중에 임의의 날짜를 오늘로 처리하도록 함")
-	public ResponseEntity<Object> postMakeFakeDate() {
-		responseDTO res = responseDTO.builder()
-				.success(true)
-				.errorMsg(null)
-				.build();
+	@Scheduled(cron = "${scheduler.fakeday.cron}")
+	public void makeFakeDate() {
 		System.out.println("makeFakeDate");
 		LocalDateTime now = LocalDateTime.now();
 		LocalDateTime fakeTmeNow = tmsService.getFakeNow()
@@ -219,7 +229,6 @@ public class TmsController {
 			List<FlowImputate> list = flowService.imputate(fakeFlowNow.minusDays(1));
 			flowService.saveFlowImputateList(list);
 		}
-		return ResponseEntity.ok().body(res);
 	}
 	
 	@Scheduled(cron = "0 * * * * *")
@@ -248,7 +257,7 @@ public class TmsController {
 				.success(true)
 				.errorMsg(null)
 				.build();
-		LocalDateTime now = LocalDateTime.now().withSecond(0);
+		LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
 		LocalDateTime end = now.plusDays(1).minusMinutes(1);
 		List<TmsPredict> list = tmsService.findPredictList(now, end);
 		res.addData(list);
@@ -256,14 +265,24 @@ public class TmsController {
 	}
 	
 	public void requestTms(List<WeatherDTO> aws368, List<WeatherDTO> aws541, List<WeatherDTO> aws569, List<TmsImputate>tmsList) {
+		String errorMsg = null;
+		int predictSize = 0;
+		try {
 		Input<TmsImputate> input = new Input<>(aws368, aws541, aws569, tmsList);
-		predictIn<TmsImputate> pIn = new predictIn<>(input);
-		
-		fastApiResponseDTO response = apiService.getPredict("/predict/tms", pIn);
-		if(response.isOk()) {
-			TmsPredict[] predictions = extractPredictions(response);
-			System.out.println("예측값 (1h~12h): " + java.util.Arrays.toString(predictions));
-			tmsService.savePredictList(predictions);
+			predictIn<TmsImputate> pIn = new predictIn<>(input);
+			
+			fastApiResponseDTO response = apiService.getPredict("/predict/tms", pIn);
+			if(response.isOk()) {
+				TmsPredict[] predictions = extractPredictions(response);
+				predictSize = predictions.length;
+				System.out.println("예측값 (1h~12h): " + java.util.Arrays.toString(predictions));
+				tmsService.savePredictList(predictions);
+			}
+		}catch(Exception e) {
+			errorMsg = e.getMessage();
+		}
+		finally {
+			logService.addTmsLog(null, "predict", predictSize, errorMsg);
 		}
 	}
 	
@@ -291,7 +310,7 @@ public class TmsController {
 			Map<String, Object> mapTp = mapper.convertValue(mapPredictions.get("tp"),new TypeReference<>() {});
 			Map<String, Object> mapFlux = mapper.convertValue(mapPredictions.get("flux"),new TypeReference<>() {});
 			Map<String, Object> mapPh = mapper.convertValue(mapPredictions.get("ph"),new TypeReference<>() {});
-			LocalDateTime now = LocalDateTime.now().withSecond(0);
+			LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
 			
 			// output에서 predictions 데이터 추출
 			for(int hour = 1; hour <= 12; hour++) {

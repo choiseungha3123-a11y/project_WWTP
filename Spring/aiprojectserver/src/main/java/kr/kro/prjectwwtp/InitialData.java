@@ -3,7 +3,6 @@ package kr.kro.prjectwwtp;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import kr.kro.prjectwwtp.config.PasswordEncoder;
@@ -53,12 +52,7 @@ public class InitialData implements ApplicationRunner {
 					.role(Role.ROLE_MEMBER)
 					.build());
 		}
-		tmsController.postMakeFakeDate();
-	}
-	
-	@Scheduled(cron = "${scheduler.fakeday.cron}")
-	public void makeFakeDate() {
-		tmsController.postMakeFakeDate();
+		tmsController.makeFakeDate();
 	}
 }
 	

@@ -66,19 +66,21 @@ public class LogService {
 						.build());
 	}
 	
-	public void addFlowLog(Member member, String type, int count) {
+	public void addFlowLog(Member member, String type, int count, String errorMsg) {
 		flowRepo.save(FlowLog.builder()
 						.member(member)
 						.type(type)
 						.count(count)
+						.errorMsg(errorMsg)
 						.build());
 	}
 	
-	public void addTmsLog(Member member, String type, int count) {
+	public void addTmsLog(Member member, String type, int count, String errorMsg) {
 		tmsRepo.save(TmsLog.builder()
 						.member(member)
 						.type(type)
 						.count(count)
+						.errorMsg(errorMsg)
 						.build());
 	}
 	

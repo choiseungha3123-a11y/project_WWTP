@@ -41,7 +41,6 @@ import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.fastApiResponseDTO;
 import kr.kro.prjectwwtp.domain.predictIn;
 import kr.kro.prjectwwtp.domain.responseDTO;
-import kr.kro.prjectwwtp.persistence.FlowPredictRepository;
 import kr.kro.prjectwwtp.service.FastApiService;
 import kr.kro.prjectwwtp.service.FlowService;
 import kr.kro.prjectwwtp.service.LogService;
@@ -103,30 +102,37 @@ public class FlowController {
 				.success(true)
 				.errorMsg(null)
 				.build();
-		if(JWTUtil.isExpired(request))
-		{
-			res.setSuccess(false);
-			res.setErrorMsg("토큰이 만료되었습니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		Member member = JWTUtil.parseToken(request);
-		if(member == null){
-			res.setSuccess(false);
-			res.setErrorMsg("로그인이 필요합니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		if(member.getRole() != Role.ROLE_ADMIN) {
-			res.setSuccess(false);
-			res.setErrorMsg("권한이 없습니다.");
-			return ResponseEntity.ok().body(res);
-		}
+		Member member = null;
+		int saveCount = 0;
+		String errorMsg = null;
 		try {
-			int saveCount = flowService.saveFromCsv(file);
-			logService.addFlowLog(member, "upload", saveCount);
+			if(JWTUtil.isExpired(request))
+			{
+				res.setSuccess(false);
+				errorMsg = "토큰이 만료되었습니다.";
+				res.setErrorMsg(errorMsg);
+				return ResponseEntity.ok().body(res);
+			}
+			member = JWTUtil.parseToken(request);
+			if(member == null){
+				res.setSuccess(false);
+				errorMsg = "로그인이 필요합니다.";
+				res.setErrorMsg(errorMsg);
+				return ResponseEntity.ok().body(res);
+			}
+			if(member.getRole() != Role.ROLE_ADMIN) {
+				res.setSuccess(false);
+				errorMsg = "권한이 없습니다.";
+				res.setErrorMsg(errorMsg);
+				return ResponseEntity.ok().body(res);
+			}
+			saveCount = flowService.saveFromCsv(file);
 			res.addData("saveCount : " + saveCount);
 		} catch (Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
+		} finally {
+			logService.addFlowLog(member, "list", saveCount, errorMsg);
 		}
 		return ResponseEntity.ok().body(res);
 	}
@@ -145,37 +151,44 @@ public class FlowController {
 				.success(true)
 				.errorMsg(null)
 				.build();
-		if(JWTUtil.isExpired(request))
-		{
-			res.setSuccess(false);
-			res.setErrorMsg("토큰이 만료되었습니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		Member member = JWTUtil.parseToken(request);
-		if(member == null){
-			res.setSuccess(false);
-			res.setErrorMsg("로그인이 필요합니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		if(member.getRole() != Role.ROLE_ADMIN) {
-			res.setSuccess(false);
-			res.setErrorMsg("권한이 없습니다.");
-			return ResponseEntity.ok().body(res);
-		}
+		Member member = null;
+		int listSize = 0;
+		String errorMsg = null;
 		try {
+			if(JWTUtil.isExpired(request))
+			{
+				res.setSuccess(false);
+				errorMsg = "토큰이 만료되었습니다.";
+				res.setErrorMsg(errorMsg);
+				return ResponseEntity.ok().body(res);
+			}
+			member = JWTUtil.parseToken(request);
+			if(member == null){
+				res.setSuccess(false);
+				errorMsg = "로그인이 필요합니다.";
+				res.setErrorMsg(errorMsg);
+				return ResponseEntity.ok().body(res);
+			}
+			if(member.getRole() != Role.ROLE_ADMIN) {
+				res.setSuccess(false);
+				errorMsg = "권한이 없습니다.";
+				res.setErrorMsg(errorMsg);
+				return ResponseEntity.ok().body(res);
+			}
 			List<FlowOrigin> list = flowService.getFlowOriginListByDate(time);
 			for(FlowOrigin t : list) {
 				res.addData(t);
 			}
-			logService.addFlowLog(member, "list", list.size());
+			listSize = list.size();
 		} catch (Exception e) {
 			res.setSuccess(false);
-			res.setErrorMsg(e.getMessage());
+			errorMsg = e.getMessage();
+			res.setErrorMsg(errorMsg);
+		} finally {
+			logService.addFlowLog(member, "list", listSize, errorMsg);
 		}
 		return ResponseEntity.ok().body(res);
 	}
-	
-	boolean test = false;
 	
 	@Scheduled(cron = "0 * * * * *")
 	public void getFlowPredict() {
@@ -195,29 +208,44 @@ public class FlowController {
 	}
 
 	@GetMapping("/flowList")
-	@Operation(summary="어제부터의 실시간 정보와 내일까지의 예상 정보를 요청", description = "결측/이상 값을 처리한 데이터를 조회합니다. 데이터가 없으면 보간을 수행합니다.")
+	@Operation(summary="어제부터의 실시간 정보와 내일까지의 예상 정보를 요청 (Java 코드 처리)", 
+	           description = "결측/이상 값을 처리한 데이터를 조회합니다. 중복 제거는 Java 코드로 처리합니다.")
 	public ResponseEntity<Object> getFlowList() {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
 				.build();
-		LocalDateTime now = LocalDateTime.now().withSecond(0);
+		LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
 		LocalDateTime end = now.plusDays(1).minusMinutes(1);
 		List<FlowPredict> list = flowService.findPredictList(now, end);
 		res.addData(list);
+		
 		return ResponseEntity.ok().body(res);
 	}
-	
+
 	public void requestFlow(List<WeatherDTO> aws368, List<WeatherDTO> aws541, List<WeatherDTO> aws569, List<FlowImputate>flowList) {
-		Input<FlowImputate> input = new Input<>(aws368, aws541, aws569, flowList);
-		predictIn<FlowImputate> pIn = new predictIn<>(input);
-		
-		fastApiResponseDTO response = apiService.getPredict("/predict/flow", pIn);
-		LocalDateTime now = LocalDateTime.now().withSecond(0);
-		if(response.isOk()) {
-			double[] predictions = extractPredictions(response);
-			System.out.println("예측값 (1h~12h): " + java.util.Arrays.toString(predictions));
-			flowService.savePredictList(now, predictions);
+		String errorMsg = null;
+		int predictSize = 0;
+		try {
+			Input<FlowImputate> input = new Input<>(aws368, aws541, aws569, flowList);
+			predictIn<FlowImputate> pIn = new predictIn<>(input);
+			
+			fastApiResponseDTO response = apiService.getPredict("/predict/flow", pIn);
+			LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
+			if(response.isOk()) {
+				double[] predictions = extractPredictions(response);
+				predictSize = predictions.length;
+				System.out.println("예측값 (1h~12h): " + java.util.Arrays.toString(predictions));
+				flowService.savePredictList(now, predictions);
+			}
+			else {
+				errorMsg = response.getError();
+			}
+		}catch(Exception e) {
+			errorMsg = e.getMessage();
+		}
+		finally {
+			logService.addFlowLog(null, "predict", predictSize, errorMsg);
 		}
 	}
 	

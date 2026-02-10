@@ -1,5 +1,6 @@
 package kr.kro.prjectwwtp.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -110,6 +111,15 @@ public class MemberService {
 		member.setValidateEmail(true);
 		member.setValidateKey(null);
 		memberRepo.save(member);
+	}
+	
+	public List<String> getValidateEmail() {
+		List<Member> list =  memberRepo.findByUserEmailIsNotNullAndValidateKeyIsNullAndValidateEmailTrue();
+		List<String> ret = new ArrayList<>();
+		for(Member m : list)
+			ret.add(m.getUserEmail());
+		
+		return ret;
 	}
 
 }

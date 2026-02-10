@@ -1,6 +1,8 @@
 package kr.kro.prjectwwtp.service;
 
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -26,7 +28,15 @@ public class MailService {
 
 	public void sendEmail(String toAddress, String subjectText, String bodyText) {
 		Destination destination = new Destination().withToAddresses(toAddress);
-		
+		sendEmail(destination, subjectText, bodyText);
+	}
+	
+	public void sendEmail(List<String> addressList, String subjectText, String bodyText) {
+		Destination destination = new Destination().withToAddresses(addressList);
+		sendEmail(destination, subjectText, bodyText);
+	}
+	
+	private void sendEmail(Destination destination, String subjectText, String bodyText) {
 		Content subject = new Content().withCharset("UTF-8").withData(subjectText);
 		Content body = new Content().withCharset("UTF-8").withData(bodyText);
 		

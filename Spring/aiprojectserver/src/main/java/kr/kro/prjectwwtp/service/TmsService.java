@@ -46,7 +46,6 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class TmsService {
-	private final LogService logService;
 	private final TmsOriginRepository tmsOriginRepo;
 	private final TmsImputateRepository tmsImputateRepo;
 	private final TmsInsertRepository tmsInsertRepo;
@@ -119,7 +118,6 @@ public class TmsService {
 				System.out.println("addCount: " + addCount);
 				list.clear();
 			}
-			logService.addTmsLog(null, "upload", list.size());
 			
 			System.out.println("lineNo: " + lineNo);
 			System.out.println("Final addCount: " + addCount);
@@ -559,7 +557,18 @@ public class TmsService {
 	}
 	
 	public List<TmsPredict> findPredictList(LocalDateTime now, LocalDateTime end) {
-		return tmsPredictRepo.findByTmsTimeBetweenOrderByTmsTime(now, end);
+		List<TmsPredict> allList = tmsPredictRepo.findByTmsTimeBetweenOrderByTmsTimeAscTmsNoDesc(now, end);
+		// 중복값 제거
+		Map<LocalDateTime, TmsPredict> uniqueMap = new HashMap<>();
+		for(TmsPredict predict : allList) {
+			LocalDateTime tmsTime = predict.getTmsTime().withSecond(0).withNano(0);
+			if(!uniqueMap.containsKey(tmsTime)) {
+				uniqueMap.put(tmsTime, predict);
+			}
+		}
+		List<TmsPredict> result = new ArrayList<>(uniqueMap.values());
+		result.sort((a, b) -> a.getTmsTime().compareTo(b.getTmsTime()));
+		return result;
 	}
 	
 	public void savePredictList(TmsPredict[] array) {

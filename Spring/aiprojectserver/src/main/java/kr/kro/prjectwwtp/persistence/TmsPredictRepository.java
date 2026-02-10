@@ -8,5 +8,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import kr.kro.prjectwwtp.domain.TmsPredict;
 
 public interface TmsPredictRepository extends JpaRepository<TmsPredict, Long>{
-	List<TmsPredict> findByTmsTimeBetweenOrderByTmsTime(LocalDateTime start, LocalDateTime end);
+	List<TmsPredict> findByTmsTimeBetweenOrderByTmsTimeAscTmsNoDesc(LocalDateTime start, LocalDateTime end);
 }

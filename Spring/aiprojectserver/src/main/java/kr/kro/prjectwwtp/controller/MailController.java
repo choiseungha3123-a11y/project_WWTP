@@ -89,7 +89,7 @@ public class MailController {
 	@Operation(summary="메일 보내기", description = "경고 상황을 알려주는 메일을 보냅니다.")
 	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = sendToMailDTO.class))
 	@ApiResponse(description = "결과 설명", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
-	public ResponseEntity<Object> getPredict(
+	public ResponseEntity<Object> mailSend(
 			HttpServletRequest request,
 			@RequestBody sendToMailDTO req) {
 		responseDTO res = responseDTO.builder()

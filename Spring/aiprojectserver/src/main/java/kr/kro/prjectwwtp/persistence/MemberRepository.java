@@ -15,6 +15,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 	Optional<Member> findByUserEmail(String userEmail);
 	List<Member> findByRole(Role role);
 	Optional<Member> findBySocialAuth(String socialAuth);
+	List<Member> findByUserEmailIsNotNullAndValidateKeyIsNullAndValidateEmailTrue();
 	
 	
 }

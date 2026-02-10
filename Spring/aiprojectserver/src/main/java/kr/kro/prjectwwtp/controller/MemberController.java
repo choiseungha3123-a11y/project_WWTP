@@ -1,5 +1,6 @@
 package kr.kro.prjectwwtp.controller;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -27,12 +28,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.config.TokenBlacklistManager;
+import kr.kro.prjectwwtp.domain.FlowPredict;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
+import kr.kro.prjectwwtp.domain.TmsPredict;
 import kr.kro.prjectwwtp.domain.responseDTO;
+import kr.kro.prjectwwtp.service.FlowService;
 import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.service.MailService;
 import kr.kro.prjectwwtp.service.MemberService;
+import kr.kro.prjectwwtp.service.TmsService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import kr.kro.prjectwwtp.util.Util;
 import lombok.Getter;
@@ -48,6 +53,8 @@ import lombok.ToString;
 public class MemberController {
 	private final MemberService memberService;
 	private final LogService logService;
+	private final TmsService tmsService;
+	private final FlowService flowService;
 	private final TokenBlacklistManager tokenBlacklistManager;
 	private final MailService mailService;
 	
@@ -429,6 +436,18 @@ public class MemberController {
 		    "</body>" +
 		    "</html>";
 		return body;
+	}
+	
+	//@Scheduled(cron = "${scheduler.report.cron}")
+	@GetMapping("/mailtest")
+	public void makeReportMessage() throws Exception
+	{
+		LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
+		LocalDateTime end = now.plusDays(1).minusMinutes(1);
+		List<TmsPredict> tmsList = tmsService.findPredictList(now, end);
+		List<FlowPredict> flowList = flowService.findPredictList(now, end);
+		
+		
 	}
 	
 	@GetMapping("/validateKey")

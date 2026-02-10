@@ -53,7 +53,7 @@ import lombok.ToString;
 @RestControllerAdvice
 @RequestMapping("/api/board")
 @RequiredArgsConstructor
-@Tag(name="MemoController", description = "회원간 메모 관리 API")
+@Tag(name="DashBoardController", description = "회원간 메모 관리 API")
 public class DashBoardController {
 	private final MemoService memoService;
 	private final TmsService tmsService;
@@ -416,7 +416,7 @@ public class DashBoardController {
 			return ResponseEntity.ok().body(res);
 		}
 		try {
-			LocalDateTime now = LocalDateTime.now().withSecond(0);
+			LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
 			LocalDateTime start = now.minusDays(1).plusMinutes(1);
 			LocalDateTime end = now.plusDays(1).minusMinutes(1);
 			LocalDateTime fakeTmsNow = tmsService.getFakeNow()

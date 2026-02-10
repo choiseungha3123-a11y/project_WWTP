@@ -42,7 +42,6 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class FlowService {
-	private final LogService logService;
 	private final FlowOriginRepository flowOriginRepo;
 	private final FlowImputateRepository flowImputateRepo;
 	private final FlowInsertRepository insertRepo;
@@ -111,8 +110,6 @@ public class FlowService {
 				System.out.println("addCount: " + addCount);
 				list.clear();
 			}
-			logService.addFlowLog(null, "upload", list.size());
-			
 			System.out.println("lineNo: " + lineNo);
 			System.out.println("Final addCount: " + addCount);
 			return addCount;	
@@ -478,8 +475,31 @@ public class FlowService {
 		return fakeDate.getFlowDate();
 	}
 	
+	/**
+	 * Java 코드로 중복 제거를 처리하는 메서드
+	 * SQL 쿼리 방식과의 성능 비교를 위함
+	 * @param now 시작 시간
+	 * @param end 종료 시간
+	 * @return flowTime 기준 오름차순, 중복 제거된 FlowPredict 리스트
+	 */
 	public List<FlowPredict> findPredictList(LocalDateTime now, LocalDateTime end) {
-		return flowPredictRepo.findByFlowTimeBetweenOrderByFlowTime(now, end);
+		List<FlowPredict> allList = flowPredictRepo.findByFlowTimeBetweenOrderByFlowTimeAscFlowNoDesc(now, end);
+		
+		// 중복된 flowTime에 대해 flow_no가 가장 큰 1개의 값만 유지
+		Map<LocalDateTime, FlowPredict> uniqueMap = new HashMap<>();
+		for (FlowPredict predict : allList) {
+			LocalDateTime flowTime = predict.getFlowTime().withSecond(0).withNano(0);
+			// 첫 번째 것이 flow_no가 가장 크므로(DESC 정렬됨) 그것만 유지
+			if (!uniqueMap.containsKey(flowTime)) {
+				uniqueMap.put(flowTime, predict);
+			}
+		}
+		
+		// Map의 값을 List로 변환하고 flowTime 기준 오름차순 정렬
+		List<FlowPredict> result = new ArrayList<>(uniqueMap.values());
+		result.sort((a, b) -> a.getFlowTime().compareTo(b.getFlowTime()));
+		
+		return result;
 	}
 	
 	public void savePredictList(LocalDateTime time, double[] array) {

@@ -56,4 +56,10 @@ public class TmsPredict {
 	@JsonProperty("TP_VU")
 	@Schema(description = "총인", example = "double")
 	private Double tp;
+	@JsonIgnore
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "createtime", updatable = false)
+	@Schema(description = "데이터의 기록 시간", example = "2026-01-30T15:30:00")
+	@Builder.Default
+	private LocalDateTime createTime = LocalDateTime.now();
 }

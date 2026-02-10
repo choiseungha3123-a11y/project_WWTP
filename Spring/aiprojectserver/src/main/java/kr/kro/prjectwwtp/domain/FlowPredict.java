@@ -34,8 +34,14 @@ public class FlowPredict {
 	private long flowNo;
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "time", updatable = false)
-	@Schema(description = "데이터의 기록 시간", example = "2026-01-30T15:30:00")
+	@Schema(description = "데이터의 예측 시간", example = "2026-01-30T15:30:00")
 	private LocalDateTime flowTime;
 	@Schema(description = "예측_유량", example = "double")
 	private Double flowValue;
+	@JsonIgnore
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "createtime", updatable = false)
+	@Schema(description = "데이터의 기록 시간", example = "2026-01-30T15:30:00")
+	@Builder.Default
+	private LocalDateTime createTime = LocalDateTime.now();
 }
