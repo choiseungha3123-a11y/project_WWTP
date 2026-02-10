@@ -15,7 +15,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kr.kro.prjectwwtp.domain.Member;
-import kr.kro.prjectwwtp.service.LoginLogService;
+import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.service.MemberService;
 import kr.kro.prjectwwtp.service.SessionService;
 import kr.kro.prjectwwtp.util.JWTUtil;
@@ -26,7 +26,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class Oauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler{
 	private final MemberService memberService;
-	private final LoginLogService logService;
+	private final LogService logService;
 	private final SessionService sessionService;
 	
 	// 소셜 로그인시 주소 체크!!!!

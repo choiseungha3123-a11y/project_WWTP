@@ -38,16 +38,14 @@ import kr.kro.prjectwwtp.domain.Input;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.TmsImputate;
-import kr.kro.prjectwwtp.domain.TmsLog;
 import kr.kro.prjectwwtp.domain.TmsOrigin;
 import kr.kro.prjectwwtp.domain.TmsPredict;
 import kr.kro.prjectwwtp.domain.fastApiResponseDTO;
 import kr.kro.prjectwwtp.domain.predictIn;
 import kr.kro.prjectwwtp.domain.responseDTO;
-import kr.kro.prjectwwtp.persistence.TmsLogRepository;
-import kr.kro.prjectwwtp.persistence.TmsPredictRepository;
 import kr.kro.prjectwwtp.service.FastApiService;
 import kr.kro.prjectwwtp.service.FlowService;
+import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.service.TmsService;
 import kr.kro.prjectwwtp.service.WeatherService;
 import kr.kro.prjectwwtp.util.JWTUtil;
@@ -59,9 +57,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Tag(name="TmsOriginController", description = "TMS 수치 처리 API")
 public class TmsController {
-	private final TmsLogRepository logRepository;
+	private final LogService logService;
 	private final TmsService tmsService;
-	private final TmsPredictRepository tmsPredictRepo;
 	private final FlowService flowService;
 	private final WeatherService weatherService;
 	private final FastApiService apiService;
@@ -131,11 +128,7 @@ public class TmsController {
 		}
 		try {
 			int saveCount = tmsService.saveFromCsv(file);
-			logRepository.save(TmsLog.builder()
-									.type("upload")
-									.member(member)
-									.count(saveCount)
-									.build());
+			logService.addTmsLog(member, "upload", saveCount);
 			res.addData("saveCount : " + saveCount);
 		} catch (Exception e) {
 			res.setSuccess(false);
@@ -180,12 +173,7 @@ public class TmsController {
 			for(TmsOrigin t : list) {
 				res.addData(t);
 			}
-			logRepository.save(TmsLog.builder()
-					.type("list")
-					.member(member)
-					.time(time)
-					.count(list.size())
-					.build());
+			logService.addTmsLog(member, "list", list.size());
 		} catch (Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
@@ -262,7 +250,7 @@ public class TmsController {
 				.build();
 		LocalDateTime now = LocalDateTime.now().withSecond(0);
 		LocalDateTime end = now.plusDays(1).minusMinutes(1);
-		List<TmsPredict> list = tmsPredictRepo.findByTmsTimeBetweenOrderByTmsTime(now, end);
+		List<TmsPredict> list = tmsService.findPredictList(now, end);
 		res.addData(list);
 		return ResponseEntity.ok().body(res);
 	}
@@ -275,8 +263,7 @@ public class TmsController {
 		if(response.isOk()) {
 			TmsPredict[] predictions = extractPredictions(response);
 			System.out.println("예측값 (1h~12h): " + java.util.Arrays.toString(predictions));
-			for(int i = 0; i < predictions.length; ++i)
-				tmsPredictRepo.save(predictions[i]);
+			tmsService.savePredictList(predictions);
 		}
 	}
 	

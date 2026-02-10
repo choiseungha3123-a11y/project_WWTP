@@ -28,15 +28,15 @@ import jakarta.annotation.PostConstruct;
 import kr.kro.prjectwwtp.domain.FakeDate;
 import kr.kro.prjectwwtp.domain.FlowSummary;
 import kr.kro.prjectwwtp.domain.TmsImputate;
-import kr.kro.prjectwwtp.domain.TmsLog;
 import kr.kro.prjectwwtp.domain.TmsOrigin;
+import kr.kro.prjectwwtp.domain.TmsPredict;
 import kr.kro.prjectwwtp.domain.TmsSummary;
 import kr.kro.prjectwwtp.persistence.FakeDateRepository;
 import kr.kro.prjectwwtp.persistence.FlowSummaryRepository;
 import kr.kro.prjectwwtp.persistence.TmsImputateRepository;
-import kr.kro.prjectwwtp.persistence.TmsLogRepository;
 import kr.kro.prjectwwtp.persistence.TmsInsertRepository;
 import kr.kro.prjectwwtp.persistence.TmsOriginRepository;
+import kr.kro.prjectwwtp.persistence.TmsPredictRepository;
 import kr.kro.prjectwwtp.persistence.TmsSummaryRepository;
 import kr.kro.prjectwwtp.service.TmsImputateService.ImputationConfig;
 import kr.kro.prjectwwtp.service.TmsImputateService.OutlierConfig;
@@ -46,12 +46,12 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class TmsService {
-
+	private final LogService logService;
 	private final TmsOriginRepository tmsOriginRepo;
 	private final TmsImputateRepository tmsImputateRepo;
-	private final TmsLogRepository tmsLogRepo;
 	private final TmsInsertRepository tmsInsertRepo;
 	private final TmsSummaryRepository tmsSummaryRepo;
+	private final TmsPredictRepository tmsPredictRepo;
 	private final FlowSummaryRepository flowSummaryRepo;
 	private final FakeDateRepository fakeDateRepo;
 	
@@ -119,10 +119,7 @@ public class TmsService {
 				System.out.println("addCount: " + addCount);
 				list.clear();
 			}
-			tmsLogRepo.save(TmsLog.builder()
-				.type("upload")
-				.count(list.size())
-				.build());
+			logService.addTmsLog(null, "upload", list.size());
 			
 			System.out.println("lineNo: " + lineNo);
 			System.out.println("Final addCount: " + addCount);
@@ -559,5 +556,13 @@ public class TmsService {
 		System.out.println("new tmsDate : " + tmsTime + ", " + flowTime);
 		return tmsTime;
 				
+	}
+	
+	public List<TmsPredict> findPredictList(LocalDateTime now, LocalDateTime end) {
+		return tmsPredictRepo.findByTmsTimeBetweenOrderByTmsTime(now, end);
+	}
+	
+	public void savePredictList(TmsPredict[] array) {
+		tmsPredictRepo.saveAll(Arrays.asList(array));
 	}
 }

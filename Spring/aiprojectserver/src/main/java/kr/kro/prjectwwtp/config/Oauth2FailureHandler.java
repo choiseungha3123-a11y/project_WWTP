@@ -11,14 +11,14 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kr.kro.prjectwwtp.domain.Member;
-import kr.kro.prjectwwtp.service.LoginLogService;
+import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.util.Util;
 import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
 public class Oauth2FailureHandler extends SimpleUrlAuthenticationFailureHandler {
-	private final LoginLogService logService;
+	private final LogService logService;
 	
 	@Value("${spring.auth2.URI}")
 	private String redirectURI;

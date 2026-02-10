@@ -30,7 +30,7 @@ import kr.kro.prjectwwtp.config.TokenBlacklistManager;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.responseDTO;
-import kr.kro.prjectwwtp.service.LoginLogService;
+import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.service.MailService;
 import kr.kro.prjectwwtp.service.MemberService;
 import kr.kro.prjectwwtp.util.JWTUtil;
@@ -47,7 +47,7 @@ import lombok.ToString;
 @Tag(name="MemberController", description = "회원정보 관리 API")
 public class MemberController {
 	private final MemberService memberService;
-	private final LoginLogService logService;
+	private final LogService logService;
 	private final TokenBlacklistManager tokenBlacklistManager;
 	private final MailService mailService;
 	
@@ -74,15 +74,6 @@ public class MemberController {
 		responseDTO res = responseDTO.builder()
 				.success(false)
 				.errorMsg(" 허용되지 않는 Method 입니다.")
-				.build();
-		return ResponseEntity.ok().body(res);
-	}
-	
-	@GetMapping("/health")
-	public ResponseEntity<Object> healthCheck() {
-		responseDTO res = responseDTO.builder()
-				.success(true)
-				.errorMsg(null)
 				.build();
 		return ResponseEntity.ok().body(res);
 	}

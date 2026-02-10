@@ -19,8 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.responseDTO;
-import kr.kro.prjectwwtp.service.AccessLogService;
-import kr.kro.prjectwwtp.service.LoginLogService;
+import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.service.SessionService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import kr.kro.prjectwwtp.util.Util;
@@ -31,8 +30,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 	private final AuthenticationManager authenticationManager;
 	private final TokenBlacklistManager tokenBlacklistManager;
 	private final SessionService sessionService;
-	private final AccessLogService logService;
-	private final LoginLogService loginService;
+	private final LogService logService;
 	
 	@Override
 	public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
@@ -144,7 +142,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 			errorMsg = e.getMessage();
 		}finally {
 			// 접속 로그 기록
-			loginService.addLoginLog(member, loginSuccess, userId, remoteInfo, null, errorMsg);
+			logService.addLoginLog(member, loginSuccess, userId, remoteInfo, null, errorMsg);
 		}
 	}
 	
@@ -169,6 +167,6 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 		String responseBody = new ObjectMapper().writeValueAsString(res);
 		response.getWriter().write(responseBody);
 		response.getWriter().flush();
-		loginService.addLoginLog(null, false, userId, remoteInfo, null, errorMsg);
+		logService.addLoginLog(null, false, userId, remoteInfo, null, errorMsg);
 	}
 }

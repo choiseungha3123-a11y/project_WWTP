@@ -33,7 +33,6 @@ import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.controller.WeatherController.WeatherDTO;
 import kr.kro.prjectwwtp.domain.FlowImputate;
-import kr.kro.prjectwwtp.domain.FlowLog;
 import kr.kro.prjectwwtp.domain.FlowOrigin;
 import kr.kro.prjectwwtp.domain.FlowPredict;
 import kr.kro.prjectwwtp.domain.Input;
@@ -42,10 +41,10 @@ import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.fastApiResponseDTO;
 import kr.kro.prjectwwtp.domain.predictIn;
 import kr.kro.prjectwwtp.domain.responseDTO;
-import kr.kro.prjectwwtp.persistence.FlowLogRepository;
 import kr.kro.prjectwwtp.persistence.FlowPredictRepository;
 import kr.kro.prjectwwtp.service.FastApiService;
 import kr.kro.prjectwwtp.service.FlowService;
+import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.service.WeatherService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import lombok.RequiredArgsConstructor;
@@ -56,9 +55,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Tag(name="FlowOriginController", description = "유량 수치 처리 API")
 public class FlowController {
+	private final LogService logService;
 	private final FlowService flowService;
-	private final FlowLogRepository logRepo;
-	private final FlowPredictRepository flowPredictRepo;
 	private final WeatherService weatherService;
 	private final FastApiService apiService;
 	
@@ -124,11 +122,7 @@ public class FlowController {
 		}
 		try {
 			int saveCount = flowService.saveFromCsv(file);
-			logRepo.save(FlowLog.builder()
-									.type("upload")
-									.member(member)
-									.count(saveCount)
-									.build());
+			logService.addFlowLog(member, "upload", saveCount);
 			res.addData("saveCount : " + saveCount);
 		} catch (Exception e) {
 			res.setSuccess(false);
@@ -173,12 +167,7 @@ public class FlowController {
 			for(FlowOrigin t : list) {
 				res.addData(t);
 			}
-			logRepo.save(FlowLog.builder()
-					.type("list")
-					.member(member)
-					.time(time)
-					.count(list.size())
-					.build());
+			logService.addFlowLog(member, "list", list.size());
 		} catch (Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
@@ -214,7 +203,7 @@ public class FlowController {
 				.build();
 		LocalDateTime now = LocalDateTime.now().withSecond(0);
 		LocalDateTime end = now.plusDays(1).minusMinutes(1);
-		List<FlowPredict> list = flowPredictRepo.findByFlowTimeBetweenOrderByFlowTime(now, end);
+		List<FlowPredict> list = flowService.findPredictList(now, end);
 		res.addData(list);
 		return ResponseEntity.ok().body(res);
 	}
@@ -228,11 +217,7 @@ public class FlowController {
 		if(response.isOk()) {
 			double[] predictions = extractPredictions(response);
 			System.out.println("예측값 (1h~12h): " + java.util.Arrays.toString(predictions));
-			for(int i = 0; i < predictions.length; ++i)
-				flowPredictRepo.save(FlowPredict.builder()
-										.flowTime(now.plusHours(i + 1))
-										.flowValue(predictions[i])
-										.build());
+			flowService.savePredictList(now, predictions);
 		}
 	}
 	

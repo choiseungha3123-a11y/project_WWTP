@@ -17,7 +17,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import jakarta.annotation.PostConstruct;
 import kr.kro.prjectwwtp.domain.Weather;
-import kr.kro.prjectwwtp.service.WeatherAPILogService;
+import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.service.WeatherService;
 import lombok.RequiredArgsConstructor;
 
@@ -32,7 +32,7 @@ public class GetherWeather implements ApplicationRunner {
 	private String baseUrl;
 	
 	private final WeatherService weatherService;
-	private final WeatherAPILogService logService;
+	private final LogService logService;
 	private RestTemplate restTemplate = new RestTemplate();
 	
 	@Value("${scheduler.enable}")

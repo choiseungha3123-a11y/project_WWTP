@@ -1,5 +1,7 @@
 package kr.kro.prjectwwtp.controller;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.TimeZone;
 
 import org.springframework.data.domain.PageRequest;
@@ -27,12 +29,20 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
+import kr.kro.prjectwwtp.controller.WeatherController.WeatherDTO;
+import kr.kro.prjectwwtp.domain.FlowImputate;
+import kr.kro.prjectwwtp.domain.FlowPredict;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Memo;
 import kr.kro.prjectwwtp.domain.PageDTO;
 import kr.kro.prjectwwtp.domain.Role;
+import kr.kro.prjectwwtp.domain.TmsImputate;
+import kr.kro.prjectwwtp.domain.TmsPredict;
 import kr.kro.prjectwwtp.domain.responseDTO;
+import kr.kro.prjectwwtp.service.FlowService;
 import kr.kro.prjectwwtp.service.MemoService;
+import kr.kro.prjectwwtp.service.TmsService;
+import kr.kro.prjectwwtp.service.WeatherService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -41,11 +51,14 @@ import lombok.ToString;
 
 @RestController
 @RestControllerAdvice
-@RequestMapping("/api/memo")
+@RequestMapping("/api/board")
 @RequiredArgsConstructor
 @Tag(name="MemoController", description = "회원간 메모 관리 API")
-public class MemoController {
+public class DashBoardController {
 	private final MemoService memoService;
+	private final TmsService tmsService;
+	private final FlowService flowService;
+	private final WeatherService weatherService;
 	
 	@PostConstruct
 	public void init() {
@@ -79,7 +92,16 @@ public class MemoController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@GetMapping("/list")
+	@GetMapping("/health")
+	public ResponseEntity<Object> healthCheck() {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		return ResponseEntity.ok().body(res);
+	}
+	
+	@GetMapping("/memo/list")
 	@Operation(summary="메모 데이터 조회", description = "다른 이용자들에게 보여줄 메모 데이터를 조회합니다.")
 	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
 	@Parameter(name = "page", description= "조회할 페이지수", example = "0")
@@ -133,7 +155,7 @@ public class MemoController {
 		private String content;
 	}
 	
-	@PutMapping("/create")
+	@PutMapping("/memo/create")
 	@Operation(summary="메모 작성", description = "새로운 메모를 작성합니다.")
 	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
 	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = memoCreateDTO.class))
@@ -185,7 +207,7 @@ public class MemoController {
 		private String content;
 	}
 	
-	@PostMapping("/modify")
+	@PostMapping("/memo/modify")
 	@Operation(summary="메모 수정", description = "작성된 메모를 수정합니다.")
 	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
 	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = memoModifyDTO.class))
@@ -235,7 +257,7 @@ public class MemoController {
 		private long memoNo;
 	}
 	
-	@PostMapping("/disable")
+	@PostMapping("/memo/disable")
 	@Operation(summary="메모 비활성화", description = "작성된 메모를 비활성화합니다.")
 	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
 	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = memoDisableDTO.class))
@@ -277,7 +299,7 @@ public class MemoController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@PostMapping("/delete")
+	@PostMapping("/memo/delete")
 	@Operation(summary="메모 삭제", description = "작성된 메모를 삭제합니다.")
 	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
 	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = memoDisableDTO.class))
@@ -319,7 +341,7 @@ public class MemoController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@GetMapping("/oldList")
+	@GetMapping("/memo/oldList")
 	@Operation(summary="비활성화된 메모 조회", description = "비활성화된 메모 데이터를 조회합니다.")
 	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
 	@Parameter(name = "page", description= "조회할 페이지수", example = "0")
@@ -363,4 +385,64 @@ public class MemoController {
 		
 		return ResponseEntity.ok().body(res);
 	}
+	
+	@GetMapping("/boardView")
+	@Operation(summary="대시보드에 보여질 데이터 구성", description = "24시간전부터의 측정값, 12간후의 예측값")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "결과", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class))),
+	})
+	public ResponseEntity<Object> getBoardView(
+			HttpServletRequest request) {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		// 토큰 추출 및 검증
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		if(member.getRole() == Role.ROLE_VIEWER) {
+			res.setSuccess(false);
+			res.setErrorMsg("권한이 올바르지 않습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		try {
+			LocalDateTime now = LocalDateTime.now().withSecond(0);
+			LocalDateTime start = now.minusDays(1).plusMinutes(1);
+			LocalDateTime end = now.plusDays(1).minusMinutes(1);
+			LocalDateTime fakeTmsNow = tmsService.getFakeNow()
+									.withHour(now.getHour())
+									.withMinute(now.getMinute());
+			LocalDateTime fakeFlowNow = flowService.getFakeNow()
+									.withHour(now.getHour())
+									.withMinute(now.getMinute());
+			List<TmsImputate> tmsImputateList = tmsService.getTmsImputateListByDate(fakeTmsNow);
+			List<TmsPredict> tmsPredictList = tmsService.findPredictList(now, end);
+			List<FlowImputate> flowImputateList = flowService.getFlowImputateListByDate(fakeFlowNow);
+			List<FlowPredict> flowPredictList = flowService.findPredictList(now, end);
+			List<WeatherDTO> aws368 = weatherService.findWeatherDTOByStnAndLogTimeBetween(368, start, now);
+			
+			res.addData(tmsImputateList);
+			res.addData(tmsPredictList);
+			res.addData(flowImputateList);
+			res.addData(flowPredictList);
+			res.addData(aws368);
+			
+		}catch(Exception e) {
+			res.setSuccess(false);
+			res.setErrorMsg(e.getMessage());
+		}
+		
+		return ResponseEntity.ok().body(res);
+	}
+	
 }

@@ -24,8 +24,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import jakarta.servlet.http.HttpServletResponse;
 import kr.kro.prjectwwtp.persistence.MemberRepository;
-import kr.kro.prjectwwtp.service.AccessLogService;
-import kr.kro.prjectwwtp.service.LoginLogService;
+import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.service.SessionService;
 import lombok.RequiredArgsConstructor;
 
@@ -39,8 +38,7 @@ public class SecurityConfig {
 	private final AuthenticationFailureHandler oauth2FailurHandler;
 	private final TokenBlacklistManager tokenBlacklistManager;
 	private final SessionService sessionService;
-	private final AccessLogService logService;
-	private final LoginLogService loginService;
+	private final LogService logService;
 	
 	@Bean
 	AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
@@ -50,7 +48,7 @@ public class SecurityConfig {
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager) throws Exception {
 		// JWT 인증 필터 생성 (로그인 처리)
-		JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(authenticationManager, tokenBlacklistManager, sessionService, logService, loginService);
+		JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(authenticationManager, tokenBlacklistManager, sessionService, logService);
 		// 로그인 엔드포인트 지정
 		jwtAuthenticationFilter.setFilterProcessesUrl("/api/member/login");
 		

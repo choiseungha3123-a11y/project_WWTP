@@ -22,7 +22,7 @@ import jakarta.annotation.PostConstruct;
 import kr.kro.prjectwwtp.domain.Weather;
 import kr.kro.prjectwwtp.domain.WeatherComplete;
 import kr.kro.prjectwwtp.persistence.WeatherCompleteRepository;
-import kr.kro.prjectwwtp.service.WeatherAPILogService;
+import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.service.WeatherService;
 import lombok.RequiredArgsConstructor;
 
@@ -37,7 +37,7 @@ public class CompleteWeather implements ApplicationRunner {
 	private String baseUrl;
 	
 	private final WeatherService weatherService;
-	private final WeatherAPILogService logService;
+	private final LogService logService;
 	private RestTemplate restTemplate = new RestTemplate();
 	
 	// API Hub 데이터 
@@ -71,7 +71,7 @@ public class CompleteWeather implements ApplicationRunner {
 	}
 	
 
-	@Scheduled(cron = "${scheduler.gether.cron}")
+	@Scheduled(cron = "${scheduler.complete.cron}")
 	public void completeWeatherData() {
 		if(isFirst) {
 			isFirst = false;
@@ -97,7 +97,7 @@ public class CompleteWeather implements ApplicationRunner {
 					last = complete.getDataTime().plusDays(1);
 				}
 				
-				// 데이터가 정상적이지 않을 때
+				// 어제까지의 데이터만 검증
 				if(last.isBefore(now)) {
 					LocalDateTime start = LocalDateTime.of(last.getYear(), last.getMonthValue(), last.getDayOfMonth(), 0, 0);
 					LocalDateTime end = LocalDateTime.of(last.getYear(), last.getMonthValue(), last.getDayOfMonth(), 23, 59);

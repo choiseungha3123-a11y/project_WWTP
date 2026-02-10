@@ -25,14 +25,14 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.annotation.PostConstruct;
 import kr.kro.prjectwwtp.domain.FakeDate;
 import kr.kro.prjectwwtp.domain.FlowImputate;
-import kr.kro.prjectwwtp.domain.FlowLog;
 import kr.kro.prjectwwtp.domain.FlowOrigin;
+import kr.kro.prjectwwtp.domain.FlowPredict;
 import kr.kro.prjectwwtp.domain.FlowSummary;
 import kr.kro.prjectwwtp.persistence.FakeDateRepository;
 import kr.kro.prjectwwtp.persistence.FlowImputateRepository;
 import kr.kro.prjectwwtp.persistence.FlowInsertRepository;
-import kr.kro.prjectwwtp.persistence.FlowLogRepository;
 import kr.kro.prjectwwtp.persistence.FlowOriginRepository;
+import kr.kro.prjectwwtp.persistence.FlowPredictRepository;
 import kr.kro.prjectwwtp.persistence.FlowSummaryRepository;
 import kr.kro.prjectwwtp.service.TmsImputateService.ImputationConfig;
 import kr.kro.prjectwwtp.service.TmsImputateService.OutlierConfig;
@@ -42,12 +42,12 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class FlowService {
-
+	private final LogService logService;
 	private final FlowOriginRepository flowOriginRepo;
 	private final FlowImputateRepository flowImputateRepo;
-	private final FlowLogRepository logRepo;
 	private final FlowInsertRepository insertRepo;
 	private final FlowSummaryRepository flowSummaryrepo;
+	private final FlowPredictRepository flowPredictRepo;
 	private final FakeDateRepository fakeDateRepo;
 
 	/**
@@ -111,10 +111,7 @@ public class FlowService {
 				System.out.println("addCount: " + addCount);
 				list.clear();
 			}
-			logRepo.save(FlowLog.builder()
-				.type("upload")
-				.count(list.size())
-				.build());
+			logService.addFlowLog(null, "upload", list.size());
 			
 			System.out.println("lineNo: " + lineNo);
 			System.out.println("Final addCount: " + addCount);
@@ -479,5 +476,19 @@ public class FlowService {
 	public LocalDateTime getFakeNow() {
 		FakeDate fakeDate = fakeDateRepo.findFirstByOrderByTodayDesc();
 		return fakeDate.getFlowDate();
+	}
+	
+	public List<FlowPredict> findPredictList(LocalDateTime now, LocalDateTime end) {
+		return flowPredictRepo.findByFlowTimeBetweenOrderByFlowTime(now, end);
+	}
+	
+	public void savePredictList(LocalDateTime time, double[] array) {
+		List<FlowPredict> list = new ArrayList<>();
+		for(int i = 0; i < array.length; ++i)
+			list.add(FlowPredict.builder()
+						.flowTime(time.plusHours(i + 1))
+						.flowValue(array[i])
+						.build());
+		flowPredictRepo.saveAll(list);
 	}
 }
