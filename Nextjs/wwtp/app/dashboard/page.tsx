@@ -130,9 +130,20 @@ export default function DashboardPage() {
                     <span className="text-lg text-slate-500">👤</span> 개인정보 수정
                   </button>
                   {userData.userRole === "ROLE_ADMIN" && (
-                    <button onClick={() => { router.push("/admin/member"); setIsProfileOpen(false); }} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-slate-300 font-medium">
+                    <>
+                    <button 
+                      onClick={() => { router.push("/admin/member"); setIsProfileOpen(false); }} 
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-slate-300 font-medium"
+                    >
                       <span className="text-lg text-slate-500">⚙️</span> 사원 관리
                     </button>
+                    <button 
+                      onClick={() => { router.push("/admin/memo-history"); setIsProfileOpen(false); }} 
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-slate-300 font-medium"
+                    >
+                      <span className="text-lg text-slate-500">📜</span> 조치 이력 기록
+                    </button>
+                  </>
                   )}
                   <div className="my-1 border-t border-white/5" />
                   <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-500/10 text-red-400 transition-all font-bold">
