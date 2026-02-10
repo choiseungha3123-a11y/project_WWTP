@@ -4,6 +4,147 @@
 
 ---
 
+## 📅 2026년 2월 10일
+
+### 📂 작업 파일
+```
+notebook/DL/LSTM_FLOW.ipynb
+notebook/DL/LSTM_TMS.ipynb
+notebook/EDA/flow_tms_periodicity_eda.ipynb
+```
+
+### LSTM 성능 향상
+
+- LSTM_TMS에 적용한 lag 특성들을 LSTM_FLOW에 추가
+  - 기존 R2 0.6 -> 0.7899 성능 향상
+
+- 시간 특성 추가(LSTM_TMS)
+  - ss: 0.2133 -> 0.53** -> 이상치 처리 과정 수정 후 성능 떨어짐(0.39**)
+  - tn: 0.7769 -> 0.8062
+  - ph: 0.5567 -> 0.7490
+
+### LSTM 모델 early stop 기능 추가
+
+- val loss가 train loss보다 커지는 경우 학습을 종료하는 기능 추가
+- 최소 에포크 설정 가능: 현재 15
+
+-> 초기 불안정한 학습 구간은 무시
+-> 충분한 학습 기회 보장
+-> 불필요하게 긴 학습 방지
+
+### EDA
+
+- flow 지표에 대한 시간대, hour × weekday의 설명력(eta2)이 큼
+  - level_TankA, level_TankB: 0.78, 0.84
+  - flow_TankA, flow_TankB: 0.34~0.41, 0.37~0.44
+- ph에 대한 월/주 계절성 설명력(eta2)이 큼
+  - month: 0.52
+  - iso_week: 0.61
+
+-> flow 예측 시, hour_sin/cos, weekday, hour × weekday 특성 반드시 포함
+-> ph 예측 시, month, iso_week(+ hour_sin/cos 보조) 특성 포함
+-> 공통 시간 특성으로 hour × weekday, weekday, iso_week 추가
+
+### TMS learning curve plot 이상
+
+- TOC: results/DL/toc_learning_curve.png
+- TP: results/DL/tp_learning_curve.png
+- FLUX: results/DL/flux_learning_curve.png
+
+-> 데이터 확인(EDA) 및 이상치 처리 개선
+
+### 이상치 처리 방법 수정
+
+- outliers_domain() 함수는 물리적으로 불가능한 값을 거르기 위해 존재
+
+-> tms 지표의 배출허용기준을 사용하여 해당 기준의 2배가 넘는 수치일 경우 이상치로 처리
+
+### TOC
+
+- 성능이 가장 낮은 tms 지표이므로 이를 중점으로 성능 개선 시도
+
+- 하이퍼파라미터
+  - hidden_size: 64 -> 128
+  - batch_size: 32 -> 64
+  - learning_rate: 5e-4 -> 2e-4
+  - dropout: 0.2 -> 0.15
+  - validation ratio: 0.15 -> 0.2
+  - shuffle: True -> False
+  - Patience: 20 -> 25
+- Attention 제거
+
+**결과**:
+- R2: -2.2168 -> 0.2941
+
+### FLUX
+
+- tms의 flux 지표는 하루동안의 flux 값을 누적 증가
+
+-> 값을 그대로 사용하기 보다는 바로 전 값을 차분하여 사용하는 것이 맞음
+-> 음수 값은 해당 지점에서 초기화되었음을 의미: 0으로 클리핑
+-> 경기도 일 평균 배출유량 8.55의 4배 34.2를 기준으로 이상치 처리(outliers_domain())
+
+- 하이퍼파라미터
+  - hidden_size: 64 -> 128
+  - batch_size: 32 -> 128
+  - learning_rate: 5e-4 -> 2e-4
+  - dropout: 0.2 -> 0.15
+  - split ratio: 0.7/0.15/0.15 -> 0.8/0.1/0.1
+  - shuffle: True
+  - Patience: 20 -> 25
+
+**결과**:
+- R2: -0.0069 -> 0.3015
+
+### TP
+
+- 하이퍼파라미터
+  - hidden_size: 64 -> 128
+  - batch_size: 32 -> 128
+  - learning_rate: 5e-4 -> 2e-4
+  - dropout: 0.2 -> 0.15
+  - validation ratio: 0.15 -> 0.2
+  - shuffle: True -> False
+  - Patience: 20 -> 25
+
+**결과**:
+- R2: -0.4059 -> -0.0009
+
+**한상곤 교수님 조언**:
+- TP의 경우 데이터 값 범위가 매우 좁아 모델 자체가 힘을 못 쓰는 경우일 수 있음
+
+-> 모델을 매우 복잡하게 만들거나 많은 특성을 밀어넣어 성능을 올리는 방법 추천
+
+### LSTM 코드 수정(numpy -> pytorch)
+
+- TimeSeriesWindowDataset: 
+```python
+  np.asarray → torch.as_tensor
+  [:, None] → .unqueeze(1)
+  torch.from_numpy() + np.asarray → 직접 tensor 슬라이싱
+```
+- report_and_fix:
+```python
+  모든 numpy 연산 → torch.isnan/isinf/nanmean/where 로 교체
+  하위 호환성을 위해 끝에 .numpy() 반환 유지
+```
+
+- evaluate_model:
+```python
+  R² 계산 .numpy() 경유 제거 → tensor 연산으로 직접 계산 후 .item() 추출
+```
+
+- ensure_2d_y:
+```python
+	np.asarray → torch.as_tensor
+  [:, None] → .unsqueeze(1)
+```
+
+### ✅ 다음 할 일 (2026/02/11)
+- LSTM_TMS의 TP_VU 성능 올리기
+  - toc / ss / tp / flux
+
+
 ## 📅 2026년 2월 9일
 
 ### 📂 작업 파일
@@ -21,7 +162,7 @@ notebook/feature/feature_engineering.py
 
 **어려운 점**:
 - fastAPI가 http2를 지원하지 않아 body의 내용이 사라지는 현상 발생
--> 
+-> Backend에서 WebClient 사용, http1.1 버전을 호출
 
 **결과**:
 - 저장된 scaler, recommand feature, model을 로드
@@ -38,10 +179,6 @@ notebook/feature/feature_engineering.py
   - 변화율: k = 1, 6 steps
   - EWMA: span = 6, 12 ,24
 - 이상치 처리에서 EWMA 계산값이 실제 데이터에 반영되도록 수정
-- FLUX: `FLUX_VU_tdiff_*` 차분 특성이 특성 선택 결과와 무관하게 학습 입력에 반드시 포함되도록 강제 로직 추가
-- FLOW: 필수 시간 특성 강제 포함 (`hour_sin`, `hour_cos`, `weekday`, `hour_x_weekday`)
-- PH: 필수 시간 특성 강제 포함 (`month`, `iso_week`, `hour_sin`, `hour_cos`)
-- 공통 보강: `weekday`, `iso_week`, `hour_x_weekday`가 없을 때 안전하게 생성하는 보강 코드 추가
 
 **결과**:
 - OUTLIER_CONFIG(zscore, both=False)
@@ -65,8 +202,8 @@ notebook/feature/feature_engineering.py
   - 기존 2 ~ 4개 특성 -> 최소 10개 이상 
 
 ### ✅ 다음 할 일 (2026/02/10)
-- [] LSTM 성능 개선
-- [] 성능이 맞은 지표에 대한 EDA
+- [X] LSTM 성능 개선 시도
+- [X] 성능이 낮은 지표에 대한 EDA
 
 ---
 

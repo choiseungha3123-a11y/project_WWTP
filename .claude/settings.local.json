@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(jupyter nbconvert:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(ls:*)",
+      "Bash(del c:project_WWTPbuild_notebook.py)"
     ]
   }
 }
