@@ -1,0 +1,16 @@
+index,feature_name
+31,FLUX_VU_tlag_6
+52,FLUX_VU_tdiff_1
+53,FLUX_VU_tdiff_2
+54,FLUX_VU_tdiff_6
+55,FLUX_VU_tpct_1
+56,FLUX_VU_tpct_6
+59,FLUX_VU_tewma_24
+178,TOC_VU_roll_std_6
+181,TOC_VU_roll_IQR_6
+278,TOC_VU_roll_std_12
+360,PH_VU_roll_min_24
+378,TOC_VU_roll_std_24
+460,PH_VU_roll_min_72
+466,TN_VU_roll_IQR_72
+489,TD_368_roll_max_72
