@@ -19,6 +19,11 @@ src/main.py
 
 -> model/save/* 와 data/recommand_features/* 만 로드하면 사용할 수 있도록 설정
 
+**추가 요구사항**:
+- frontend에 표기될 때 시간해상도를 30분 간격으로 설정
+
+-> 예측 시간해상도를 1시간에서 30분으로 수정
+
 ### LSTM_TMS 성능 확인
 
 - R2 

@@ -212,7 +212,7 @@ def load_model_weights(model: nn.Module, ckpt_path: Path, map_location=None) -> 
     return model
 
 def build_hourly_predictions(pred_12h: list[float]) -> dict:
-    return {f"{h}h": pred_12h[h * 2 - 1] for h in range(1, 13)}
+    return {f"{i * 0.5:.1f}h": pred_12h[i - 1] for i in range(1, len(pred_12h) + 1)}
 
 def extract_input_lists(x):
     data_list = [item.model_dump() for item in x.input.dataList]
