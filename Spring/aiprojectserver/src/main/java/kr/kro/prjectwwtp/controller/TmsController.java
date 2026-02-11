@@ -231,7 +231,7 @@ public class TmsController {
 		}
 	}
 	
-	@Scheduled(cron = "0 * * * * *")
+	@Scheduled(cron = "${scheduler.predict.cron}")
 	public void getTmsPredict() {
 		try {
 			LocalDateTime now = LocalDateTime.now();

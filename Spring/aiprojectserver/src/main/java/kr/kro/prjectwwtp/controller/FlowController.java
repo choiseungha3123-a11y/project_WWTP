@@ -190,7 +190,7 @@ public class FlowController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@Scheduled(cron = "0 * * * * *")
+	@Scheduled(cron = "${scheduler.predict.cron}")
 	public void getFlowPredict() {
 		try {
 			LocalDateTime now = LocalDateTime.now();

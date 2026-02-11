@@ -1,11 +1,16 @@
 package kr.kro.prjectwwtp.controller;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -440,7 +445,9 @@ public class MemberController {
 	}
 	
 
-	//@Scheduled(cron = "${scheduler.report.cron}")
+	
+	boolean bSendEmail = true;
+	@Scheduled(cron = "${scheduler.report.cron}")
 	@GetMapping("/mailtest")
 	public void makeReportMessage()
 	{
@@ -452,7 +459,7 @@ public class MemberController {
 		String subject = "Report From FlowWater";
 		String titleText = "FlowWater Report";
 		String nowStr = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-		int angle = 40;
+		int angle = 0;
 		
 		String body = "<div style=\"font-family: 'Apple SD Gothic Neo', 'sans-serif' !important; width: 540px; height: 600px; border-top: 4px solid #3498db; margin: 100px auto; padding: 30px 0; box-sizing: border-box;\">" +
 	              "    <h1 style=\"margin: 0; padding: 0 5px; font-size: 28px; font-weight: 400;\">" +
@@ -468,66 +475,93 @@ public class MemberController {
 	              "    </div>" +
 	              "</div>";
 		
-		String html = "<!DOCTYPE html>\r\n" +
-				"        <html>\r\n" +
-				"        <head>\r\n" +
-				"            <meta charset=\"UTF-8\">\r\n" +
-				"            <style>\r\n" +
-				"                body { font-family: 'Malgun Gothic', sans-serif; background: #f4f7f9; padding: 20px; color: #333; }\r\n" +
-				"                .container { max-width: 1000px; margin: auto; }\r\n" +
-				"                \r\n" +
-				"                /* 상단 작성 시간 스타일 */\r\n" +
-				"                .timestamp { text-align: right; font-size: 14px; color: #666; margin-bottom: 10px; font-weight: bold; }\r\n" +
-				"                \r\n" +
-				"                .chart-card { background: white; margin-bottom: 25px; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }\r\n" +
-				"                h2 { font-size: 1.1rem; margin-bottom: 15px; border-left: 5px solid #3498db; padding-left: 10px; color: #2c3e50; }\r\n" +
-				"                \r\n" +
-				"                .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; padding: 10px; background: #fafafa; border-radius: 6px; }\r\n" +
-				"                .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: bold; }\r\n" +
-				"                .legend-color { width: 10px; height: 10px; border-radius: 2px; }\r\n" +
-				"                \r\n" +
-				"                svg { width: 100%; height: auto; display: block; }\r\n" +
-				"                .axis { stroke: #ccc; stroke-width: 1; }\r\n" +
-				"                .grid { stroke: #f0f0f0; stroke-width: 1; }\r\n" +
-				"                .line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }\r\n" +
-				"                .label { font-size: 10px; fill: #888; }\r\n" +
-				"                .point { fill: white; stroke-width: 1.5; }\r\n" +
-				"            </style>\r\n" +
-				"    			<title>" + titleText + "</title>" + // 브라우저 탭 타이틀
-				"        </head>\r\n" +
-				"        <body>\r\n" +
-				"            <div class=\"container\">\r\n" +
-				"                <!-- 작성 시간 표시 영역 -->\r\n" +
-				"                <div class=\"timestamp\" id=\"current-time\">작성 시간 : </div>\r\n" +
-				"\r\n" +
-				"                <!-- 차트 1: 유입유량 -->\r\n" +
-				"                <div class=\"chart-card\">\r\n" +
-				"                    <h2>유입유량 예측</h2>\r\n" +
-				"                    <div id=\"chart-flow\"></div>\r\n" +
-				"                </div>\r\n" +
-				"\r\n" +
-				"                <!-- 차트 2: TMS 통합 정보 -->\r\n" +
-				"                <div class=\"chart-card\">\r\n" +
-				"                    <h2>TMS 예측</h2>\r\n" +
-				"                    <div class=\"legend\" id=\"tms-legend\"></div>\r\n" +
-				"                    <div id=\"chart-tms\"></div>\r\n" +
-				"                </div>\r\n" +
-				"            </div>\r\n" +
-				"\r\n" +
-				"            <script>\r\n" +
-				"                // 현재 시간 표시 함수\r\n" +
-				"                function updateTimestamp() {\r\n" +
-				"                    document.getElementById('current-time').innerText = \"작성 시간 : " + nowStr + "\"\r\n" +
-				"                }\r\n" +
-				"                updateTimestamp();\r\n" +
-				"\r\n" +
-				"                // 1. 데이터 정의\r\n" +
-				"                const flowData = [\r\n";
-//				"                    { time: \"15:17\", val: 251.561 }, { time: \"15:18\", val: 251.561 },\r\n" +
-//				"                    { time: \"15:19\", val: 251.562 }, { time: \"15:20\", val: 251.557 },\r\n" +
-//				"                    { time: \"15:21\", val: 251.558 }\r\n" +
+		String html = "<!DOCTYPE html>\r\n"
+				+ "        <html>\r\n"
+				+ "        <head>\r\n"
+				+ "            <meta charset=\"UTF-8\">\r\n"
+				+ "            <style>\r\n"
+				+ "                body { font-family: 'Malgun Gothic', sans-serif; background: #f4f7f9; padding: 20px; color: #333; }\r\n"
+				+ "                .container { max-width: 1000px; margin: auto; }\r\n"
+				+ "                \r\n"
+				+ "                /* 상단 작성 시간 스타일 */\r\n"
+				+ "                .timestamp { text-align: right; font-size: 14px; color: #666; margin-bottom: 10px; font-weight: bold; }\r\n"
+				+ "                \r\n"
+				+ "                .chart-card { background: white; margin-bottom: 25px; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }\r\n"
+				+ "                h2 { font-size: 1.1rem; margin-bottom: 15px; border-left: 5px solid #3498db; padding-left: 10px; color: #2c3e50; }\r\n"
+				+ "                \r\n"
+				+ "                .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; padding: 10px; background: #fafafa; border-radius: 6px; }\r\n"
+				+ "                .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: bold; }\r\n"
+				+ "                .legend-color { width: 10px; height: 10px; border-radius: 2px; }\r\n"
+				+ "                \r\n"
+				+ "                svg { width: 100%; height: auto; display: block; }\r\n"
+				+ "                .axis { stroke: #ccc; stroke-width: 1; }\r\n"
+				+ "                .grid { stroke: #f0f0f0; stroke-width: 1; }\r\n"
+				+ "                .line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }\r\n"
+				+ "                .label { font-size: 10px; fill: #888; }\r\n"
+				+ "                .point { fill: white; stroke-width: 1.5; cursor: pointer; transition: r 0.2s; }\r\n"
+				+ "                .point:hover { r: 5; }\r\n"
+				+ "                \r\n"
+				+ "                /* 툴팁 스타일 */\r\n"
+				+ "                .tooltip {\r\n"
+				+ "                    position: absolute;\r\n"
+				+ "                    background: rgba(0, 0, 0, 0.85);\r\n"
+				+ "                    color: white;\r\n"
+				+ "                    padding: 8px 12px;\r\n"
+				+ "                    border-radius: 6px;\r\n"
+				+ "                    font-size: 12px;\r\n"
+				+ "                    pointer-events: none;\r\n"
+				+ "                    opacity: 0;\r\n"
+				+ "                    transition: opacity 0.2s;\r\n"
+				+ "                    z-index: 1000;\r\n"
+				+ "                    white-space: nowrap;\r\n"
+				+ "                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);\r\n"
+				+ "                }\r\n"
+				+ "                .tooltip.show {\r\n"
+				+ "                    opacity: 1;\r\n"
+				+ "                }\r\n"
+				+ "                .tooltip-time {\r\n"
+				+ "                    font-weight: bold;\r\n"
+				+ "                    margin-bottom: 4px;\r\n"
+				+ "                    color: #3498db;\r\n"
+				+ "                }\r\n"
+				+ "                .tooltip-value {\r\n"
+				+ "                    margin: 2px 0;\r\n"
+				+ "                }\r\n"
+				+ "            </style>"
+				+ "    			<title>" + titleText + "</title>" + // 브라우저 탭 타이틀
+				"        </head>\r\n"
+				+ "        <body>\r\n"
+				+ "            <div class=\"container\">\r\n"
+				+ "                <!-- 작성 시간 표시 영역 -->\r\n"
+				+ "                <div class=\"timestamp\" id=\"current-time\">작성 시간 : </div>\r\n"
+				+ "\r\n"
+				+ "                <!-- 차트 1: 유입유량 -->\r\n"
+				+ "                <div class=\"chart-card\">\r\n"
+				+ "                    <h2>유입유량 예측</h2>\r\n"
+				+ "                    <div id=\"chart-flow\" style=\"position: relative;\"></div>\r\n"
+				+ "                </div>\r\n"
+				+ "\r\n"
+				+ "                <!-- 차트 2: TMS 통합 정보 -->\r\n"
+				+ "                <div class=\"chart-card\">\r\n"
+				+ "                    <h2>TMS 예측</h2>\r\n"
+				+ "                    <div class=\"legend\" id=\"tms-legend\"></div>\r\n"
+				+ "                    <div id=\"chart-tms\" style=\"position: relative;\"></div>\r\n"
+				+ "                </div>\r\n"
+				+ "            </div>\r\n"
+				+ "\r\n"
+				+ "            <!-- 툴팁 엘리먼트 -->\r\n"
+				+ "            <div class=\"tooltip\" id=\"tooltip\"></div>\r\n"
+				+ "\r\n"
+				+ "            <script>\r\n"
+				+ "                // 현재 시간 표시 함수\r\n"
+				+ "                function updateTimestamp() {\r\n"
+				+ "                    document.getElementById('current-time').innerText = \"작성 시간 : " + nowStr + "\"\r\n"
+				+ "				}\r\n"
+				+ "				updateTimestamp();\r\n"
+				+ "				\r\n"
+				+ "				// 1. 데이터 정의\r\n"
+				+ "				const flowData = [\r\n";
 		for(int i = 0; i < flowList.size(); ++i) {
-			if(i % 20 > 0) continue;
 			FlowPredict flow = flowList.get(i);
 			html += "{ time: \"" + flow.getFlowTime().format(DateTimeFormatter.ofPattern("HH:mm")) + "\", val: " + flow.getFlowValue() + "}";
 			if (i < flowList.size() - 1)
@@ -536,12 +570,7 @@ public class MemberController {
 		html += "                ];\r\n" +
 				"\r\n" +
 				"                const tmsData = [\r\n";
-//				"                    { time: \"15:25\", TOC: 3.249, PH: 7.074, SS: 1.322, FLUX: 4636.37, TN: 10.205, TP: 0.041 },\r\n" +
-//				"                    { time: \"15:26\", TOC: 3.248, PH: 7.074, SS: 1.322, FLUX: 4642.51, TN: 10.205, TP: 0.041 },\r\n" +
-//				"                    { time: \"15:27\", TOC: 3.248, PH: 7.074, SS: 1.322, FLUX: 4648.64, TN: 10.205, TP: 0.041 },\r\n" +
-//				"                    { time: \"15:28\", TOC: 3.248, PH: 7.074, SS: 1.322, FLUX: 4654.71, TN: 10.205, TP: 0.041 }\r\n" +
 		for(int i = 0; i < tmsList.size(); ++i) {
-			if(i % 20 > 0) continue;
 			TmsPredict tms = tmsList.get(i);
 			html += "{ time: \"" + tms.getTmsTime().format(DateTimeFormatter.ofPattern("HH:mm")) + 
 					"\", TOC: " + tms.getToc() + 
@@ -553,113 +582,173 @@ public class MemberController {
 			if (i < flowList.size() - 1)
 				html += ",\r\n";
 		}
-		html += "                ];\r\n" +
-				"\r\n" +
-				"                const tmsKeys = [\"TOC\", \"PH\", \"SS\", \"FLUX\", \"TN\", \"TP\"];\r\n" +
-				"                const colors = {\r\n" +
-				"                    TOC: \"#e74c3c\", PH: \"#2ecc71\", SS: \"#f1c40f\", \r\n" +
-				"                    FLUX: \"#9b59b6\", TN: \"#34495e\", TP: \"#e67e22\", flow: \"#3498db\"\r\n" +
-				"                };\r\n" +
-				"\r\n" +
-				"                // 범례 생성\r\n" +
-				"                const legendBox = document.getElementById('tms-legend');\r\n" +
-				"                tmsKeys.forEach(key => {\r\n" +
-				"                    legendBox.innerHTML += `<div class=\"legend-item\"><div class=\"legend-color\" style=\"background:${colors[key]}\"></div>${key}</div>`;\r\n" +
-				"                });\r\n" +
-				"\r\n" +
-				"                function drawChart(targetId, data, keys, isSingle) {\r\n" +
-				"                    const width = 800, height = 300, padding = 40;\r\n" +
-				"                    const chartW = width - (padding * 2);\r\n" +
-				"                    const chartH = height - (padding * 2);\r\n" +
-				"\r\n" +
-				"                    let svg = `<svg viewBox=\"0 0 ${width} ${height}\" xmlns=\"http://www.w3.org\">`;\r\n" +
-				"                    \r\n" +
-				"                    data.forEach((d, i) => {\r\n" +
-				"                        let x = padding + (i * (chartW / (data.length - 1)));\r\n" +
-				"                        svg += `<line x1=\"${x}\" y1=\"${padding}\" x2=\"${x}\" y2=\"${height-padding}\" class=\"grid\" />`;\r\n" +
-				"                        svg += `<text x=\"${x}\" y=\"${height-padding+20}\" class=\"label\" text-anchor=\"middle\" transform=\"rotate(" + angle +" ${x} ${height-padding+20})\">${d.time}</text>`;\r\n" +
-				"                    });\r\n" +
-				"\r\n" +
-				"                    keys.forEach(key => {\r\n" +
-				"                        const vals = data.map(d => isSingle ? d.val : d[key]);\r\n" +
-				"                        const min = Math.min(...vals), max = Math.max(...vals);\r\n" +
-				"                        const range = (max - min === 0) ? 1 : (max - min);\r\n" +
-				"\r\n" +
-				"                        let points = data.map((d, i) => {\r\n" +
-				"                            let val = isSingle ? d.val : d[key];\r\n" +
-				"                            let x = padding + (i * (chartW / (data.length - 1)));\r\n" +
-				"                            let y = height - padding - ((val - min) / range * chartH);\r\n" +
-				"                            return `${x},${y}`;\r\n" +
-				"                        }).join(\" \");\r\n" +
-				"\r\n" +
-				"                        let strokeColor = isSingle ? colors.flow : colors[key];\r\n" +
-				"                        svg += `<polyline points=\"${points}\" class=\"line\" stroke=\"${strokeColor}\" />`;\r\n" +
-				"                        \r\n" +
-				"                        data.forEach((d, i) => {\r\n" +
-				"                            let val = isSingle ? d.val : d[key];\r\n" +
-				"                            let x = padding + (i * (chartW / (data.length - 1)));\r\n" +
-				"                            let y = height - padding - ((val - min) / range * chartH);\r\n" +
-				"                            svg += `<circle cx=\"${x}\" cy=\"${y}\" r=\"3\" class=\"point\" stroke=\"${strokeColor}\" />`;\r\n" +
-				"                        });\r\n" +
-				"                    });\r\n" +
-				"\r\n" +
-				"                    svg += `</svg>`;\r\n" +
-				"                    document.getElementById(targetId).innerHTML = svg;\r\n" +
-				"                }\r\n" +
-				"\r\n" +
-				"                drawChart('chart-flow', flowData, ['flow'], true);\r\n" +
-				"                drawChart('chart-tms', tmsData, tmsKeys, false);\r\n" +
-				"            </script>\r\n" +
-			    "        <div style=\"border-top: 1px solid #DDD; padding: 15px 5px;\">" +
-			    "            <p style=\"font-size: 12px; line-height: 21px; color: #777; margin: 0;\">" +
-			    "                도움이 필요하시면 <a href=\"https://www.projectwwtp.kro.kr/support\" style=\"color: #3498db; text-decoration: none;\">고객지원</a>으로 문의 바랍니다." +
-			    "            </p>" +
-			    "        </div>" +
-				"        </body>\r\n" +
-				"        </html>";
+		html += "                ];\r\n"
+				+ "\r\n"
+				+ "                const tmsKeys = [\"TOC\", \"PH\", \"SS\", \"FLUS\", \"TN\", \"TP\"];\r\n"
+				+ "                const colors = {\r\n"
+				+ "                    TOC: \"#e74c3c\", PH: \"#2ecc71\", SS: \"#f1c40f\", \r\n"
+				+ "                    FLUS: \"#9b59b6\", TN: \"#34495e\", TP: \"#e67e22\", flow: \"#3498db\"\r\n"
+				+ "                };\r\n"
+				+ "\r\n"
+				+ "                // 범례 생성\r\n"
+				+ "                const legendBox = document.getElementById('tms-legend');\r\n"
+				+ "                tmsKeys.forEach(key => {\r\n"
+				+ "                    legendBox.innerHTML += `<div class=\"legend-item\"><div class=\"legend-color\" style=\"background:${colors[key]}\"></div>${key}</div>`;\r\n"
+				+ "                });\r\n"
+				+ "\r\n"
+				+ "                // 툴팁 엘리먼트\r\n"
+				+ "                const tooltip = document.getElementById('tooltip');\r\n"
+				+ "\r\n"
+				+ "                // 툴팁 표시 함수\r\n"
+				+ "                function showTooltip(event, data, key, isSingle) {\r\n"
+				+ "                    const value = isSingle ? data.val : data[key];\r\n"
+				+ "                    const formattedValue = value.toFixed(2);\r\n"
+				+ "                    \r\n"
+				+ "                    let content = `<div class=\"tooltip-time\">${data.time}</div>`;\r\n"
+				+ "                    if (isSingle) {\r\n"
+				+ "                        content += `<div class=\"tooltip-value\">유량: ${formattedValue}</div>`;\r\n"
+				+ "                    } else {\r\n"
+				+ "                        content += `<div class=\"tooltip-value\">${key}: ${formattedValue}</div>`;\r\n"
+				+ "                    }\r\n"
+				+ "                    \r\n"
+				+ "                    tooltip.innerHTML = content;\r\n"
+				+ "                    tooltip.classList.add('show');\r\n"
+				+ "                    \r\n"
+				+ "                    // 툴팁 위치 설정\r\n"
+				+ "                    const x = event.pageX + 10;\r\n"
+				+ "                    const y = event.pageY - 10;\r\n"
+				+ "                    tooltip.style.left = x + 'px';\r\n"
+				+ "                    tooltip.style.top = y + 'px';\r\n"
+				+ "                }\r\n"
+				+ "\r\n"
+				+ "                // 툴팁 숨김 함수\r\n"
+				+ "                function hideTooltip() {\r\n"
+				+ "                    tooltip.classList.remove('show');\r\n"
+				+ "                }\r\n"
+				+ "\r\n"
+				+ "                function drawChart(targetId, data, keys, isSingle) {\r\n"
+				+ "                    const width = 800, height = 300, padding = 40;\r\n"
+				+ "                    const chartW = width - (padding * 2);\r\n"
+				+ "                    const chartH = height - (padding * 2);\r\n"
+				+ "\r\n"
+				+ "                    let svg = `<svg viewBox=\"0 0 ${width} ${height}\" xmlns=\"http://www.w3.org/2000/svg\">`;\r\n"
+				+ "                    \r\n"
+				+ "                    data.forEach((d, i) => {\r\n"
+				+ "                        let x = padding + (i * (chartW / (data.length - 1)));\r\n"
+				+ "                        svg += `<line x1=\"${x}\" y1=\"${padding}\" x2=\"${x}\" y2=\"${height-padding}\" class=\"grid\" />`;\r\n"
+				+ "                        svg += `<text x=\"${x}\" y=\"${height-padding+20}\" class=\"label\" text-anchor=\"middle\" transform=\"rotate(40 ${x} ${height-padding+20})\">${d.time}</text>`;\r\n"
+				+ "                    });\r\n"
+				+ "\r\n"
+				+ "                    keys.forEach(key => {\r\n"
+				+ "                        const vals = data.map(d => isSingle ? d.val : d[key]);\r\n"
+				+ "                        const min = Math.min(...vals), max = Math.max(...vals);\r\n"
+				+ "                        const range = (max - min === 0) ? 1 : (max - min);\r\n"
+				+ "\r\n"
+				+ "                        let points = data.map((d, i) => {\r\n"
+				+ "                            let val = isSingle ? d.val : d[key];\r\n"
+				+ "                            let x = padding + (i * (chartW / (data.length - 1)));\r\n"
+				+ "                            let y = height - padding - ((val - min) / range * chartH);\r\n"
+				+ "                            return `${x},${y}`;\r\n"
+				+ "                        }).join(\" \");\r\n"
+				+ "\r\n"
+				+ "                        let strokeColor = isSingle ? colors.flow : colors[key];\r\n"
+				+ "                        svg += `<polyline points=\"${points}\" class=\"line\" stroke=\"${strokeColor}\" />`;\r\n"
+				+ "                        \r\n"
+				+ "                        data.forEach((d, i) => {\r\n"
+				+ "                            let val = isSingle ? d.val : d[key];\r\n"
+				+ "                            let x = padding + (i * (chartW / (data.length - 1)));\r\n"
+				+ "                            let y = height - padding - ((val - min) / range * chartH);\r\n"
+				+ "                            svg += `<circle cx=\"${x}\" cy=\"${y}\" r=\"3\" class=\"point\" stroke=\"${strokeColor}\" data-index=\"${i}\" data-key=\"${key}\" />`;\r\n"
+				+ "                        });\r\n"
+				+ "                    });\r\n"
+				+ "\r\n"
+				+ "                    svg += `</svg>`;\r\n"
+				+ "                    document.getElementById(targetId).innerHTML = svg;\r\n"
+				+ "\r\n"
+				+ "                    // SVG에 이벤트 리스너 추가\r\n"
+				+ "                    const svgElement = document.querySelector(`#${targetId} svg`);\r\n"
+				+ "                    svgElement.addEventListener('mouseover', function(e) {\r\n"
+				+ "                        if (e.target.classList.contains('point')) {\r\n"
+				+ "                            const index = parseInt(e.target.getAttribute('data-index'));\r\n"
+				+ "                            const key = e.target.getAttribute('data-key');\r\n"
+				+ "                            showTooltip(e, data[index], key, isSingle);\r\n"
+				+ "                        }\r\n"
+				+ "                    });\r\n"
+				+ "\r\n"
+				+ "                    svgElement.addEventListener('mouseout', function(e) {\r\n"
+				+ "                        if (e.target.classList.contains('point')) {\r\n"
+				+ "                            hideTooltip();\r\n"
+				+ "                        }\r\n"
+				+ "                    });\r\n"
+				+ "\r\n"
+				+ "                    svgElement.addEventListener('mousemove', function(e) {\r\n"
+				+ "                        if (e.target.classList.contains('point')) {\r\n"
+				+ "                            const x = e.pageX + 10;\r\n"
+				+ "                            const y = e.pageY - 10;\r\n"
+				+ "                            tooltip.style.left = x + 'px';\r\n"
+				+ "                            tooltip.style.top = y + 'px';\r\n"
+				+ "                        }\r\n"
+				+ "                    });\r\n"
+				+ "                }\r\n"
+				+ "\r\n"
+				+ "                drawChart('chart-flow', flowData, ['flow'], true);\r\n"
+				+ "                drawChart('chart-tms', tmsData, tmsKeys, false);\r\n"
+				+ "            </script>\r\n"
+			    + "        <div style=\"border-top: 1px solid #DDD; padding: 15px 5px;\">"
+			    + "            <p style=\"font-size: 12px; line-height: 21px; color: #777; margin: 0;\">"
+			    + "                도움이 필요하시면 <a href=\"https://www.projectwwtp.kro.kr/support\" style=\"color: #3498db; text-decoration: none;\">고객지원</a>으로 문의 바랍니다."
+			    + "            </p>"
+			    + "        </div>"
+				+ "        </body>\r\n"
+				+ "        </html>";
 
 		String fileName = "chart" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".html";
-//		try {
-//			saveChartFile(body, fileName);
-//		}catch(Exception e) {
-//			
-//		}
-		List<String> emailList = memberService.getValidateEmail();
-		mailService.sendEmailWithAttachment(emailList, subject, body, html, fileName);
+
+		try {
+			if(bSendEmail) {
+				List<String> emailList = memberService.getValidateEmail();
+				mailService.sendEmailWithAttachment(emailList, subject, body, html, fileName);
+			}
+			else {
+				saveChartFile(html, fileName);
+			}
+		}catch(Exception e) {
+			
+		}
 		
 	}
 	
-//	private void saveChartFile(String body, String filepath) throws Exception {
-//		try {
-//			File file = Util.resolveFilePath(filepath);
-//			// 파일 경로의 디렉토리 생성
-//			File parentDir = file.getParentFile();
-//			if(parentDir != null && !parentDir.exists()) {
-//				boolean dirCreated = parentDir.mkdir();
-//				if(!dirCreated && !parentDir.exists()) {
-//					throw new Exception("디렉토리 생성 실패: " + parentDir.getAbsolutePath());
-//				}
-//				System.out.println("[saveChartFile] 디렉토리 생성: " + parentDir.getAbsolutePath());
-//			}
-//			
-//			// 부모 디렉토리 쓰기 권한 확인
-//			if (parentDir != null && !parentDir.canWrite()) {
-//				throw new Exception("디렉토리 쓰기 권한 없음: " + parentDir.getAbsolutePath());
-//			}
-//			
-//			// UTF-8 인코딩으로 CSV 파일 작성
-//			try (BufferedWriter bw = new BufferedWriter(
-//					new OutputStreamWriter(new FileOutputStream(file.getAbsolutePath()), "UTF-8"))) {
-//				bw.write(body);
-//			}
-//			
-//		} catch (Exception e) {
-//			System.err.println("[saveChartFile] 파일 저장 중 오류 발생: " + e.getMessage());
-//			e.printStackTrace();
-//			throw new Exception("파일 저장 중 오류가 발생했습니다: " + e.getMessage());
-//		}
-//		
-//	}
+	private void saveChartFile(String body, String filepath) throws Exception {
+		try {
+			File file = Util.resolveFilePath(filepath);
+			// 파일 경로의 디렉토리 생성
+			File parentDir = file.getParentFile();
+			if(parentDir != null && !parentDir.exists()) {
+				boolean dirCreated = parentDir.mkdir();
+				if(!dirCreated && !parentDir.exists()) {
+					throw new Exception("디렉토리 생성 실패: " + parentDir.getAbsolutePath());
+				}
+				System.out.println("[saveChartFile] 디렉토리 생성: " + parentDir.getAbsolutePath());
+			}
+			
+			// 부모 디렉토리 쓰기 권한 확인
+			if (parentDir != null && !parentDir.canWrite()) {
+				throw new Exception("디렉토리 쓰기 권한 없음: " + parentDir.getAbsolutePath());
+			}
+			
+			// UTF-8 인코딩으로 CSV 파일 작성
+			try (BufferedWriter bw = new BufferedWriter(
+					new OutputStreamWriter(new FileOutputStream(file.getAbsolutePath()), "UTF-8"))) {
+				bw.write(body);
+			}
+			
+		} catch (Exception e) {
+			System.err.println("[saveChartFile] 파일 저장 중 오류 발생: " + e.getMessage());
+			e.printStackTrace();
+			throw new Exception("파일 저장 중 오류가 발생했습니다: " + e.getMessage());
+		}
+		
+	}
 	
 	@GetMapping("/validateKey")
 	@Operation(summary="Email 인증 완료", description = "Email 인증 완료")
