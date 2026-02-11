@@ -1,17 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import useSWR from "swr";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Legend,
-} from "recharts";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 
 interface TmsRecord {
   SYS_TIME: string;
@@ -23,19 +14,29 @@ interface TmsRecord {
   TP_VU: number;
 }
 
-// SWR Fetcher
 const fetcher = async (url: string) => {
-  const res = await fetch(url);
+  const token = localStorage.getItem("accessToken");
+  const res = await fetch(url, {
+    headers: {
+      "Authorization": token ? `Bearer ${token}` : "",
+      "Content-Type": "application/json",
+    },
+  });
   if (!res.ok) throw new Error("차트 데이터 로드 실패");
-  const json = await res.json();
-  return json;
+  return res.json();
 };
 
 export default function Row3Charts() {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+  const [isClient, setIsClient] = useState(false);
 
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // [수정] isClient일 때만 fetch 시작
   const { data: rawData, error, isLoading } = useSWR(
-    `${API_BASE_URL}/api/board/boardView`,
+    isClient ? `${API_BASE_URL}/api/board/boardView` : null,
     fetcher,
     {
       refreshInterval: 30 * 60 * 1000,
