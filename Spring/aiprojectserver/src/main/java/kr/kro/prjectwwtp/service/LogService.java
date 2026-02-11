@@ -9,6 +9,7 @@ import kr.kro.prjectwwtp.domain.FlowLog;
 import kr.kro.prjectwwtp.domain.LoginLog;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.MemoLog;
+import kr.kro.prjectwwtp.domain.OutLierLog;
 import kr.kro.prjectwwtp.domain.TmsLog;
 import kr.kro.prjectwwtp.domain.WeatherApiLog;
 import kr.kro.prjectwwtp.persistence.AccessLogRepository;
@@ -16,6 +17,7 @@ import kr.kro.prjectwwtp.persistence.FlowLogRepository;
 import kr.kro.prjectwwtp.persistence.LoginLogRepository;
 import kr.kro.prjectwwtp.persistence.MemberRepository;
 import kr.kro.prjectwwtp.persistence.MemoLogRepository;
+import kr.kro.prjectwwtp.persistence.OutLierLogRepository;
 import kr.kro.prjectwwtp.persistence.TmsLogRepository;
 import kr.kro.prjectwwtp.persistence.WeatherAPILogRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ public class LogService {
 	private final TmsLogRepository tmsRepo;
 	private final MemoLogRepository memoRepo;
 	private final WeatherAPILogRepository weatherRepo;
+	private final OutLierLogRepository outLierRepo;
 	
 	public void addAccessLog(Member member, String userAgent, String remoteInfo, String method, String requestURI, String errorMsg) {
 		Member logMember = null;
@@ -104,6 +107,13 @@ public class LogService {
 						.modifySize(modifySize)
 						.requestURI(requestURI)
 						.errorMsg(errorMsg)
+						.build());
+	}
+	
+	public void addOutLierLog(String type, String prediectString) {
+		outLierRepo.save(OutLierLog.builder()
+						.type(type)
+						.predictString(prediectString)
 						.build());
 	}
 }

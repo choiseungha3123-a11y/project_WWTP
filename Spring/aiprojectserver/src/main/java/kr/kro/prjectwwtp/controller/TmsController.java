@@ -232,6 +232,7 @@ public class TmsController {
 	}
 	
 	@Scheduled(cron = "${scheduler.predict.cron}")
+	@GetMapping("test")
 	public void getTmsPredict() {
 		try {
 			LocalDateTime now = LocalDateTime.now();
@@ -293,6 +294,7 @@ public class TmsController {
 	 */
 	private TmsPredict[] extractPredictions(fastApiResponseDTO response) {
 		int predictSize = 24;
+		boolean checkOutLier = false;
 		TmsPredict[] predictions = new TmsPredict[predictSize];
 		
 		ObjectMapper mapper = new ObjectMapper();
@@ -338,11 +340,23 @@ public class TmsController {
 						.ph(((Number) valuePh).doubleValue())
 						.tmsTime(now.plusMinutes(index * 30))
 						.build();
+					if(predictions[index - 1].getToc() > 15.0
+							|| predictions[index - 1].getSs() > 10.0
+							|| predictions[index - 1].getPh() > 8.5
+							|| predictions[index - 1].getPh() < 5.8
+							|| predictions[index - 1].getTn() > 10.0
+							|| predictions[index - 1].getTp() > 0.5) {
+						checkOutLier = true;
+					}
+						
 				} else {
 					System.out.println(response);
 					System.err.println("예측값 누락 (" + key + ")");
 					return null;
 				}
+			}
+			if(checkOutLier) {
+				logService.addOutLierLog("tms", mapPredictions.toString());
 			}
 			
 			
