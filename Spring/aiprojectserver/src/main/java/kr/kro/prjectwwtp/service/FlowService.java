@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -502,6 +503,41 @@ public class FlowService {
 		return result;
 	}
 	
+//	public List<FlowPredict> findPredictList(LocalDateTime now, LocalDateTime end) {
+//		LocalDateTime start = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
+//		List<FlowPredict> allList = flowPredictRepo.findByFlowTimeBetweenOrderByFlowTimeAscFlowNoDesc(start, end);
+//		
+//		// 중복된 flowTime에 대해 flow_no가 가장 큰 1개의 값만 유지
+//		Map<LocalDateTime, FlowPredict> uniqueMap = new HashMap<>();
+//		for (FlowPredict predict : allList) {
+//			LocalDateTime flowTime = predict.getFlowTime().withSecond(0).withNano(0);
+//			// 첫 번째 것이 flow_no가 가장 크므로(DESC 정렬됨) 그것만 유지
+//			if (!uniqueMap.containsKey(flowTime)) {
+//				uniqueMap.put(flowTime, predict);
+//			}
+//		}
+//		
+//		// Map의 값을 List로 변환하고 flowTime 기준 오름차순 정렬
+//		List<FlowPredict> result = new ArrayList<>(uniqueMap.values());
+//		result.sort((a, b) -> a.getFlowTime().compareTo(b.getFlowTime()));
+//		
+//		// 누적값으로 전환
+//		double acc = 0;
+//		for(FlowPredict predict : result) {
+//			if(predict.getFlowTime().getDayOfMonth() != start.getDayOfMonth())
+//				acc = 0;
+//			acc += predict.getFlowValue();
+//			predict.setFlowValue(acc);
+//		}
+//		
+//		System.out.println("필터 전 : " + result.size());
+//		// now 보다 이전은 제거
+//		result = result.stream().filter(p -> p.getFlowTime().isAfter(now)).collect(Collectors.toList());
+//		System.out.println("필터 후 : " + result.size());
+//		
+//		return result;
+//	}
+	
 	public void savePredictList(LocalDateTime time, double[] array) {
 		List<FlowPredict> list = new ArrayList<>();
 		for(int i = 0; i < array.length; ++i)
@@ -510,5 +546,9 @@ public class FlowService {
 						.flowValue(array[i])
 						.build());
 		flowPredictRepo.saveAll(list);
+	}
+	
+	public List<FlowPredict> getFlowAcc(LocalDateTime now) {
+		return null;
 	}
 }

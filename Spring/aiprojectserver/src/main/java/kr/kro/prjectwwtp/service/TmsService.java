@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -556,8 +557,24 @@ public class TmsService {
 				
 	}
 	
+//	public List<TmsPredict> findPredictList(LocalDateTime now, LocalDateTime end) {
+//		List<TmsPredict> allList = tmsPredictRepo.findByTmsTimeBetweenOrderByTmsTimeAscTmsNoDesc(now, end);
+//		// 중복값 제거
+//		Map<LocalDateTime, TmsPredict> uniqueMap = new HashMap<>();
+//		for(TmsPredict predict : allList) {
+//			LocalDateTime tmsTime = predict.getTmsTime().withSecond(0).withNano(0);
+//			if(!uniqueMap.containsKey(tmsTime)) {
+//				uniqueMap.put(tmsTime, predict);
+//			}
+//		}
+//		List<TmsPredict> result = new ArrayList<>(uniqueMap.values());
+//		result.sort((a, b) -> a.getTmsTime().compareTo(b.getTmsTime()));
+//		return result;
+//	}
+	
 	public List<TmsPredict> findPredictList(LocalDateTime now, LocalDateTime end) {
-		List<TmsPredict> allList = tmsPredictRepo.findByTmsTimeBetweenOrderByTmsTimeAscTmsNoDesc(now, end);
+		LocalDateTime start = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
+		List<TmsPredict> allList = tmsPredictRepo.findByTmsTimeBetweenOrderByTmsTimeAscTmsNoDesc(start, end);
 		// 중복값 제거
 		Map<LocalDateTime, TmsPredict> uniqueMap = new HashMap<>();
 		for(TmsPredict predict : allList) {
@@ -568,6 +585,20 @@ public class TmsService {
 		}
 		List<TmsPredict> result = new ArrayList<>(uniqueMap.values());
 		result.sort((a, b) -> a.getTmsTime().compareTo(b.getTmsTime()));
+		
+		// 누적값으로 전환
+		double accFlux = 0;
+		for(TmsPredict predict : result) {
+			if(predict.getTmsTime().getDayOfMonth() != start.getDayOfMonth())
+				accFlux = 0;
+			accFlux += predict.getFlux();
+			predict.setFlux(accFlux);
+		}
+		
+		// now 보다 이전은 제거
+		System.out.println("필터 전 : " + result.size());
+		result = result.stream().filter(p -> p.getTmsTime().isAfter(now)).collect(Collectors.toList());
+		System.out.println("필터 후 : " + result.size());
 		return result;
 	}
 	
