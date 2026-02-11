@@ -184,12 +184,12 @@ class StandardScaler:
 
 # ====== 모델 설정 ======
 TMS_TARGETS = {
-    "toc":  {"target_col": "TOC_VU",  "hidden_size": 64,  "num_layers": 2, "dropout": 0.2, "use_attention": False, "head_hidden_size": 32},
+    "toc":  {"target_col": "TOC_VU",  "hidden_size": 128, "num_layers": 3, "dropout": 0.2, "use_attention": False},
     "ss":   {"target_col": "SS_VU",   "hidden_size": 64,  "num_layers": 2, "dropout": 0.2, "use_attention": True},
-    "tn":   {"target_col": "TN_VU",   "hidden_size": 64,  "num_layers": 2, "dropout": 0.2, "use_attention": True},
+    "tn":   {"target_col": "TN_VU",   "hidden_size": 64,  "num_layers": 2, "dropout": 0.2, "use_attention": False},
     "tp":   {"target_col": "TP_VU",   "hidden_size": 64,  "num_layers": 2, "dropout": 0.2, "use_attention": True},
-    "flux": {"target_col": "FLUX_VU", "hidden_size": 64,  "num_layers": 2, "dropout": 0.2, "use_attention": True},
-    "ph":   {"target_col": "PH_VU",   "hidden_size": 64,  "num_layers": 2, "dropout": 0.2, "use_attention": True},
+    "flux": {"target_col": "FLUX_VU", "hidden_size": 128, "num_layers": 3, "dropout": 0.2, "use_attention": True},
+    "ph":   {"target_col": "PH_VU",   "hidden_size": 64,  "num_layers": 2, "dropout": 0.2, "use_attention": False},
 }
 
 FLOW_CONFIG = {"hidden_size": 128, "num_layers": 3, "dropout": 0.3, "use_attention": True, "num_heads": 8}

@@ -4,6 +4,33 @@
 
 ---
 
+## 📅 2026년 2월 11일
+
+### 📂 작업 파일
+```
+notebook/DL/LSTM_TMS.ipynb
+```
+
+### LSTM_TMS 성능 확인
+
+- R2 
+  - TOC: 0.2759
+  - SS: 0.3548
+  - TP: -0.0601
+  - FLUX: 0.2251
+
+- Learning curve
+  - TOC: val_loss가 train_loss보다 커서 중간에 멈춤(에포크 19)
+  - SS: 전반적으로 학습을 진행할수록 loss가 작아지지만, train loss가 상대적으로 많이 작은 반면, val loss는 큰 편
+  -> val_loss가 train_loss보다 커서 중간에 멈춤(에포크 17)
+  - TP: val_loss가 시작부터 거의 0에 수렴함
+  -> train과 val의 데이터셋의 분포가 차이에 의해 나타날 수 있음
+  - FLUX: TOC와 SS의 learning curve와 유사한 형태(에포크 17에서 early stop)
+
+=> TOC, SS, FLUX 학습 시, val_loss가 train_loss보다 커서 조기 종료하는 기능 사용하지 않고 학습해보기
+
+---
+
 ## 📅 2026년 2월 10일
 
 ### 📂 작업 파일
