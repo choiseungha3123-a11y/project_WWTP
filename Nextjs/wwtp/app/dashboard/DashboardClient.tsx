@@ -26,7 +26,7 @@ export default function DashboardPage() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
-  // [추가] 오늘 날짜 상태 관리
+  // 오늘 날짜 상태 관리
   const [todayDate, setTodayDate] = useState("");
 
   // 인증 및 로컬스토리지 데이터 로드
@@ -43,7 +43,7 @@ export default function DashboardPage() {
       userRole: savedRole
     });
     
-    // [추가] 날짜 포맷팅 (YYYY년 MM월 DD일 요일)
+    // 날짜 포맷팅 (YYYY년 MM월 DD일 요일)
     const now = new Date();
     const formattedDate = now.toLocaleDateString('ko-KR', {
       year: 'numeric',
@@ -66,7 +66,6 @@ export default function DashboardPage() {
   if (!isAuthChecked) return <div className="min-h-screen bg-slate-950" />;
 
   return (
-    /* [개선 1] 배경색을 더 깊은 slate-950으로 고정하고 padding을 조절하여 여백의 미 확보 */
     <div className="min-h-screen lg:h-screen bg-[#0a0f1d] text-slate-200 p-5 font-sans flex flex-col lg:overflow-hidden selection:bg-blue-500/30">
       
       {/* --- 상단 헤더 --- */}
@@ -79,7 +78,6 @@ export default function DashboardPage() {
           <p className="text-slate-500 text-[9px] uppercase tracking-[0.2em] font-bold mt-1">Integrated Operation Center</p>
         </div>
 
-        {/* [개선 3] 날짜 영역의 가독성 및 디자인 디테일 (유리질 효과 적용) */}
         <div className="hidden md:block absolute left-1/2 transform -translate-x-1/2 group">
           <div className="px-5 py-2 rounded-2xl bg-white/3 backdrop-blur-md border border-white/10 text-slate-300 text-xs font-semibold flex items-center gap-3 shadow-2xl transition-all hover:border-blue-500/30">
             <span className="text-blue-400 group-hover:scale-110 transition-transform">📅</span> {todayDate}
@@ -97,7 +95,6 @@ export default function DashboardPage() {
                 {userData.userRole.replace("ROLE_", "")}
               </p>
             </div>
-            {/* 프로필 이미지 그라데이션 및 그림자 강화 */}
             <div className="w-9 h-9 bg-linear-to-tr from-blue-600 to-violet-600 rounded-xl flex items-center justify-center text-sm font-black shadow-lg shadow-blue-500/20 transform group-hover:rotate-3 transition-transform">
               {userData.userName.substring(0, 1)}
             </div>
@@ -157,7 +154,6 @@ export default function DashboardPage() {
       </header>
 
       {/* 대시보드 메인 콘텐츠 */}
-      {/* [개선 4] 그리드 간격을 gap-6으로 넓혀 컴포넌트 간 독립성 확보 */}
       <main className="flex-1 grid grid-cols-12 gap-6 lg:overflow-hidden min-h-0">
         
         {/* 좌측 영역 (주요 지표 및 알람) */}
