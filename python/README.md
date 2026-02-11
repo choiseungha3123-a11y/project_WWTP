@@ -70,16 +70,6 @@ AI 기반 의사결정 지원 웹 서비스이다.
   - 시계열 장기 의존성 학습
   - Sliding Window 48 스텝(24시간) 입력 → 30분 단위 예측
 
-| 타겟  | hidden | layers | attention | 비고         |
-|-------|--------|--------|-----------|--------------|
-| flow  | 128    | 3      | ✓ (8 heads) | FlowLSTMRegressor |
-| toc   | 128    | 3      | ✗          |              |
-| ss    | 64     | 2      | ✓          |              |
-| tn    | 64     | 2      | ✗          |              |
-| tp    | 64     | 2      | ✓          |              |
-| flux  | 128    | 3      | ✓          |              |
-| ph    | 64     | 2      | ✗          |              |
-
 ### Anomaly Detection
 - Isolation Forest
   - 정상 패턴 학습 후 이상 점수 기반 판별
@@ -271,39 +261,66 @@ Response (200 OK):
 ## 9. Repository Structure
 ```
 ├── data/
-│   ├── raw/                     # 원천 데이터 (AWS, FLOW/TMS 원시)
-│   ├── actual/                  # 실측 데이터 (FLOW_Actual.csv, TMS_Actual.csv, AWS)
-│   ├── recommand_features/      # 타겟별 추천 특성 목록
-│   │   └── save/                # {target}_recommended_features.csv
-│   ├── output/                  # 전처리 출력
-│   └── pred/                    # 예측 결과
+│   ├── raw/                         # 원천 데이터 (AWS 원시, FLOW/TMS xlsx)
+│   ├── actual/                      # 실측 데이터
+│   │   ├── FLOW_Actual.csv
+│   │   ├── TMS_Actual.csv
+│   │   ├── Weather.csv              # AWS 통합 기상 데이터
+│   │   └── AWS_{368,541,569}.csv    # AWS 기상 관측소별 데이터
+│   ├── recommand_features/          # 타겟별 추천 특성 목록
+│   │   └── save/                    # {target}_recommended_features.csv (7개 타겟)
+│   ├── output/                      # 예측 출력
+│   │   └── save/                    # {target}_predictions.csv (7개 타겟)
+│   └── pred/                        # 예측 결과 (FLOW_Pred.csv, TMS_Pred.csv)
 ├── model/
-│   └── save/                    # 학습된 모델 체크포인트 및 스케일러
+│   └── save/                        # 학습된 모델 체크포인트 및 스케일러 (운영용)
 │       ├── {target}_lstm_model.pth
 │       ├── X_scaler_{target}.pkl
 │       └── y_scaler_{target}.pkl
 ├── notebook/
-│   ├── DL/                      # LSTM 모델 학습 노트북
-│   │   ├── LSTM_TMS.ipynb       # TMS 6개 타겟 학습
-│   │   ├── LSTM_FLOW.ipynb      # 유입량 모델 학습
-│   │   ├── analyze_predictions.py
-│   │   ├── diagnosis.py
+│   ├── DL/                          # LSTM 모델 학습 노트북
+│   │   ├── LSTM_TMS.ipynb           # TMS 6개 타겟 학습
+│   │   ├── LSTM_FLOW.ipynb          # 유입량 모델 학습
+│   │   ├── analyze_predictions.py   # 예측 결과 분석 및 시각화
+│   │   ├── diagnosis.py             # 이상 진단
+│   │   ├── ensemble_predict.py      # 앙상블 예측
 │   │   └── postprocess_correction.py
-│   ├── feature/                 # 피처 엔지니어링 모듈
+│   ├── feature/                     # 피처 엔지니어링 모듈
 │   │   ├── feature_engineering.py   # 특성 생성 파이프라인
-│   │   └── WF_feature_selection.py  # 특성 선택
-│   ├── EDA/                     # 탐색적 데이터 분석
-│   ├── preprocess/              # 전처리 노트북
-│   └── ML/                      # 머신러닝 모델 (레거시)
+│   │   └── WF_feature_selection.py  # Walk-Forward 특성 선택
+│   ├── EDA/                         # 탐색적 데이터 분석
+│   │   └── flow_tms_periodicity_eda.ipynb
+│   ├── preprocess/                  # 전처리 노트북
+│   │   ├── preprocess.ipynb         # 전처리 파이프라인
+│   │   ├── show.ipynb               # 데이터 시각화
+│   │   ├── correlation.ipynb        # 상관관계 분석
+│   │   └── split_distribution.ipynb # 분할 분포 확인
+│   └── ML/                          # 머신러닝 모델 (레거시)
+│       └── primary/baseline.ipynb
 ├── results/
-│   ├── DL/                      # 딥러닝 실험 결과
-│   └── ML/                      # 머신러닝 실험 결과 (레거시)
+│   ├── DL/                          # 딥러닝 학습곡선 및 예측 분석
+│   ├── ML/                          # 머신러닝 실험 결과 (v1, v2, improved)
+│   ├── preprocess/                  # 전처리 전후 비교
+│   ├── correlation/                 # 상관관계 분석 결과
+│   ├── boxplot/                     # 변수별 박스플롯
+│   ├── distribution/                # 분포 분석
+│   └── timeseries/                  # 시계열 시각화
 ├── src/
-│   └── main.py                  # FastAPI 백엔드 (예측 API 서버)
-├── archive/                     # 구버전 코드 및 아카이브
+│   └── main.py                      # FastAPI 백엔드 (예측 API 서버)
+├── archive/                         # 구버전 코드 및 데이터
+│   ├── old_src/                     # 구버전 ML/DL 소스 모듈
+│   ├── old_notebooks/               # 구버전 노트북
+│   ├── old_ML_versions/             # ML 실험 히스토리 (v1, v2, linear)
+│   ├── old_DL_versions/             # DL 구버전 (flow_lstm_model.py)
+│   ├── old_data/                    # 구버전 전처리 데이터 및 출력
+│   ├── old_model/                   # 구버전 모델 체크포인트
+│   ├── old_results/                 # 구버전 실험 결과
+│   ├── QUICK_START.md
+│   └── QUICK_START_DL.md
+├── improved_preprocessing_strategy.md
 ├── requirements.txt
-├── QUICK_START.md
-├── QUICK_START_DL.md
+├── NOTE.md                          # 개발 일지
+├── TODO.md
 └── README.md
 ```
 
