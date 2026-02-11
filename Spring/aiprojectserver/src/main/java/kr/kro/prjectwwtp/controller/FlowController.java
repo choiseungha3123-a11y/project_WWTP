@@ -191,6 +191,7 @@ public class FlowController {
 	}
 	
 	@Scheduled(cron = "${scheduler.predict.cron}")
+	@GetMapping("/flowtest")
 	public void getFlowPredict() {
 		try {
 			LocalDateTime now = LocalDateTime.now();
@@ -235,7 +236,7 @@ public class FlowController {
 			if(response.isOk()) {
 				double[] predictions = extractPredictions(response);
 				predictSize = predictions.length;
-				System.out.println("예측값 (1h~12h): " + java.util.Arrays.toString(predictions));
+				System.out.println("예측값 (0.5h~12.0h): " + java.util.Arrays.toString(predictions));
 				flowService.savePredictList(now, predictions);
 			}
 			else {
@@ -255,7 +256,8 @@ public class FlowController {
 	 * @return predictions 배열 (크기: 12), 추출 실패 시 null
 	 */
 	private double[] extractPredictions(fastApiResponseDTO response) {
-		double[] predictions = new double[12];
+		int predictSize = 24;
+		double[] predictions = new double[predictSize];
 		ObjectMapper mapper = new ObjectMapper();
 		
 		try {
@@ -267,12 +269,12 @@ public class FlowController {
 			Map<String, Object> mapOutput = response.getOutput();
 			Map<String, Object> mapPredictions = mapper.convertValue(mapOutput.get("predictions"),new TypeReference<>() {});			
 			// output에서 predictions 데이터 추출
-			for(int hour = 1; hour <= 12; hour++) {
-				String key = hour + "h";
+			for(int index = 1; index <= predictSize; index++) {
+				String key = index/2 + (index % 2 == 0 ? ".0h" : ".5h");
 				Object value = mapPredictions.get(key);
 				
 				if(value != null) {
-					predictions[hour - 1] = ((Number) value).doubleValue();
+					predictions[index - 1] = ((Number) value).doubleValue();
 				} else {
 					System.out.println(response);
 					System.err.println("예측값 누락 (" + key + ")");

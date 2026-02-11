@@ -506,7 +506,7 @@ public class FlowService {
 		List<FlowPredict> list = new ArrayList<>();
 		for(int i = 0; i < array.length; ++i)
 			list.add(FlowPredict.builder()
-						.flowTime(time.plusHours(i + 1))
+						.flowTime(time.plusMinutes((i + 1)*30))
 						.flowValue(array[i])
 						.build());
 		flowPredictRepo.saveAll(list);

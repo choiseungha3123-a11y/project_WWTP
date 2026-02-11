@@ -275,7 +275,7 @@ public class TmsController {
 			if(response.isOk()) {
 				TmsPredict[] predictions = extractPredictions(response);
 				predictSize = predictions.length;
-				System.out.println("예측값 (1h~12h): " + java.util.Arrays.toString(predictions));
+				System.out.println("예측값 (0.5h~12.0h): " + java.util.Arrays.toString(predictions));
 				tmsService.savePredictList(predictions);
 			}
 		}catch(Exception e) {
@@ -292,7 +292,8 @@ public class TmsController {
 	 * @return predictions 배열 (크기: 12), 추출 실패 시 null
 	 */
 	private TmsPredict[] extractPredictions(fastApiResponseDTO response) {
-		TmsPredict[] predictions = new TmsPredict[12];
+		int predictSize = 24;
+		TmsPredict[] predictions = new TmsPredict[predictSize];
 		
 		ObjectMapper mapper = new ObjectMapper();
 		
@@ -313,8 +314,8 @@ public class TmsController {
 			LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
 			
 			// output에서 predictions 데이터 추출
-			for(int hour = 1; hour <= 12; hour++) {
-				String key = hour + "h";
+			for(int index = 1; index <= predictSize; index++) {
+				String key = index/2 + (index % 2 == 0 ? ".0h" : ".5h");
 				Object valueToc = mapToc.get(key);
 				Object valueSs = mapSs.get(key);
 				Object valueTn = mapTn.get(key);
@@ -328,14 +329,14 @@ public class TmsController {
 						&& valueTp != null 
 						&& valueFlux != null
 						&& valuePh != null) {
-					predictions[hour - 1] = TmsPredict.builder()
+					predictions[index - 1] = TmsPredict.builder()
 						.toc(((Number) valueToc).doubleValue())
 						.ss(((Number) valueSs).doubleValue())
 						.tn(((Number) valueTn).doubleValue())
 						.tp(((Number) valueTp).doubleValue())
 						.flux(((Number) valueFlux).doubleValue())
 						.ph(((Number) valuePh).doubleValue())
-						.tmsTime(now.plusHours(hour))
+						.tmsTime(now.plusMinutes(index * 30))
 						.build();
 				} else {
 					System.out.println(response);
