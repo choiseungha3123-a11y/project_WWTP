@@ -2,6 +2,8 @@ package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -39,6 +41,7 @@ public class FlowLog {
 	@Schema(description = "요청파라메터의 날짜", example = "20260130")
 	private String time;
 	@ManyToOne(fetch = FetchType.LAZY)
+	@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 	@JoinColumn(name="userNo")
 	@Schema(description = "요청 회원", example = "1~")
 	private Member member;

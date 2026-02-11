@@ -2,6 +2,8 @@ package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -38,26 +40,26 @@ public class Memo{
     private String content;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    //@JsonProperty(access = Access.WRITE_ONLY)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     @JoinColumn(name="createUserNo")
     @Schema(description = "메모의 최초 생성 회원", example = "1~")
     private Member createMember;
-    //@Column(name="createUserNo", insertable = false, updatable = false)
-    //private Long createUserNo;
+    @Column(name="createUserNo", insertable = false, updatable = false)
+    private Long createUserNo;
     @ManyToOne(fetch = FetchType.LAZY)
-    //@JsonProperty(access = Access.WRITE_ONLY)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     @JoinColumn(name="lastModifyUserNo")
     @Schema(description = "메모를 수정한 회원", example = "1~")
     private Member modifyMember;
-    //@Column(name="lastModifyUserNo", insertable = false, updatable = false)
-    //private Long lastModifyUserNo;
+    @Column(name="lastModifyUserNo", insertable = false, updatable = false)
+    private Long lastModifyUserNo;
     @ManyToOne(fetch = FetchType.LAZY)
-    //@JsonProperty(access = Access.WRITE_ONLY)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     @JoinColumn(name="diableUserNo")
     @Schema(description = "메모를 종료한 회원", example = "1~")
     private Member disableMember;
-    //@Column(name="diableUseNo", insertable = false, updatable = false)
-    //private Long diableUseNo;
+    @Column(name="diableUseNo", insertable = false, updatable = false)
+    private Long diableUseNo;
     
     @Temporal(TemporalType.TIMESTAMP)
 	@Column(updatable = false)

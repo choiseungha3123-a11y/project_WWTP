@@ -28,6 +28,7 @@ pm2 unstartup
 sudo systemctl enable nginx
 sudo systemctl start nginx
 sudo vi /etc/nginx/nginx.conf
+sudo nginx -t
 sudo systemctl restart nginx
 
 -파이썬 관련-
@@ -41,6 +42,8 @@ sudo certbot certonly -d *.projectwwtp.kro.kr --manual --preferred-challenges dn
 sudo ss -tunlp
 
 http://10.125.121.176:8081/swagger-ui/index.html
+
+http://10.125.121.173:3000/
 
 
 
@@ -161,3 +164,5 @@ http://10.125.121.176:8081/swagger-ui/index.html
 		- 예측 모델 변화에 따른 코드 수정 추가
 		TMS에 대한 OutLier 발생 로그 추가
 		- AWS는 일단 보류
+		메모 및 JPA 도메인 설정 오류 수정
+		Session관리 및 중복 로그인 제한 처리 제거

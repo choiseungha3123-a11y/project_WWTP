@@ -2,8 +2,7 @@ package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonProperty.Access;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.Column;
@@ -48,7 +47,7 @@ public class MemoLog {
 	@Schema(description = "수정 후 메모내용", example = "수정 후 메모내용")
 	private String currentContent;
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JsonProperty(access = Access.WRITE_ONLY)
+	@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 	@JoinColumn(name="userNo")
 	@Schema(description = "요청 회원", example = "1~")
 	private Member member;

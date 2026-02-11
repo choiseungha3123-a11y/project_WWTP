@@ -2,6 +2,8 @@ package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -33,6 +35,7 @@ public class LoginLog {
 	@Schema(description = "고유번호", example = "1~")
 	private long log_no;
 	@ManyToOne(fetch = FetchType.LAZY)
+	@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 	@JoinColumn(name="userNo")
 	private Member member;
 	@Column(name="userNo", insertable = false, updatable = false)

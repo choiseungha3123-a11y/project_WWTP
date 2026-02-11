@@ -32,6 +32,7 @@ public class OutLierLog {
 	@Schema(description = "구분", example = "tms || flow")
 	private String type;
 	@Schema(description = "예측 수치", example = "")
+	@Column(columnDefinition = "TEXT")
 	private String predictString;
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(updatable = false)
