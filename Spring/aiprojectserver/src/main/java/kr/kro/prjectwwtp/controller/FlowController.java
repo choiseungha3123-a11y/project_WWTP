@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -58,6 +59,9 @@ public class FlowController {
 	private final FlowService flowService;
 	private final WeatherService weatherService;
 	private final FastApiService apiService;
+	
+	@Value("${predict.enable}")
+	private boolean enable;
 	
 	@PostConstruct
 	public void init() {
@@ -191,8 +195,8 @@ public class FlowController {
 	}
 	
 	@Scheduled(cron = "${scheduler.predict.cron}")
-	@GetMapping("/flowtest")
 	public void getFlowPredict() {
+		if(!enable) return;
 		try {
 			LocalDateTime now = LocalDateTime.now();
 			LocalDateTime fakeNow = flowService.getFakeNow()

@@ -63,8 +63,8 @@ public class TmsController {
 	private final WeatherService weatherService;
 	private final FastApiService apiService;
 	
-	@Value("${spring.FastAPI.URI}")
-	private String fastAPIURI;
+	@Value("${predict.enable}")
+	private boolean enable;
 	
 	@PostConstruct
 	public void init() {
@@ -232,8 +232,8 @@ public class TmsController {
 	}
 	
 	@Scheduled(cron = "${scheduler.predict.cron}")
-	@GetMapping("test")
 	public void getTmsPredict() {
+		if(!enable) return;
 		try {
 			LocalDateTime now = LocalDateTime.now();
 			LocalDateTime fakeNow = tmsService.getFakeNow()
