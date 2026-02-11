@@ -308,7 +308,7 @@ def resample_to_30min(df: pd.DataFrame) -> pd.DataFrame:
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     agg_dict = {}
     for col in numeric_cols:
-        if col.startswith("RN_") or col.startswith("AR_"):
+        if col.startswith("RN_") or col.startswith("AR_") or col == "FLUX_VU":
             agg_dict[col] = "sum"
         else:
             agg_dict[col] = "mean"
@@ -355,6 +355,16 @@ def merge_input_data(data_list, aws368, aws541, aws569) -> pd.DataFrame:
 
     df = df.join(aws, how="inner")
 
+    # FLUX_VU: 누적값 → 증분값 변환 (TMS 노트북과 동일, 리샘플링 전에 처리)
+    if "FLUX_VU" in df.columns:
+        flux = df["FLUX_VU"].copy()
+        flux_diff = flux.diff()
+        reset_mask = flux_diff < 0      # 일 초기화 지점
+        flux_diff[reset_mask] = flux[reset_mask]
+        flux_diff.iloc[0] = 0
+        flux_diff = flux_diff.clip(lower=0)
+        df["FLUX_VU"] = flux_diff
+
     # 30분 리샘플링
     df_resampled = resample_to_30min(df)
 
@@ -372,6 +382,17 @@ def _apply_common_feature_pipeline(df: pd.DataFrame) -> pd.DataFrame:
     df_features = feat_eng.add_process_features(df_features)
     df_features = feat_eng.add_temporal_features(df_features)
     df_features = feat_eng.add_time_features(df_features)
+
+    # 노트북과 동일: weekday/iso_week/hour_x_weekday 보장
+    if "weekday" not in df_features.columns and "dayofweek" in df_features.columns:
+        df_features["weekday"] = df_features["dayofweek"]
+    if "iso_week" not in df_features.columns and isinstance(df_features.index, pd.DatetimeIndex):
+        df_features["iso_week"] = df_features.index.isocalendar().week.astype(int).to_numpy()
+    if "hour_x_weekday" not in df_features.columns:
+        if "hour" in df_features.columns and "weekday" in df_features.columns:
+            df_features["hour_x_weekday"] = df_features["hour"] * df_features["weekday"]
+        elif "hour" in df_features.columns and "dayofweek" in df_features.columns:
+            df_features["hour_x_weekday"] = df_features["hour"] * df_features["dayofweek"]
 
     df_features = df_features.ffill().fillna(0)
     return df_features

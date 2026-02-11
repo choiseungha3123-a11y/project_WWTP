@@ -9,7 +9,15 @@
 ### 📂 작업 파일
 ```
 notebook/DL/LSTM_TMS.ipynb
+src/main.py
 ```
+
+### main.py 수정
+
+- 현재 최고 성능을 내는 모델, 스케일러, 특성에 맞게 하이퍼파라미터 수정
+- 전처리 과정 역시 현재 LSTM_FLOW.ipynb와 LSTM_TMS.ipynb와 동일하게 수정
+
+-> model/save/* 와 data/recommand_features/* 만 로드하면 사용할 수 있도록 설정
 
 ### LSTM_TMS 성능 확인
 
