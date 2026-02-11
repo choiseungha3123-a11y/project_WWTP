@@ -33,7 +33,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import kr.kro.prjectwwtp.config.TokenBlacklistManager;
 import kr.kro.prjectwwtp.domain.FlowPredict;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
@@ -61,7 +60,6 @@ public class MemberController {
 	private final LogService logService;
 	private final TmsService tmsService;
 	private final FlowService flowService;
-	private final TokenBlacklistManager tokenBlacklistManager;
 	private final MailService mailService;
 	
 	@ExceptionHandler(MissingServletRequestParameterException.class)
@@ -141,9 +139,6 @@ public class MemberController {
 				return ResponseEntity.ok().body(res);
 			}
 			
-			// 기존 토큰 무효화 (다른 기기에서의 로그인을 무효화)
-			tokenBlacklistManager.invalidateToken(req.userId);
-			
 			// 토큰 생성
 			String token = JWTUtil.getJWT(member);
 			//System.out.println("token : " + token);
@@ -154,7 +149,6 @@ public class MemberController {
 				userAgent = "Unknown";
 			}
 			
-			tokenBlacklistManager.registerNewToken(req.userId, token, userAgent, remoteInfo);
 			loginSuccess = true;
 			res.addData(token);
 		}catch (Exception e) {
@@ -193,9 +187,6 @@ public class MemberController {
 			String token = request.getHeader("Authorization");
 			String userid = JWTUtil.getClaim(token, JWTUtil.useridClaim);
 			System.out.println("[MemberController] logout request for user: " + userid);
-			
-			// TokenBlacklistManager에서 토큰 무효화
-			tokenBlacklistManager.invalidateToken(userid);
 			
 			res.setSuccess(true);
 			res.setErrorMsg(null);
@@ -636,7 +627,7 @@ public class MemberController {
 				+ "                    data.forEach((d, i) => {\r\n"
 				+ "                        let x = padding + (i * (chartW / (data.length - 1)));\r\n"
 				+ "                        svg += `<line x1=\"${x}\" y1=\"${padding}\" x2=\"${x}\" y2=\"${height-padding}\" class=\"grid\" />`;\r\n"
-				+ "                        svg += `<text x=\"${x}\" y=\"${height-padding+20}\" class=\"label\" text-anchor=\"middle\" transform=\"rotate(40 ${x} ${height-padding+20})\">${d.time}</text>`;\r\n"
+				+ "                        svg += `<text x=\"${x}\" y=\"${height-padding+20}\" class=\"label\" text-anchor=\"middle\" transform=\"rotate(" + angle + " ${x} ${height-padding+20})\">${d.time}</text>`;\r\n"
 				+ "                    });\r\n"
 				+ "\r\n"
 				+ "                    keys.forEach(key => {\r\n"

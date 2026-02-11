@@ -20,7 +20,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.service.LogService;
-import kr.kro.prjectwwtp.service.SessionService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import kr.kro.prjectwwtp.util.Util;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +27,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
 	private final AuthenticationManager authenticationManager;
-	private final TokenBlacklistManager tokenBlacklistManager;
-	private final SessionService sessionService;
 	private final LogService logService;
 	
 	@Override
@@ -107,18 +104,6 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 			String token = JWTUtil.getJWT(member);
 			System.out.println("token : " + token);
 			System.out.println("[JWTAuthenticationFilter] Token generated for: " + userId);
-			
-			// 기존 토큰 무효화 및 새 토큰 등록 (다른 브라우저/기기의 로그인 제거)
-			System.out.println("[JWTAuthenticationFilter] Registering new login (previous browser/device logins will be invalidated)");
-			tokenBlacklistManager.registerNewToken(userId, token, userAgent, remoteInfo);
-			
-			// 기존 세션 만료 (동시 로그인 차단)
-			System.out.println("[JWTAuthenticationFilter] Expiring previous sessions for user: " + userId);
-			sessionService.expireUserSessions(userId);
-			
-			// 새로운 세션 등록
-			System.out.println("[JWTAuthenticationFilter] Registering new session for user: " + userId);
-			sessionService.registerNewSession(userId, token, userAgent, remoteInfo);
 			
 			// 응답 헤더에 토큰 추가
 			response.addHeader(HttpHeaders.AUTHORIZATION, token);

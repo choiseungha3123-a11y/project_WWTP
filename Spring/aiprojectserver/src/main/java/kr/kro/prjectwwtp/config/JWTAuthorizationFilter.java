@@ -4,20 +4,16 @@ import java.io.IOException;
 import java.util.Optional;
 
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kr.kro.prjectwwtp.domain.Member;
-import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.persistence.MemberRepository;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import kr.kro.prjectwwtp.util.Util;
@@ -26,13 +22,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JWTAuthorizationFilter extends OncePerRequestFilter {
 	private final MemberRepository memberRepo;
-	private final TokenBlacklistManager tokenBlacklistManager;
 
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {
 		JWTUtil.setMemberRepository(memberRepo);
-		JWTUtil.setTokenBlacklistManager(tokenBlacklistManager);
 		
 		String requestPath = request.getRequestURI();
 		String method = request.getMethod();
@@ -54,23 +48,6 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 			return;
 		}
 		
-		// 토큰이 블랙리스트에 있는지 확인 (다른 기기에서 재로그인 시 이전 토큰 무효화)
-		if (tokenBlacklistManager.isTokenBlacklisted(jwtToken)) {
-			System.out.println("[JWTAuthorizationFilter] ⚠️  Token is blacklisted (invalidated by new login from another browser/device)");
-			System.out.println("========== [JWTAuthorizationFilter] END (BLACKLISTED TOKEN) ==========\n");
-			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-			response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-			response.setCharacterEncoding("UTF-8");
-			responseDTO errorRes = responseDTO.builder()
-				.success(false)
-				.errorMsg("다른 기기/브라우저에서 로그인되어 현재 로그인이 만료되었습니다. 다시 로그인해주세요.")
-				.build();
-			String errorJson = new ObjectMapper().writeValueAsString(errorRes);
-			response.getWriter().write(errorJson);
-			response.getWriter().flush();
-			return;
-		}
-		
 		try {
 			// 토큰에서 userid 추출
 			String userid = JWTUtil.getClaim(jwtToken, JWTUtil.useridClaim);
@@ -78,7 +55,6 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 			
 			if (userid == null) {
 				System.out.println("[JWTAuthorizationFilter] userid is null, passing to next filter");
-				System.out.println("========== [JWTAuthorizationFilter] END (NO USERID) ==========\n");
 				filterChain.doFilter(request, response);
 				return;
 			}
@@ -87,7 +63,6 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 			Optional<Member> opt = memberRepo.findByUserId(userid);
 			if(!opt.isPresent()) {
 				System.out.println("[JWTAuthorizationFilter] User not found: " + userid);
-				System.out.println("========== [JWTAuthorizationFilter] END (USER NOT FOUND) ==========\n");
 				filterChain.doFilter(request, response);
 				return;
 			}

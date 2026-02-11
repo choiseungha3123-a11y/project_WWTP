@@ -17,7 +17,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.service.MemberService;
-import kr.kro.prjectwwtp.service.SessionService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import kr.kro.prjectwwtp.util.Util;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +26,6 @@ import lombok.RequiredArgsConstructor;
 public class Oauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler{
 	private final MemberService memberService;
 	private final LogService logService;
-	private final SessionService sessionService;
 	
 	// 소셜 로그인시 주소 체크!!!!
 	@Value("${spring.auth2.URI}")
@@ -67,10 +65,6 @@ public class Oauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler{
 				member = memberService.addSocialMember(socialAuth, userId, name);
 			}
 			
-			// 기존 세션 만료 (동시 로그인 차단)
-			System.out.println("[Oauth2SuccessHandler] Expiring previous sessions for user: " + member.getUserId());
-			sessionService.expireUserSessions(member.getUserId());
-	
 			// JWT 생성
 			String token = JWTUtil.getJWT(member);
 			
@@ -85,10 +79,6 @@ public class Oauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler{
 			
 			System.out.println("[Oauth2SuccessHandler] User Agent: " + userAgent);
 			System.out.println("[Oauth2SuccessHandler] Remote IP:PORT: " + remoteInfo);
-			
-			// 새로운 세션 등록
-			System.out.println("[Oauth2SuccessHandler] Registering new session for user: " + member.getUserId());
-			sessionService.registerNewSession(member.getUserId(), token, userAgent, remoteInfo);
 			
 			//System.out.println("token : " + token);
 			// Cookie에 jwt 추가

@@ -25,7 +25,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import jakarta.servlet.http.HttpServletResponse;
 import kr.kro.prjectwwtp.persistence.MemberRepository;
 import kr.kro.prjectwwtp.service.LogService;
-import kr.kro.prjectwwtp.service.SessionService;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -36,8 +35,6 @@ public class SecurityConfig {
 	private final MemberRepository memberRepo;
 	private final AuthenticationSuccessHandler oauth2SuccessHandler;
 	private final AuthenticationFailureHandler oauth2FailurHandler;
-	private final TokenBlacklistManager tokenBlacklistManager;
-	private final SessionService sessionService;
 	private final LogService logService;
 	
 	@Bean
@@ -48,7 +45,7 @@ public class SecurityConfig {
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager) throws Exception {
 		// JWT 인증 필터 생성 (로그인 처리)
-		JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(authenticationManager, tokenBlacklistManager, sessionService, logService);
+		JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(authenticationManager, logService);
 		// 로그인 엔드포인트 지정
 		jwtAuthenticationFilter.setFilterProcessesUrl("/api/member/login");
 		
@@ -63,11 +60,7 @@ public class SecurityConfig {
 		
 		// 세션 정책: STATELESS (JWT 사용)
 		http.sessionManagement(session -> session
-			.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-			.maximumSessions(1)
-			.maxSessionsPreventsLogin(false)
-			.sessionRegistry(sessionRegistry())
-			.expiredUrl("/login?expired=true"));
+			.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 		
 		// 접근 권한 설정
 		http.authorizeHttpRequests(auth -> auth
@@ -122,7 +115,7 @@ public class SecurityConfig {
 		http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 		
 		// JWT 인가 필터 추가 (토큰 검증용) - JWTAuthenticationFilter 이후에 실행
-		JWTAuthorizationFilter jwtAuthorizationFilter = new JWTAuthorizationFilter(memberRepo, tokenBlacklistManager);
+		JWTAuthorizationFilter jwtAuthorizationFilter = new JWTAuthorizationFilter(memberRepo);
 		http.addFilterAfter(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
 		
 		// 폼 로그인 설정 비활성화

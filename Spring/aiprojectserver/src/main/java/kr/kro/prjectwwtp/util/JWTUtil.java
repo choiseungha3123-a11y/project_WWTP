@@ -10,14 +10,12 @@ import com.auth0.jwt.interfaces.Claim;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
-import kr.kro.prjectwwtp.config.TokenBlacklistManager;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.persistence.MemberRepository;
 
 public class JWTUtil {
 	
-	private static TokenBlacklistManager tokenBlacklistManager;
 	private static MemberRepository memberRepo;
 	//private static final long ACCESS_TOKEN_MSEC = 24 * 60 * (60 * 1000);	// 1일
 	private static final long ACCESS_TOKEN_MSEC = 60 * (60 * 1000);	// 1시간
@@ -37,10 +35,6 @@ public class JWTUtil {
 	
 	public static void setKey(String key) {
 		JWT_KEY = key;
-	}
-	
-	public static void setTokenBlacklistManager(TokenBlacklistManager manager) {
-		tokenBlacklistManager = manager;
 	}
 	
 	public static void setMemberRepository(MemberRepository repo) {
@@ -81,13 +75,7 @@ public class JWTUtil {
 		boolean result = true;
 		try {
 			String tok = getJWTSource(token);
-			
-			// 블랙리스트에 있는 토큰인지 확인 (중복 로그인으로 무효화된 토큰)
-			if (tokenBlacklistManager != null && tokenBlacklistManager.isTokenBlacklisted(tok)) {
-				System.out.println("토큰이 블랙리스트에 있습니다 - 다른 기기에서의 로그인으로 무효화됨");
-				return false;
-			}
-			
+						
 			result = JWT.require(Algorithm.HMAC256(JWT_KEY)).build()
 							.verify(tok).getExpiresAt().before(new Date());
 		}catch(Exception e)
