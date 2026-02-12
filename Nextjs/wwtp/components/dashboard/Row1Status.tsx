@@ -124,7 +124,7 @@ export default function Row1Status() {
           status={tmsError ? "danger" : "normal"}
           time={flowTime}
           isError={!!tmsError}
-          unit="㎥/일"
+          unit="㎥/h"
         />
         <StatusCard 
           label="기온 | 강우"

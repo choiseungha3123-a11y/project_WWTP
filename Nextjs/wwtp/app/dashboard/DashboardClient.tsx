@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 // 분리한 컴포넌트들
-import Row1Status from "@/components/dashboard/Row1Status";
-import Row2Alerts from "@/components/dashboard/Row2Alerts";
-import Row3Charts from "@/components/dashboard/Row3Charts";
-import Row4RiskDetail from "@/components/dashboard/Row4RiskDetail";
-import Row5ActionPanel from "@/components/dashboard/Row5ActionPanel";
+import Row1Status from "@/components/dashboard/Row1Status";      
+import Row3Charts from "@/components/dashboard/Row2Charts";      
+import Row2Alerts from "@/components/dashboard/Row3Alerts";      
+import Row4RiskDetail from "@/components/dashboard/Row4RiskDetail"; 
+import Row5ActionPanel from "@/components/dashboard/Row5ActionPanel"; 
 
 import EditProfileModal from "../options/EditProfileModal";
 
@@ -25,8 +25,6 @@ export default function DashboardPage() {
   });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  
-  // 오늘 날짜 상태 관리
   const [todayDate, setTodayDate] = useState("");
 
   // 인증 및 로컬스토리지 데이터 로드
@@ -43,7 +41,6 @@ export default function DashboardPage() {
       userRole: savedRole
     });
     
-    // 날짜 포맷팅 (YYYY년 MM월 DD일 요일)
     const now = new Date();
     const formattedDate = now.toLocaleDateString('ko-KR', {
       year: 'numeric',
@@ -56,7 +53,8 @@ export default function DashboardPage() {
     setIsAuthChecked(true);
   }, [router]);
 
-   const handleLogout = () => {
+  // 로그아웃 핸들러
+  const handleLogout = () => {
     if (confirm("로그아웃 하시겠습니까?")) {
       localStorage.clear();
       router.push("/");
@@ -126,7 +124,7 @@ export default function DashboardPage() {
                   <button onClick={() => { setIsEditModalOpen(true); setIsProfileOpen(false); }} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-slate-300 font-medium">
                     <span className="text-lg text-slate-500">👤</span> 개인정보 수정
                   </button>
-                  {userData.userRole === "ROLE_ADMIN" && (
+                   {userData.userRole === "ROLE_ADMIN" && (
                     <>
                     <button 
                       onClick={() => { router.push("/admin/member"); setIsProfileOpen(false); }} 
@@ -153,38 +151,45 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* 대시보드 메인 콘텐츠 */}
-      <main className="flex-1 grid grid-cols-12 gap-6 lg:overflow-hidden min-h-0">
+      {/* --- 대시보드 메인 콘텐츠 --- */}
+      <main className="flex-1 grid grid-cols-10 gap-6 lg:overflow-hidden min-h-0">
         
-        {/* 좌측 영역 (주요 지표 및 알람) */}
-        <section className="col-span-12 lg:col-span-7 flex flex-col gap-6 min-h-0">
-          <div className="flex-none drop-shadow-sm">
+        {/* [왼쪽 섹션] 가로 6/10 (3/5) */}
+        <section className="col-span-12 lg:col-span-6 flex flex-col gap-6 min-h-0">
+          {/* Row 1: 시스템 체크 및 지표 카드 */}
+          <div id="row1-container" className="flex-none drop-shadow-sm">
             <Row1Status />
           </div>
           
-          {/* [개선 5] 카드형 레이아웃의 통일감을 위해 각 로우를 감싸는 영역의 min-h 설정 최적화 */}
-          <div className="flex-none lg:flex-1 lg:min-h-0 bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
-            <Row2Alerts />
-          </div>
-          
-          <div className="flex-none lg:flex-1 lg:min-h-0 bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
+          {/* Row 2: 차트 (나머지 공간 전체 활용) */}
+          <div className="flex-1 lg:min-h-0 bg-white/2 border border-white/5 rounded-4xl overflow-hidden shadow-inner">
             <Row3Charts />
           </div>
         </section>
 
-        {/* 우측 영역 (위험도 상세 및 조치 패널) */}
-        <section className="col-span-12 lg:col-span-5 flex flex-col gap-6 min-h-0">
-          {/* [개선 6] Flex 비율 조정: 위험도 상세(Row4)에 더 많은 공간 할당 */}
-          <div className="flex-none lg:flex-[0.6] lg:min-h-0 bg-white/2 border border-white/5 rounded-4xl overflow-hidden shadow-inner">
+        {/* [오른쪽 섹션] 가로 4/10 (2/5) */}
+        <section className="col-span-12 lg:col-span-4 flex flex-col gap-6 min-h-0">
+          {/* Row 3: Event Detection (왼쪽 Row1과 동일한 높이를 가지도록 h-fit 또는 Row1의 높이만큼 설정) */}
+          {/* h-[400px]와 같은 고정값 대신 flex-none을 쓰되, Row1과 정렬되도록 구성 */}
+          <div className="flex-none bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
+            <Row2Alerts />
+          </div>
+          
+          {/* Row 4: 운영 리스크 점수 (확장형) */}
+          {/* flex-none으로 설정하여 자신의 콘텐츠 크기만큼 차지 */}
+          <div className="flex-none bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
             <Row4RiskDetail />
           </div>
           
-          <div className="flex-none lg:flex-[0.4] lg:min-h-0 bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
+          {/* Row 5: 운영 조치 패널 (나머지 하단 공간 모두 차지) */}
+          {/* 위 Row4가 늘어나면 flex-1에 의해 자동으로 영역이 축소됨 */}
+          <div className="flex-1 lg:min-h-0 bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
             <Row5ActionPanel />
           </div>
         </section>
       </main>
 
+      {/* 개인정보 수정 모달 */}
       <EditProfileModal 
         isOpen={isEditModalOpen} 
         onClose={() => setIsEditModalOpen(false)} 
