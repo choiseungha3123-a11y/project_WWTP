@@ -88,7 +88,7 @@ sudo mysql\_secure\_installation
 
 \#설치 확인(버전확인)
 
-MySQL -V
+mysql -V
 
 
 

@@ -439,7 +439,7 @@ public class MemberController {
 	
 	boolean bSendEmail = true;
 	@Scheduled(cron = "${scheduler.report.cron}")
-	@GetMapping("/mailtest")
+	//@GetMapping("/mailtest")
 	public void makeReportMessage()
 	{
 		LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
@@ -570,7 +570,7 @@ public class MemberController {
 					", FLUS: " + tms.getFlux() +
 					", TN: " + tms.getTn() +
 					", TP: " + tms.getTp() + "}";
-			if (i < flowList.size() - 1)
+			if (i < tmsList.size() - 1)
 				html += ",\r\n";
 		}
 		html += "                ];\r\n"
