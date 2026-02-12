@@ -2,10 +2,15 @@ index,feature_name
 29,TP_VU_tlag_2
 36,TP_VU_troll_mean_6
 38,TP_VU_troll_max_6
+39,TP_VU_troll_min_6
+52,TP_VU_tdiff_1
 53,TP_VU_tdiff_2
 54,TP_VU_tdiff_6
 56,TP_VU_tpct_6
 57,TP_VU_tewma_6
+163,FLUX_VU_roll_mean_6
 274,SS_VU_roll_std_12
+299,TA_541_roll_std_12
 383,TA_368_roll_mean_24
+499,TA_541_roll_std_72
 769,RN_12H_541_lag_72steps

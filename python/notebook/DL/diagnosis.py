@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
+mode = "flow" # flow, toc, ss, tn, tp, ph, flux
+
 # 한글 폰트 설정
 plt.rcParams['font.family'] = 'Malgun Gothic'
 plt.rcParams['axes.unicode_minus'] = False
@@ -13,7 +15,7 @@ BASE_DIR = Path("C:/project_WWTP/python")
 RESULTS_DIR = BASE_DIR / "results" / "DL"
 
 # 예측 결과 로드
-df = pd.read_csv(RESULTS_DIR / "flow_predictions.csv")
+df = pd.read_csv(RESULTS_DIR / f"{mode}_predictions.csv")
 
 print("="*70)
 print("예측 성능 진단 보고서")
@@ -136,8 +138,8 @@ ax6.set_title('구간별 에러 분포', fontsize=14, fontweight='bold')
 plt.suptitle('')  # 기본 제목 제거
 
 plt.tight_layout()
-plt.savefig(RESULTS_DIR / 'flow_diagnosis.png', dpi=300, bbox_inches='tight')
-print(f"\n✓ 진단 플롯 저장: {RESULTS_DIR / 'flow_diagnosis.png'}")
+plt.savefig(RESULTS_DIR / f"{mode}_diagnosis.png", dpi=300, bbox_inches='tight')
+print(f"\n✓ 진단 플롯 저장: {RESULTS_DIR / f'{mode}_diagnosis.png'}")
 
 # 문제점 식별
 print("\n" + "="*70)

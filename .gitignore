@@ -1,0 +1,29 @@
+# Large binary / archive files
+*.zip
+*.tar.gz
+*.tar
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Environment
+.env
+*.env
+venv/
+.venv/
+
+# IDE
+.idea/
+.vscode/settings.json
+
+# Jupyter
+.jupyter/
+
+# Duplicate / misplaced model files (models should be in python/model/save/)
+python/model/*.pth
+python/model/*.pkl
+python/model/X_scaler_*.pkl
+python/model/y_scaler_*.pkl
