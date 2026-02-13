@@ -464,7 +464,7 @@ public class MemberController {
 	
 	boolean bSendEmail = true;
 	@Scheduled(cron = "${scheduler.report.cron}")
-	@GetMapping("/mailtest")
+	//@GetMapping("/mailtest")
 	public void makeReportMessage()
 	{
 		if(!enableReport) return;
