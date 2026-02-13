@@ -33,7 +33,7 @@ sudo systemctl restart nginx
 
 -파이썬 관련-
 conda activate projectwwtp 활성화 후
-pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" --name "FlowWater-Fastapi" --output "./FlowWater-Fastapi-out.log" --error "./FlowWater-Fastapi-error.log"
+pm2 start "uvicorn src.main:app --host 0.0.0.0 --port 8000" --name "FlowWater-Fastapi" --output "./FlowWater-Fastapi-out.log" --error "./FlowWater-Fastapi-error.log"
 
 -HTTPS 인증 관련-
 sudo certbot certonly -d *.projectwwtp.kro.kr --manual --preferred-challenges dns

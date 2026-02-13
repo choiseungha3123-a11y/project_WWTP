@@ -194,6 +194,7 @@ public class FlowController {
 		return ResponseEntity.ok().body(res);
 	}
 	
+	@GetMapping("/test")
 	@Scheduled(cron = "${scheduler.predict.cron}")
 	public void getFlowPredict() {
 		if(!enablePredict) return;

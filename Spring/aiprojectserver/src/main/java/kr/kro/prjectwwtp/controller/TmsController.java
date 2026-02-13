@@ -231,6 +231,7 @@ public class TmsController {
 		}
 	}
 	
+	@GetMapping("/test")
 	@Scheduled(cron = "${scheduler.predict.cron}")
 	public void getTmsPredict() {
 		if(!enablePredict) return;
