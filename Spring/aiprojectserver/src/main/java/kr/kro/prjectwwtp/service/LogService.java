@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import kr.kro.prjectwwtp.domain.AccessLog;
 import kr.kro.prjectwwtp.domain.FlowLog;
 import kr.kro.prjectwwtp.domain.LoginLog;
+import kr.kro.prjectwwtp.domain.MailLog;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.MemoLog;
 import kr.kro.prjectwwtp.domain.OutLierLog;
@@ -15,6 +16,7 @@ import kr.kro.prjectwwtp.domain.WeatherApiLog;
 import kr.kro.prjectwwtp.persistence.AccessLogRepository;
 import kr.kro.prjectwwtp.persistence.FlowLogRepository;
 import kr.kro.prjectwwtp.persistence.LoginLogRepository;
+import kr.kro.prjectwwtp.persistence.MailLogRepository;
 import kr.kro.prjectwwtp.persistence.MemberRepository;
 import kr.kro.prjectwwtp.persistence.MemoLogRepository;
 import kr.kro.prjectwwtp.persistence.OutLierLogRepository;
@@ -33,6 +35,7 @@ public class LogService {
 	private final MemoLogRepository memoRepo;
 	private final WeatherAPILogRepository weatherRepo;
 	private final OutLierLogRepository outLierRepo;
+	private final MailLogRepository mailRepo;
 	
 	public void addAccessLog(Member member, String userAgent, String remoteInfo, String method, String requestURI, String errorMsg) {
 		Member logMember = null;
@@ -114,6 +117,15 @@ public class LogService {
 		outLierRepo.save(OutLierLog.builder()
 						.type(type)
 						.predictString(prediectString)
+						.build());
+	}
+	
+	public void addMailLog(Member member, String type, String resultId, String errorMsg) {
+		mailRepo.save(MailLog.builder()
+						.member(member)
+						.type(type)
+						.resultId(resultId)
+						.errorMsg(errorMsg)
 						.build());
 	}
 }

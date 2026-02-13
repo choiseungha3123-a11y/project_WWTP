@@ -72,57 +72,57 @@ public class MailController {
 	}
 	
 	
-	@Getter
-	@Setter
-	@ToString
-	static public class sendToMailDTO {
-		@Schema(name = "mail", description = "보낼 메일 주소", example = "xxx@xxx.xxx")
-		private String mail;
-		@Schema(name = "subject", description = "보낼 메일 제목.", example = "경고!!")
-		private String subject;
-		@Schema(name = "body", description = "보낼 메일 내용.", example = "경고!! 3시간 내에 수위가 위험할수 있습니다.")
-		private String body;
-	}
-	
-	
-	@GetMapping("/sendTo")
-	@Operation(summary="메일 보내기", description = "경고 상황을 알려주는 메일을 보냅니다.")
-	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = sendToMailDTO.class))
-	@ApiResponse(description = "결과 설명", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
-	public ResponseEntity<Object> mailSend(
-			HttpServletRequest request,
-			@RequestBody sendToMailDTO req) {
-		responseDTO res = responseDTO.builder()
-				.success(true)
-				.errorMsg(null)
-				.build();
-		// 토큰 추출 및 검증
-		if(JWTUtil.isExpired(request))
-		{
-			res.setSuccess(false);
-			res.setErrorMsg("토큰이 만료되었습니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		Member member = JWTUtil.parseToken(request);
-		if(member == null){
-			res.setSuccess(false);
-			res.setErrorMsg("로그인이 필요합니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		if(member.getRole() == Role.ROLE_VIEWER) {
-			res.setSuccess(false);
-			res.setErrorMsg("권한이 올바르지 않습니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		try {
-			mailService.sendEmail(req.getMail(), req.getSubject(), req.getBody());
-		}
-		catch(Exception e) {
-			res.setSuccess(false);
-			res.setErrorMsg(e.getMessage());
-		}
-
-		return ResponseEntity.ok().body(res);
-	}
+//	@Getter
+//	@Setter
+//	@ToString
+//	static public class sendToMailDTO {
+//		@Schema(name = "mail", description = "보낼 메일 주소", example = "xxx@xxx.xxx")
+//		private String mail;
+//		@Schema(name = "subject", description = "보낼 메일 제목.", example = "경고!!")
+//		private String subject;
+//		@Schema(name = "body", description = "보낼 메일 내용.", example = "경고!! 3시간 내에 수위가 위험할수 있습니다.")
+//		private String body;
+//	}
+//	
+//	
+//	@GetMapping("/sendTo")
+//	@Operation(summary="메일 보내기", description = "경고 상황을 알려주는 메일을 보냅니다.")
+//	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = sendToMailDTO.class))
+//	@ApiResponse(description = "결과 설명", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
+//	public ResponseEntity<Object> mailSend(
+//			HttpServletRequest request,
+//			@RequestBody sendToMailDTO req) {
+//		responseDTO res = responseDTO.builder()
+//				.success(true)
+//				.errorMsg(null)
+//				.build();
+//		// 토큰 추출 및 검증
+//		if(JWTUtil.isExpired(request))
+//		{
+//			res.setSuccess(false);
+//			res.setErrorMsg("토큰이 만료되었습니다.");
+//			return ResponseEntity.ok().body(res);
+//		}
+//		Member member = JWTUtil.parseToken(request);
+//		if(member == null){
+//			res.setSuccess(false);
+//			res.setErrorMsg("로그인이 필요합니다.");
+//			return ResponseEntity.ok().body(res);
+//		}
+//		if(member.getRole() == Role.ROLE_VIEWER) {
+//			res.setSuccess(false);
+//			res.setErrorMsg("권한이 올바르지 않습니다.");
+//			return ResponseEntity.ok().body(res);
+//		}
+//		try {
+//			mailService.sendEmail(req.getMail(), req.getSubject(), req.getBody());
+//		}
+//		catch(Exception e) {
+//			res.setSuccess(false);
+//			res.setErrorMsg(e.getMessage());
+//		}
+//
+//		return ResponseEntity.ok().body(res);
+//	}
 
 }

@@ -8,19 +8,21 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 
+@Service
 @Converter
 public class CryptoStringConverter implements AttributeConverter<String, String> {
 	
 	@Value("${db.cryp.key}")
-	String crypKey;
+	private String crypKey;
 	@Value("${db.cryp.iv}")
-	String crypIv;
+	private String crypIv;
 	
-	String encode = "UTF-8";
+	private String encode = "UTF-8";
 
 	@Override
 	public String convertToDatabaseColumn(String attribute) {

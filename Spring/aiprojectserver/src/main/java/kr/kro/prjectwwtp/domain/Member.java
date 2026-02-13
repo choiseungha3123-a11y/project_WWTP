@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonProperty.Access;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -16,6 +17,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
+import kr.kro.prjectwwtp.config.CryptoStringConverter;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -35,10 +37,13 @@ public class Member {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Schema(description = "고유번호", example = "1~")
 	private long userNo;
+	@Convert(converter = CryptoStringConverter.class)
 	@Schema(description = "ID", example = "user123")
 	private String userId;
+	@Convert(converter = CryptoStringConverter.class)
 	@Schema(description = "회원이름", example = "회원이름")
 	private String userName;
+	@Convert(converter = CryptoStringConverter.class)
 	@Schema(description = "회원Email", example = "회원Email")
 	private String userEmail;
 	@JsonIgnore
@@ -60,7 +65,9 @@ public class Member {
 	private LocalDateTime createTime = LocalDateTime.now(); 
 	@Temporal(TemporalType.TIMESTAMP)
 	@Builder.Default
-	private LocalDateTime lastLoginTime = LocalDateTime.now();
 	@Schema(description = "마지막 로그인 시간", example = "2026-01-30T15:30:00")
+	private LocalDateTime lastLoginTime = LocalDateTime.now();
+	@Convert(converter = CryptoStringConverter.class)
+	@Schema(description = "소셜 로그인 정보", example = "")
 	private String socialAuth;
 }

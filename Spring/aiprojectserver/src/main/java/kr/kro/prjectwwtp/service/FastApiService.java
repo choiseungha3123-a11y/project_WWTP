@@ -29,10 +29,10 @@ public class FastApiService {
 	@PostConstruct
 	void initWebClient() {
 		HttpClient httpClient = HttpClient.create()
-				.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
-				.responseTimeout(Duration.ofSeconds(10))
-				.doOnConnected(conn -> conn.addHandlerLast(new ReadTimeoutHandler(10, TimeUnit.SECONDS))
-											.addHandlerLast(new WriteTimeoutHandler(10, TimeUnit.SECONDS)));
+				.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
+				.responseTimeout(Duration.ofSeconds(20))
+				.doOnConnected(conn -> conn.addHandlerLast(new ReadTimeoutHandler(20, TimeUnit.SECONDS))
+											.addHandlerLast(new WriteTimeoutHandler(20, TimeUnit.SECONDS)));
 		webClient = WebClient.builder()
 				.baseUrl(fastAPIURI)
 				.clientConnector(new ReactorClientHttpConnector(httpClient))

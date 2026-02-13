@@ -19,6 +19,7 @@ import com.amazonaws.services.simpleemail.model.RawMessage;
 import com.amazonaws.services.simpleemail.model.SendEmailRequest;
 import com.amazonaws.services.simpleemail.model.SendEmailResult;
 import com.amazonaws.services.simpleemail.model.SendRawEmailRequest;
+import com.amazonaws.services.simpleemail.model.SendRawEmailResult;
 
 import jakarta.activation.DataHandler;
 import jakarta.mail.Session;
@@ -27,29 +28,53 @@ import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
 import jakarta.mail.util.ByteArrayDataSource;
+import kr.kro.prjectwwtp.domain.Member;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class MailService {
 	private final AmazonSimpleEmailService amazonSimpleEmailService;
+	private final LogService logService;
 	
 	@Value("${aws.region}")
 	private String region;
 	@Value("${aws.ses.send-mail-from}")
 	private String sendMailFrom;
 
-	public void sendEmail(String toAddress, String subjectText, String bodyText) {
-		Destination destination = new Destination().withToAddresses(toAddress);
-		sendEmail(destination, subjectText, bodyText);
+	public void sendEmail(Member member, String subjectText, String bodyText) {
+        String type = "send One";
+		String messageId = null;
+		String errorMsg = null;
+		try {
+			Destination destination = new Destination().withToAddresses(member.getUserEmail());
+			SendEmailResult result = sendEmail(destination, subjectText, bodyText);
+	        messageId = result.getMessageId();
+			System.out.println("Email send response: " + result);
+		} catch(Exception e) {
+			errorMsg = e.getMessage();
+		} finally {
+			logService.addMailLog(member, type, messageId, errorMsg);	
+		}
 	}
 	
 	public void sendEmail(List<String> addressList, String subjectText, String bodyText) {
-		Destination destination = new Destination().withToAddresses(addressList);
-		sendEmail(destination, subjectText, bodyText);
+        String type = "send All";
+        String messageId = null;
+		String errorMsg = null;
+        try {
+			Destination destination = new Destination().withToAddresses(addressList);
+			SendEmailResult result = sendEmail(destination, subjectText, bodyText);
+			messageId = result.getMessageId();
+			System.out.println("Email send response: " + result);
+        } catch (Exception e) {
+			errorMsg = e.getMessage();
+		} finally {
+			logService.addMailLog(null, type, messageId, errorMsg);	
+		}
 	}
 	
-	private void sendEmail(Destination destination, String subjectText, String bodyText) {
+	private SendEmailResult sendEmail(Destination destination, String subjectText, String bodyText) {
 		Content subject = new Content().withCharset("UTF-8").withData(subjectText);
 		Content body = new Content().withCharset("UTF-8").withData(bodyText);
 		
@@ -61,21 +86,22 @@ public class MailService {
 			.withDestination(destination)
 			.withMessage(message);
 		
-		SendEmailResult result = amazonSimpleEmailService.sendEmail(request);
-		System.out.println("Email send response: " + result);
+		return amazonSimpleEmailService.sendEmail(request);
 	}
 	
-	public void sendEmailWithAttachment(List<String> addressList, String subject, String bodyHtml, String fileContent, String fileName) {
+	public void sendEmailWithAttachment(Member member, String subject, String bodyHtml, String fileContent, String fileName) {
 	    // 1. 메일 세션 설정
 		Session session = Session.getDefaultInstance(new Properties());
+		String type = "sendReport";
+		String messageId = null;
+		String errorMsg = null;
 
 	    try {
 	        // 2. MIME 메시지 생성
 	    	MimeMessage message = new MimeMessage(session);
 	    	message.setSubject(subject, "UTF-8");
 	        message.setFrom(new InternetAddress("kyuhuhu.sujidaddy@gmail.com"));
-	        String to = String.join(", ", addressList);
-	        message.setRecipients(MimeMessage.RecipientType.TO, InternetAddress.parse(to));
+	        message.setRecipients(MimeMessage.RecipientType.TO, InternetAddress.parse(member.getUserEmail()));
 
 	        // 3. 메일의 여러 부분을 담을 Multipart 생성 (mixed: 본문 + 첨부파일)
 	        MimeMultipart multipart = new MimeMultipart("mixed");
@@ -105,13 +131,15 @@ public class MailService {
 
 	        // 6. SES 클라이언트를 통한 전송
 	        SendRawEmailRequest rawEmailRequest = new SendRawEmailRequest(rawMessage);
-	        amazonSimpleEmailService.sendRawEmail(rawEmailRequest);
-
-	        System.out.println("첨부파일이 포함된 이메일이 성공적으로 전송되었습니다.");
+	        SendRawEmailResult result = amazonSimpleEmailService.sendRawEmail(rawEmailRequest);
+	        // 추적을 위한 ID, 로그 기록에 추가해야할듯
+	        messageId = result.getMessageId();
+	        System.out.println("Email send response: " + result);
 
 	    } catch (Exception e) {
-	        System.err.println("이메일 전송 중 오류 발생: " + e.getMessage());
-	        e.printStackTrace();
-	    }
+	        errorMsg = e.getMessage();
+	    } finally {
+			logService.addMailLog(member, type, messageId, errorMsg);	
+		}
 	}
 }

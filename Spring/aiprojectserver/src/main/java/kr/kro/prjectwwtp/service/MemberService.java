@@ -1,6 +1,5 @@
 package kr.kro.prjectwwtp.service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -56,6 +55,10 @@ public class MemberService {
 	
 	public List<Member> getMemberList() {
 		return memberRepo.findAll();
+	}
+	
+	public void saveAll(List<Member> list) {
+		memberRepo.saveAll(list);
 	}
 	
 	public void addMember(String userId, String password, String userName, String userEmail) {
@@ -129,13 +132,9 @@ public class MemberService {
 		memberRepo.save(member);
 	}
 	
-	public List<String> getValidateEmail() {
+	public List<Member> getValidateEmailMember() {
 		List<Member> list =  memberRepo.findByUserEmailIsNotNullAndValidateKeyIsNullAndValidateEmailTrue();
-		List<String> ret = new ArrayList<>();
-		for(Member m : list)
-			ret.add(m.getUserEmail());
-		
-		return ret;
+		return list;
 	}
 
 }
