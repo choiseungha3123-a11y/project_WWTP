@@ -154,14 +154,13 @@ export default function DashboardPage() {
       {/* --- 대시보드 메인 콘텐츠 --- */}
       <main className="flex-1 grid grid-cols-10 gap-6 lg:overflow-hidden min-h-0">
         
-        {/* [왼쪽 섹션] 가로 6/10 (3/5) */}
         <section className="col-span-12 lg:col-span-6 flex flex-col gap-6 min-h-0">
           {/* Row 1: 시스템 체크 및 지표 카드 */}
           <div id="row1-container" className="flex-none drop-shadow-sm">
             <Row1Status />
           </div>
           
-          {/* Row 2: 차트 (나머지 공간 전체 활용) */}
+          {/* Row 2: 차트 */}
           <div className="flex-1 lg:min-h-0 bg-white/2 border border-white/5 rounded-4xl overflow-hidden shadow-inner">
             <Row3Charts />
           </div>
@@ -169,20 +168,17 @@ export default function DashboardPage() {
 
         {/* [오른쪽 섹션] 가로 4/10 (2/5) */}
         <section className="col-span-12 lg:col-span-4 flex flex-col gap-6 min-h-0">
-          {/* Row 3: Event Detection (왼쪽 Row1과 동일한 높이를 가지도록 h-fit 또는 Row1의 높이만큼 설정) */}
-          {/* h-[400px]와 같은 고정값 대신 flex-none을 쓰되, Row1과 정렬되도록 구성 */}
+          {/* Row 3: Event Detection */}
           <div className="flex-none bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
             <Row2Alerts />
           </div>
           
-          {/* Row 4: 운영 리스크 점수 (확장형) */}
-          {/* flex-none으로 설정하여 자신의 콘텐츠 크기만큼 차지 */}
+          {/* Row 4: 운영 리스크 점수 */}
           <div className="flex-none bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
             <Row4RiskDetail />
           </div>
           
-          {/* Row 5: 운영 조치 패널 (나머지 하단 공간 모두 차지) */}
-          {/* 위 Row4가 늘어나면 flex-1에 의해 자동으로 영역이 축소됨 */}
+          {/* Row 5: 운영 조치 패널 */}
           <div className="flex-1 lg:min-h-0 bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
             <Row5ActionPanel />
           </div>

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from 'react'; 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion'; 
+import { motion, AnimatePresence } from 'framer-motion';
 import { jwtDecode } from 'jwt-decode';
 
 export default function LandingPage() {
@@ -17,7 +17,7 @@ export default function LandingPage() {
     e.preventDefault();
 
     interface CustomJwtPayload {
-      Userno: string;  
+      Userno: string;
       Role?: string;
       Userid?: string;
       Username?: string;
@@ -58,15 +58,15 @@ export default function LandingPage() {
           const userNo = decodedToken.Userno || "";
           const userId = decodedToken.Userid || "";
           const role = decodedToken.Role || ""; 
-          const name = decodedToken.Username || "사용자"; 
+          const name = decodedToken.Username || "사용자";
 
           localStorage.setItem('accessToken', jwtToken);
           localStorage.setItem('userNo', String(userNo));
           localStorage.setItem('userId', userId);
-          localStorage.setItem('userRole', role); 
+          localStorage.setItem('userRole', role);
           localStorage.setItem('userName', name);
 
-          console.log('최종 저장 데이터:', { userNo, role, name }); 
+          console.log('최종 저장 데이터:', { userNo, role, name });
           router.push('/dashboard');
         }
       } else {
@@ -93,7 +93,7 @@ export default function LandingPage() {
       {/* 메인 히어로 섹션 */}
       <section className="relative z-10 h-screen flex items-center justify-center">
         <div className="text-center">
-          <button 
+          <button
             onClick={() => setIsLoginOpen(true)}
             className="px-12 py-4 bg-white/20 hover:bg-white/40 text-white border border-white/50 backdrop-blur-md rounded-full text-xl font-light tracking-widest transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
           >
@@ -125,7 +125,7 @@ export default function LandingPage() {
             <h3 className="text-2xl mb-6 font-semibold text-center">Sewage Treatment Process Flow</h3>
             <div className="relative w-full overflow-hidden rounded-lg">
               <Image
-                src="/img/하수처리장.jpg" 
+                src="/img/하수처리장.jpg"
                 alt="하수처리 공정 흐름도" 
                 width={1000}
                 height={600}
@@ -137,7 +137,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="h-50" /> 
+          <div className="h-50" />
         </div>
       </section>
 
@@ -152,7 +152,7 @@ export default function LandingPage() {
               <li>데이터 분석 도구: 유입 패턴 및 트렌드 분석 지원</li>
               <li>사용자 친화적 인터페이스: 직관적인 대시보드 제공</li>
             </ul>
-            <div className="h-125" /> 
+            <div className="h-125" />
           </div>
         </div>
       </section>
@@ -161,22 +161,22 @@ export default function LandingPage() {
       <AnimatePresence>
         {isLoginOpen && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsLoginOpen(false)} 
+              onClick={() => setIsLoginOpen(false)}
               className="fixed inset-0 bg-black/40 backdrop-blur-sm z-100"
             />
 
-            <motion.div 
-              initial={{ x: "100%" }} 
-              animate={{ x: 0 }}      
-              exit={{ x: "100%" }}    
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="fixed top-0 right-0 h-full w-full md:w-112.5 bg-black/80 backdrop-blur-2xl z-101 p-12 flex flex-col justify-center border-l border-white/10 shadow-2xl"
             >
-              <button 
+              <button
                 onClick={() => setIsLoginOpen(false)}
                 className="absolute top-10 right-10 text-white/50 hover:text-white"
               >
@@ -190,22 +190,22 @@ export default function LandingPage() {
                 <div>
                   <label className="block text-sm text-white/60 mb-2">ID</label>
                   <input 
-                    type="text" 
-                    value={username} 
-                    onChange={(e) => setUsername(e.target.value)} 
-                    className="w-full p-4 bg-white/5 border border-white/20 rounded-xl text-white outline-none focus:border-blue-500 font-sans" 
-                    placeholder="아이디 입력" 
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full p-4 bg-white/5 border border-white/20 rounded-xl text-white outline-none focus:border-blue-500 font-sans"
+                    placeholder="아이디 입력"
                     required
                   />
                 </div>
                 <div>
                   <label className="block text-sm text-white/60 mb-2">Password</label>
-                  <input 
-                    type="password" 
-                    value={password} 
-                    onChange={(e) => setPassword(e.target.value)} 
-                    className="w-full p-4 bg-white/5 border border-white/20 rounded-xl text-white outline-none focus:border-blue-500 font-sans" 
-                    placeholder="비밀번호 입력" 
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full p-4 bg-white/5 border border-white/20 rounded-xl text-white outline-none focus:border-blue-500 font-sans"
+                    placeholder="비밀번호 입력"
                     required
                   />
                 </div>

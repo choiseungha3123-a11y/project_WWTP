@@ -135,7 +135,7 @@ export default function Row1Status() {
         />
         <StatusCard 
           label="pH | FLUX"
-          value={tmsData ? `${roundVal(tmsData.PH_VU)} | ${formatNumberWithComma(tmsData.FLUX_VU)}` : (tmsError ? "Error" : "Loading...")}
+          value={tmsData ? `pH ${roundVal(tmsData.PH_VU)} | ${formatNumberWithComma(tmsData.FLUX_VU)}` : (tmsError ? "Error" : "Loading...")}
           status={(tmsData && (tmsData.PH_VU > 8 || tmsData.PH_VU < 6)) ? "warning" : (tmsError ? "danger" : "normal")}
           time={tmsData?.SYS_TIME}
           isError={!!tmsError}

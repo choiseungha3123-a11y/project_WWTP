@@ -41,7 +41,7 @@ export default function Row4RiskDetail() {
           initial={{ width: 0 }}
           animate={{ width: `${riskScore}%` }}
           transition={{ duration: 1 }}
-          className="h-full bg-gradient-to-r from-orange-600 to-red-600"
+          className="h-full bg-linear-to-r from-orange-600 to-red-600"
         />
       </div>
 
