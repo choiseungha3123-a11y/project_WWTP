@@ -2,178 +2,185 @@
 
 import { useMemo, useState, useEffect } from "react";
 import useSWR from "swr";
-import { 
-  ResponsiveContainer, 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  CartesianGrid, 
-  ReferenceLine,
-  Legend
-} from "recharts";
-import { format, parse, parseISO } from "date-fns";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 
-// --- 1. 타입 정의 (JSON 구조에 맞게 보정) ---
-interface BoardRecord {
-  // 공통 및 실측 키
+// ----------------------------------------------------------------------
+// 1. 인터페이스 및 타입 정의
+// ----------------------------------------------------------------------
+
+interface TmsRecord {
+  SYS_TIME: string;
+  TOC_VU: number;
+  PH_VU: number;
+  SS_VU: number;
+  FLUX_VU: number;
+  TN_VU: number;
+  TP_VU: number;
+}
+
+interface FlowRecord {
   SYS_TIME?: string;
-  TOC_VU?: number;
-  TN_VU?: number;
-  TP_VU?: number;
-  Q_in?: number;
-  // 유입유량 예측 전용 키
   flowTime?: string;
+  Q_in?: number;
   flowValue?: number;
 }
 
-interface ChartPoint {
-  timestamp: number;
-  displayTime: string;
-  value: number; // 유량용
-  TOC_VU: number;
-  TN_VU: number;
-  TP_VU: number;
-  isPredicted: boolean;
-}
+// dataList 내부의 각 배열 요소가 가질 수 있는 타입을 정의합니다.
+type BoardRecord = TmsRecord | FlowRecord;
 
 interface BoardViewResponse {
   success: boolean;
   dataList: BoardRecord[][];
 }
 
-// --- 2. 시간 파싱 유틸리티 ---
-const parseTime = (timeStr: string | undefined): Date | null => {
-  if (!timeStr) return null;
-  if (timeStr.includes("-") || timeStr.includes("T")) return parseISO(timeStr);
-  if (timeStr.length === 14) return parse(timeStr, "yyyyMMddHHmmss", new Date());
-  return null;
-};
+// ----------------------------------------------------------------------
+// 2. Fetcher 함수
+// ----------------------------------------------------------------------
 
 const fetcher = async (url: string) => {
-  const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : "";
-  const res = await fetch(url, { headers: { "Authorization": `Bearer ${token || ""}` } });
+  const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+  const res = await fetch(url, {
+    headers: {
+      "Authorization": token ? `Bearer ${token}` : "",
+      "Content-Type": "application/json",
+    },
+  });
+  if (!res.ok) throw new Error("차트 데이터 로드 실패");
   return res.json();
 };
 
-export default function Row3Charts() {
-  const [isClient, setIsClient] = useState(false);
-  useEffect(() => setIsClient(true), []);
+// ----------------------------------------------------------------------
+// 3. 메인 컴포넌트
+// ----------------------------------------------------------------------
 
-  const { data: rawData, isLoading } = useSWR<BoardViewResponse>(
-    isClient ? `${process.env.NEXT_PUBLIC_API_URL}/api/board/boardView` : null,
-    fetcher
+export default function Row3Charts() {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const { data: rawData, error, isLoading } = useSWR<BoardViewResponse>(
+    isClient ? `${API_BASE_URL}/api/board/boardView` : null,
+    fetcher,
+    {
+      refreshInterval: 30 * 60 * 1000,
+      revalidateOnFocus: true,
+    }
   );
 
-  // --- 3. 핵심 가공 로직 ---
-  const processedData = useMemo(() => {
-    if (!rawData?.success || !rawData.dataList) return { flowData: [], waterData: [], flowRef: null, waterRef: null };
+  // --- 데이터 분류 로직 (Type Guards 적용) ---
 
-    // A. 유입유량 가공 (실측: Q_in / 예측: flowValue)
-    const rawFlowList = rawData.dataList.find(l => l.length > 0 && ('Q_in' in l[0] || 'flowValue' in l[0])) || [];
-    const flowPoints: ChartPoint[] = rawFlowList.map(item => {
-      const isPred = 'flowValue' in item; // flowValue 키가 있으면 예측
-      const tStr = isPred ? item.flowTime : item.SYS_TIME;
-      const d = parseTime(tStr) || new Date();
-      return {
-        timestamp: d.getTime(),
-        displayTime: format(d, "MM-dd HH:mm"),
-        value: (isPred ? item.flowValue : item.Q_in) ?? 0,
-        TOC_VU: 0, TN_VU: 0, TP_VU: 0, // 유량차트엔 필요없음
-        isPredicted: isPred
-      };
-    }).sort((a, b) => a.timestamp - b.timestamp);
-
-    // B. 수질 가공 (실측: 14자리 SYS_TIME / 예측: ISO SYS_TIME)
-    const rawWaterList = rawData.dataList.find(l => l.length > 0 && 'TOC_VU' in l[0]) || [];
-    const waterPoints: ChartPoint[] = rawWaterList.map(item => {
-      const tStr = item.SYS_TIME || "";
-      const isPred = tStr.includes("-"); // ISO 포맷이면 예측
-      const d = parseTime(tStr) || new Date();
-      return {
-        timestamp: d.getTime(),
-        displayTime: format(d, "MM-dd HH:mm"),
-        value: 0,
-        TOC_VU: item.TOC_VU ?? 0,
-        TN_VU: item.TN_VU ?? 0,
-        TP_VU: item.TP_VU ?? 0,
-        isPredicted: isPred
-      };
-    }).sort((a, b) => a.timestamp - b.timestamp);
-
-    // 구분선(ReferenceLine) 위치 찾기
-    const fRef = flowPoints.find(p => p.isPredicted)?.timestamp || null;
-    const wRef = waterPoints.find(p => p.isPredicted)?.timestamp || null;
-
-    return { flowData: flowPoints, waterData: waterPoints, flowRef: fRef, waterRef: wRef };
+  // 1. 수질 데이터 추출 (TOC_VU 키를 포함하는 배열 탐색)
+  const tmsItems = useMemo<TmsRecord[]>(() => {
+    if (!rawData?.success || !rawData.dataList) return [];
+    const found = rawData.dataList.find((list): list is TmsRecord[] => 
+      list.length > 0 && 'TOC_VU' in list[0]
+    );
+    return found || [];
   }, [rawData]);
 
-  if (isLoading) return <div className="h-full flex items-center justify-center text-slate-400">데이터 수신 중...</div>;
+  // 2. 유입유량 데이터 추출 (Q_in 또는 flowValue 키를 포함하는 배열 탐색)
+  const flowItems = useMemo<FlowRecord[]>(() => {
+    if (!rawData?.success || !rawData.dataList) return [];
+    const found = rawData.dataList.find((list): list is FlowRecord[] => 
+      list.length > 0 && ('Q_in' in list[0] || 'flowValue' in list[0])
+    );
+    return found || [];
+  }, [rawData]);
+
+  // --- 차트 데이터 가공 ---
+
+  // 유입유량 차트용 (Q_in / flowValue 통합 처리)
+  const inflowChartData = useMemo(() => {
+    return flowItems.map((d) => {
+      const time = d.SYS_TIME || d.flowTime || "";
+      // 시간 포맷팅: HH:mm 추출
+      const displayTime = time.includes("T") 
+        ? time.split("T")[1].substring(0, 5) 
+        : time.substring(8, 12).replace(/(\d{2})(\d{2})/, "$1:$2");
+      
+      return {
+        displayTime,
+        value: d.Q_in ?? d.flowValue ?? 0,
+      };
+    });
+  }, [flowItems]);
+
+  // 수질 차트용
+  const waterChartData = useMemo(() => {
+    return tmsItems.map((d) => {
+      const displayTime = d.SYS_TIME.includes("T") 
+        ? d.SYS_TIME.split("T")[1].substring(0, 5) 
+        : d.SYS_TIME.substring(8, 12).replace(/(\d{2})(\d{2})/, "$1:$2");
+        
+      return {
+        ...d,
+        displayTime,
+      };
+    });
+  }, [tmsItems]);
+
+  // 차트 상단 날짜 표시용
+  const dataDate = useMemo(() => {
+    const firstTime = tmsItems[0]?.SYS_TIME || flowItems[0]?.SYS_TIME || flowItems[0]?.flowTime || "";
+    if (firstTime.includes("T")) return firstTime.split("T")[0];
+    if (firstTime.length >= 8) return `${firstTime.substring(0, 4)}-${firstTime.substring(4, 6)}-${firstTime.substring(6, 8)}`;
+    return "";
+  }, [tmsItems, flowItems]);
+
+  if (isLoading) return <div className="h-full flex items-center justify-center text-slate-500 animate-pulse">차트 데이터 동기화 중...</div>;
+  if (error) return <div className="h-full flex items-center justify-center text-red-400 text-xs">차트 데이터를 불러올 수 없습니다.</div>;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full h-full min-h-0 p-2">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full h-full min-h-0">
       
-      {/* 유입유량 차트 */}
-      <div className="bg-slate-900/50 p-4 rounded-xl border border-white/5 flex flex-col">
-        <h3 className="text-sm font-bold text-blue-400 mb-4">유입유량 실측 + 예측</h3>
-        <div className="flex-1 min-h-0">
+      {/* 1. 유입유량(Inflow) 차트 */}
+      <div className="bg-slate-800/40 p-4 rounded-2xl border border-white/5 flex flex-col min-h-0 flex-1">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="text-[13px] font-bold text-blue-400">
+            유입유량 변화
+            <span className="ml-2 text-[10px] text-slate-500 font-normal">{dataDate}</span>
+          </h3>
+        </div>
+        <div className="flex-1 w-full min-h-0"> 
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={processedData.flowData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-              <XAxis 
-                dataKey="timestamp" 
-                type="number" 
-                domain={['dataMin', 'dataMax']} 
-                scale="time"
-                tickFormatter={(t) => format(t, "HH:mm")}
-                stroke="#64748b" fontSize={10}
+            <LineChart data={inflowChartData} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+              <XAxis dataKey="displayTime" tick={{fontSize: 9}} stroke="#475569" />
+              <YAxis tick={{fontSize: 9}} stroke="#475569" />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', fontSize: '11px' }}
+                itemStyle={{ color: '#fff', padding: '2px 0' }}
               />
-              <YAxis stroke="#64748b" fontSize={10} />
-              <Tooltip labelFormatter={(t) => format(t, "MM-dd HH:mm")} />
-              <Legend verticalAlign="top" align="right" iconType="circle" />
-              {processedData.flowRef && (
-                <ReferenceLine x={processedData.flowRef} stroke="#ef4444" strokeDasharray="5 5" label={{ value: 'NOW', fill: '#ef4444', fontSize: 12 }} />
-              )}
-              <Line 
-                type="monotone" 
-                dataKey="value" 
-                name="유량" 
-                stroke="#3b82f6" 
-                strokeWidth={2} 
-                dot={false}
-                // 예측 구간(30분 단위)은 점을 찍어 구분
-                activeDot={{ r: 4 }}
-              />
+              <Legend verticalAlign="top" align="right" wrapperStyle={{ fontSize: '9px', top: -10 }} />
+              <Line type="monotone" dataKey="value" name="유입유량" stroke="#3b82f6" strokeWidth={2} dot={false} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* 수질 차트 */}
-      <div className="bg-slate-900/50 p-4 rounded-xl border border-white/5 flex flex-col">
-        <h3 className="text-sm font-bold text-emerald-400 mb-4">수질 통합 예측</h3>
-        <div className="flex-1 min-h-0">
+      {/* 2. 수질 통합 분석 차트 */}
+      <div className="bg-slate-800/40 p-4 rounded-2xl border border-white/5 flex flex-col min-h-0 flex-1">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="text-[13px] font-bold text-emerald-400">
+            수질 통합 분석
+            <span className="ml-2 text-[10px] text-slate-500 font-normal">{dataDate}</span>
+          </h3>
+        </div>
+        <div className="flex-1 w-full min-h-0">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={processedData.waterData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-              <XAxis 
-                dataKey="timestamp" 
-                type="number" 
-                domain={['dataMin', 'dataMax']} 
-                scale="time"
-                tickFormatter={(t) => format(t, "HH:mm")}
-                stroke="#64748b" fontSize={10}
-              />
-              <YAxis stroke="#64748b" fontSize={10} />
-              <Tooltip labelFormatter={(t) => format(t, "MM-dd HH:mm")} />
-              <Legend verticalAlign="top" align="right" />
-              {processedData.waterRef && (
-                <ReferenceLine x={processedData.waterRef} stroke="#ef4444" strokeDasharray="5 5" label={{ value: 'NOW', fill: '#ef4444', fontSize: 12 }} />
-              )}
-              <Line type="monotone" dataKey="TOC_VU" name="TOC" stroke="#10b981" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="TN_VU" name="T-N" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="TP_VU" name="T-P" stroke="#f59e0b" strokeWidth={2} dot={false} />
+            <LineChart data={waterChartData} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+              <XAxis dataKey="displayTime" tick={{fontSize: 9}} stroke="#475569" />
+              <YAxis tick={{fontSize: 9}} stroke="#475569" />
+              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', fontSize: '11px' }} />
+              <Legend verticalAlign="top" align="right" wrapperStyle={{ fontSize: '9px', top: -10 }} />
+              <Line type="monotone" dataKey="TOC_VU" name="TOC" stroke="#10b981" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+              <Line type="monotone" dataKey="TN_VU" name="T-N" stroke="#8b5cf6" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+              <Line type="monotone" dataKey="TP_VU" name="T-P" stroke="#f59e0b" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+              <Line type="monotone" dataKey="SS_VU" name="SS" stroke="#94a3b8" strokeWidth={1.5} dot={false} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
