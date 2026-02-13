@@ -22,8 +22,9 @@ venv/
 # Jupyter
 .jupyter/
 
-# Duplicate / misplaced model files (models should be in python/model/save/)
+# Model files (large binaries, not tracked in git)
+python/model/save/*.pth
+python/model/save/*.pkl
+
 python/model/*.pth
 python/model/*.pkl
-python/model/X_scaler_*.pkl
-python/model/y_scaler_*.pkl

@@ -4,6 +4,95 @@
 
 ---
 
+## 📅 2026년 2월 13일
+
+### 📂 작업 파일
+```
+notebook/DL/LSTM_TMS.ipynb
+notebook/DL/LSTM_FLOW.ipynb
+notebook/DL/LSTM_TMS_dropna.ipynb
+notebook/DL/LSTM_FLOW_dropna.ipynb
+src/main.py
+```
+
+### fc layer 추가 후 성능 확인
+
+- FLUX의 경우 fc layer를 추가함으로써 성능 향상됨
+
+-> 다른 지표에 대해서도 fc layer를 추가하면 성능 향상되는가?
+
+**결과**:
+- FLOW: 0.8166
+- TOC: 0.4587
+- SS: 0.6712
+- FLUX: 0.6296
+
+-> TN, TP, PH의 경우 복잡한 모델일 때 성능 저하됨
+
+### 작은 모델의 성능 확인
+
+- 김태연 교수님께서 특성 TMS 지표는 작은 모델에 더 적합할 수 있다고 조언
+
+  - TOC: 512 -> 256, 4 -> 2, 2e-4 -> 1e-3
+
+**결과**:
+- TOC: 0.4731(실험 중단 다음주에 계속하기)
+
+### main.py 현재 최고 모델의 구조로 마이그레이션
+
+- LSTMRegressor 클래스 통합
+  - head_hidden_size 파라미터 제거
+  - deep_head: bool 파라미터 추가
+  - Head 구조를 노트북과 동일하게 3단계로 분기:
+    - hidden >= 256 & deep_head = True -> 4-layer(flow, toc, ss)
+    - hidden >= 256 & deep_head = False -> 3-layer(tn, tp, flux, ph)
+    - hidden < 256 -> 2-layer
+
+- FlowLSTMRegressor 클래스 제거
+
+- TMS_TARGETS 설정 업데이트
+
+  |타겟|hidden|layers|attn|deep_head|
+  |:---:|:---:|:---:|:---:|:---:|
+  |toc|256 (←128)|2 (←3)|False|True|
+  |ss|512 (←64)|4 (←2)|False (←True)|True|
+  |tn|512 (←64)|4 (←2)|False|False|
+  |tp|512 (←64)|4 (←2)|False (←True)|False|
+  |flux|512 (←128)|4 (←3)|True|False|
+  |ph|512 (←64)|4 (←2)|False|False|
+
+- FLOW_CONFIG 업데이트
+  - hidden=256 (←128), layers=3, dropout=0.2 (←0.3), deep_head=True
+  - num_heads 제거 (노트북에서 4로 고정)
+
+- 구조 개선
+  - 기능에 따라 config.py / models.py / schemas.py / loader.py / preprocess.py / predict.py로 분리
+  - main.py에서 import하여 사용
+
+### 기존 LSTM 모델 이외의 SOTA 모델 찾아보기
+
+- DA-LSTM
+- TCN-LSTM
+- 확률적 seq2seq
+- iTransformer
+- PatchTST
+- TFT(temporal fusion transformer)
+
+### LSTM 02/13 최고 성능
+- FLOW: 0.8166
+- TOC: 0.4731
+- SS: 0.6712
+- TN: 0.9011
+- TP: 0.6252
+- FLUX: 0.6296
+- PH: 0.8432
+
+### ✅ 다음 할 일 (2026/02/19)
+
+- [] 작은 모델의 성능 확인
+
+---
+
 ## 📅 2026년 2월 12일
 
 ### 📂 작업 파일
@@ -91,7 +180,7 @@ notebook/DL/LSTM_TMS.ipynb
 
 ### ✅ 다음 할 일 (2026/02/12)
 - [] 결측치나 이상치에 대한 drop만 사용 시 LSTM 성능 확인
-- [] fc layer를 추가하고 성능 확인
+- [X] fc layer를 추가하고 성능 확인
 
 ---
 

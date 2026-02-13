@@ -170,7 +170,7 @@ def add_rain_features(df):
                 win = h * steps_per_hour
                 ar = s.rolling(win, min_periods=1).sum()
                 new_cols[f"AR_{h}h_{sid}"] = ar
-                new_cols[f"log1p_AR_{h}h_{sid}"] = np.log1p(ar)
+                new_cols[f"log1p_AR_{h}h_{sid}"] = np.log1p(ar.clip(lower=0))
 
     # ====== 6. Wet/Dry 상태 ======
     for sid in station_ids:
@@ -311,7 +311,7 @@ def add_process_features(df):
     if TN is not None and TP is not None:
         new_cols["TN_x_TP"] = TN * TP
         new_cols["TN_div_TP"] = TN / (TP + eps)
-        new_cols["log1p_TN_TP"] = np.log1p(TN + TP)
+        new_cols["log1p_TN_TP"] = np.log1p((TN + TP).clip(lower=0))
 
     if TOC is not None and TN is not None:
         new_cols["TOC_div_TN"] = TOC / (TN + eps)

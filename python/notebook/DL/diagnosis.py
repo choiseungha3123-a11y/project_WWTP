@@ -12,7 +12,7 @@ plt.rcParams['axes.unicode_minus'] = False
 
 # 경로 설정
 BASE_DIR = Path("C:/project_WWTP/python")
-RESULTS_DIR = BASE_DIR / "results" / "DL"
+RESULTS_DIR = BASE_DIR / "data" / "output" / "save"
 
 # 예측 결과 로드
 df = pd.read_csv(RESULTS_DIR / f"{mode}_predictions.csv")

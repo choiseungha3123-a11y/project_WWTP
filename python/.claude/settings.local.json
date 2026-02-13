@@ -1,7 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls:*)"
+      "Bash(jupyter nbconvert:*)",
+      "Bash(python:*)",
+      "Bash(ls:*)",
+      "Bash(del c:project_WWTPbuild_notebook.py)",
+      "Bash(findstr:*)",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(python3:*)",
+      "Bash(cat:*)",
+      "Bash(/c/Users/user/AppData/Local/Microsoft/WindowsApps/python3:*)",
+      "Bash(git lfs:*)",
+      "Bash(git rm:*)"
     ]
   }
 }

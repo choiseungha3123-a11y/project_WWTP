@@ -308,15 +308,6 @@ Response (200 OK):
 ├── src/
 │   └── main.py                      # FastAPI 백엔드 (예측 API 서버)
 ├── archive/                         # 구버전 코드 및 데이터
-│   ├── old_src/                     # 구버전 ML/DL 소스 모듈
-│   ├── old_notebooks/               # 구버전 노트북
-│   ├── old_ML_versions/             # ML 실험 히스토리 (v1, v2, linear)
-│   ├── old_DL_versions/             # DL 구버전 (flow_lstm_model.py)
-│   ├── old_data/                    # 구버전 전처리 데이터 및 출력
-│   ├── old_model/                   # 구버전 모델 체크포인트
-│   ├── old_results/                 # 구버전 실험 결과
-│   ├── QUICK_START.md
-│   └── QUICK_START_DL.md
 ├── improved_preprocessing_strategy.md
 ├── requirements.txt
 ├── NOTE.md                          # 개발 일지
