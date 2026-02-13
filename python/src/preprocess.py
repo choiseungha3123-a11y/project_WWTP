@@ -83,14 +83,17 @@ def merge_input_data(data_list, aws368, aws541, aws569) -> pd.DataFrame:
     aws541 = aws541.set_index("SYS_TIME").sort_index()
     aws569 = aws569.set_index("SYS_TIME").sort_index()
 
-    # AWS 데이터 병합
+    # AWS 데이터 병합 (outer + ffill: 타임스탬프 불일치 허용)
     aws = aws368.add_suffix("_368").join(
-        aws541.add_suffix("_541"), how="inner"
+        aws541.add_suffix("_541"), how="outer"
     ).join(
-        aws569.add_suffix("_569"), how="inner"
-    )
+        aws569.add_suffix("_569"), how="outer"
+    ).ffill()
 
-    df = df.join(aws, how="inner")
+    df = df.join(aws, how="left")
+
+    if df.shape[0] == 0:
+        raise ValueError("merge_input_data: join 결과가 비어 있습니다. 타임스탬프를 확인하세요.")
 
     # FLUX_VU: 누적값 → 증분값 변환 (TMS 노트북과 동일, 리샘플링 전에 처리)
     if "FLUX_VU" in df.columns:
