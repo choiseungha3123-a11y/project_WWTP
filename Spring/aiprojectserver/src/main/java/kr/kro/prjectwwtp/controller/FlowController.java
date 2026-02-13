@@ -61,7 +61,7 @@ public class FlowController {
 	private final FastApiService apiService;
 	
 	@Value("${predict.enable}")
-	private boolean enable;
+	private boolean enablePredict;
 	
 	@PostConstruct
 	public void init() {
@@ -196,7 +196,7 @@ public class FlowController {
 	
 	@Scheduled(cron = "${scheduler.predict.cron}")
 	public void getFlowPredict() {
-		if(!enable) return;
+		if(!enablePredict) return;
 		try {
 			LocalDateTime now = LocalDateTime.now();
 			LocalDateTime fakeNow = flowService.getFakeNow()

@@ -38,6 +38,14 @@ public class MemberService {
 		return opt.get();
 	}
 	
+	public Member findById(String userId) {
+		Optional<Member> opt = memberRepo.findByUserId(userId);
+		if(opt.isEmpty()) {
+			return null;
+		}
+		return opt.get();
+	}
+	
 	public boolean checkId(String userId) {
 		return memberRepo.findByUserId(userId).isPresent();
 	}
@@ -110,6 +118,14 @@ public class MemberService {
 		Member member = findByNo(userNo);
 		member.setValidateEmail(true);
 		member.setValidateKey(null);
+		memberRepo.save(member);
+	}
+	
+	public void delteEmail(Long userNo) {
+		Member member = findByNo(userNo);
+		member.setValidateEmail(false);
+		member.setValidateKey(null);
+		member.setUserEmail(null);
 		memberRepo.save(member);
 	}
 	

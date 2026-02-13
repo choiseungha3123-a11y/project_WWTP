@@ -17,7 +17,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -144,6 +143,25 @@ public class FlowService {
 	
 	public List<FlowImputate> getFlowImputateListByDate(LocalDateTime end) {
 		LocalDateTime start = end.minusDays(1).plusMinutes(1);
+		LocalDateTime now = LocalDateTime.now().minusDays(1);
+		List<FlowImputate> list = flowImputateRepo.findByFlowTimeBetweenOrderByFlowTime(start, end);
+		for(FlowImputate flow : list) {
+			flow.setSum(flow.getFlowA() + flow.getFlowB());
+			LocalDateTime t = flow.getFlowTime();
+			String day = now.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+			if(t.getDayOfMonth() != start.getDayOfMonth())
+				day = now.plusDays(1).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+			String time = flow.getFlowTime().format(DateTimeFormatter.ofPattern("HHmmss"));
+			flow.setStrtime(day + time);
+		}
+		//System.out.println("start : " + start.toString());
+		//System.out.println("end : " + end.toString());
+		//System.out.println("getFlowImputateListByDate size : " + list.size());
+		return list;
+	}
+	
+	public List<FlowImputate> getFlowImputateListByHalfDate(LocalDateTime end) {
+		LocalDateTime start = end.minusHours(12).plusMinutes(1);
 		List<FlowImputate> list = flowImputateRepo.findByFlowTimeBetweenOrderByFlowTime(start, end);
 		for(FlowImputate flow : list) {
 			flow.setSum(flow.getFlowA() + flow.getFlowB());

@@ -36,7 +36,7 @@ public class GetherWeather implements ApplicationRunner {
 	private RestTemplate restTemplate = new RestTemplate();
 	
 	@Value("${scheduler.enable}")
-	private boolean enable;
+	private boolean enableGether;
 	
 	@PostConstruct
 	public void init() {
@@ -59,7 +59,7 @@ public class GetherWeather implements ApplicationRunner {
 			isFirst = false;
 			return;
 		}
-		if(!enable) return;
+		if(!enableGether) return;
 		
 		int[] stnlist = { 368,		// 구리 수택동
 				569, // 구리 토평동

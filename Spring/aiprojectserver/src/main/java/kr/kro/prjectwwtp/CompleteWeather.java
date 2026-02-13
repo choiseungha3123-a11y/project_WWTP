@@ -42,7 +42,7 @@ public class CompleteWeather implements ApplicationRunner {
 	
 	// API Hub 데이터 
 	@Value("${scheduler.enable}")
-	private boolean enable;
+	private boolean enableComplete;
 	
 	private final WeatherCompleteRepository completeRepo;
 	private final GetherWeather getherWeather;
@@ -77,7 +77,7 @@ public class CompleteWeather implements ApplicationRunner {
 			isFirst = false;
 			return;
 		}
-		if(!enable) return;
+		if(!enableComplete) return;
 		
 		int[] stnlist = { 368,		// 구리 수택동
 				569, // 구리 토평동

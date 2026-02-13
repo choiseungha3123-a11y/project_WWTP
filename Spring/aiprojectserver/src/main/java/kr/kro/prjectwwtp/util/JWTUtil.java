@@ -18,7 +18,9 @@ public class JWTUtil {
 	
 	private static MemberRepository memberRepo;
 	//private static final long ACCESS_TOKEN_MSEC = 24 * 60 * (60 * 1000);	// 1일
-	private static final long ACCESS_TOKEN_MSEC = 60 * (60 * 1000);	// 1시간
+	//private static final long ACCESS_TOKEN_MSEC = 1 * (60 * 1000);	// 1분
+	//private static final long ACCESS_TOKEN_MSEC = 60 * (60 * 1000);	// 1시간
+	private static final long ACCESS_TOKEN_MSEC = 6 * 60 * (60 * 1000);	// 6시간
 	//private static final long ACCESS_TOKEN_MSEC = (60 * 1000);	// 1분
 	private static String JWT_KEY;
 	

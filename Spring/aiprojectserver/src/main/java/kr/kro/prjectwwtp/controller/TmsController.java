@@ -64,7 +64,7 @@ public class TmsController {
 	private final FastApiService apiService;
 	
 	@Value("${predict.enable}")
-	private boolean enable;
+	private boolean enablePredict;
 	
 	@PostConstruct
 	public void init() {
@@ -233,7 +233,7 @@ public class TmsController {
 	
 	@Scheduled(cron = "${scheduler.predict.cron}")
 	public void getTmsPredict() {
-		if(!enable) return;
+		if(!enablePredict) return;
 		try {
 			LocalDateTime now = LocalDateTime.now();
 			LocalDateTime fakeNow = tmsService.getFakeNow()
