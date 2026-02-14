@@ -425,9 +425,9 @@ public class DashBoardController {
 			LocalDateTime fakeFlowNow = flowService.getFakeNow()
 									.withHour(now.getHour())
 									.withMinute(now.getMinute());
-			List<TmsImputate> tmsImputateList = tmsService.getTmsImputateListByDate(fakeTmsNow);
+			List<TmsImputate> tmsImputateList = tmsService.getTmsImputateListByDateForDashBoard(fakeTmsNow);
 			List<TmsPredict> tmsPredictList = tmsService.findPredictList(now, end);
-			List<FlowImputate> flowImputateList = flowService.getFlowImputateListByDate(fakeFlowNow);
+			List<FlowImputate> flowImputateList = flowService.getFlowImputateListByDateForDashBoard(fakeFlowNow);
 			List<FlowPredict> flowPredictList = flowService.findPredictList(now, end);
 			List<WeatherDTO> aws368 = weatherService.findWeatherDTOByStnAndLogTimeBetween(368, start, now);
 			

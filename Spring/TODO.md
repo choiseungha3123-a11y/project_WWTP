@@ -14,6 +14,7 @@ sudo systemctl status mysqld
 npm install
 npm run build
 -pm2 실행 관련-
+npm run dev -- --port 3001
 pm2 start npm --name "miniproject-app" -- start -- -p 3001
 pm2 start npm --name "FlowWater-app" -- start
 pm2 start npm --name "FlowWater-app-dev" -- run dev

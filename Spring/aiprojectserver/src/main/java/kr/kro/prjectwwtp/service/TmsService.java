@@ -153,6 +153,19 @@ public class TmsService {
 	
 	public List<TmsImputate> getTmsImputateListByDate(LocalDateTime end) {
 		LocalDateTime start = end.minusDays(1).plusMinutes(1);
+		List<TmsImputate> list = tmsImputateRepo.findByTmsTimeBetweenOrderByTmsTime(start, end);
+		for(TmsImputate tms : list) {
+			String time = tms.getTmsTime().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+			tms.setStrtime(time);
+		}
+		//System.out.println("start : " + start.toString());
+		//System.out.println("end : " + end.toString());
+		//System.out.println("getTmsImputateListByDate size : " + list.size());
+		return list;
+	}
+	
+	public List<TmsImputate> getTmsImputateListByDateForDashBoard(LocalDateTime end) {
+		LocalDateTime start = end.minusDays(1).plusMinutes(1);
 		LocalDateTime now = LocalDateTime.now().minusDays(1);
 		List<TmsImputate> list = tmsImputateRepo.findByTmsTimeBetweenOrderByTmsTime(start, end);
 		for(TmsImputate tms : list) {
@@ -162,19 +175,6 @@ public class TmsService {
 				day = now.plusDays(1).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 			String time = tms.getTmsTime().format(DateTimeFormatter.ofPattern("HHmmss"));
 			tms.setStrtime(day + time);
-		}
-		//System.out.println("start : " + start.toString());
-		//System.out.println("end : " + end.toString());
-		//System.out.println("getTmsImputateListByDate size : " + list.size());
-		return list;
-	}
-	
-	public List<TmsImputate> getTmsImputateListByHalfDate(LocalDateTime end) {
-		LocalDateTime start = end.minusHours(12).plusMinutes(1);
-		List<TmsImputate> list = tmsImputateRepo.findByTmsTimeBetweenOrderByTmsTime(start, end);
-		for(TmsImputate tms : list) {
-			String time = tms.getTmsTime().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-			tms.setStrtime(time);
 		}
 		//System.out.println("start : " + start.toString());
 		//System.out.println("end : " + end.toString());

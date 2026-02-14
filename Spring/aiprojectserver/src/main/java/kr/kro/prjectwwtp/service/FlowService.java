@@ -143,6 +143,20 @@ public class FlowService {
 	
 	public List<FlowImputate> getFlowImputateListByDate(LocalDateTime end) {
 		LocalDateTime start = end.minusDays(1).plusMinutes(1);
+		List<FlowImputate> list = flowImputateRepo.findByFlowTimeBetweenOrderByFlowTime(start, end);
+		for(FlowImputate flow : list) {
+			flow.setSum(flow.getFlowA() + flow.getFlowB());
+			String time = flow.getFlowTime().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+			flow.setStrtime(time);
+		}
+		//System.out.println("start : " + start.toString());
+		//System.out.println("end : " + end.toString());
+		//System.out.println("getFlowImputateListByDate size : " + list.size());
+		return list;
+	}
+	
+	public List<FlowImputate> getFlowImputateListByDateForDashBoard(LocalDateTime end) {
+		LocalDateTime start = end.minusDays(1).plusMinutes(1);
 		LocalDateTime now = LocalDateTime.now().minusDays(1);
 		List<FlowImputate> list = flowImputateRepo.findByFlowTimeBetweenOrderByFlowTime(start, end);
 		for(FlowImputate flow : list) {
@@ -153,20 +167,6 @@ public class FlowService {
 				day = now.plusDays(1).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 			String time = flow.getFlowTime().format(DateTimeFormatter.ofPattern("HHmmss"));
 			flow.setStrtime(day + time);
-		}
-		//System.out.println("start : " + start.toString());
-		//System.out.println("end : " + end.toString());
-		//System.out.println("getFlowImputateListByDate size : " + list.size());
-		return list;
-	}
-	
-	public List<FlowImputate> getFlowImputateListByHalfDate(LocalDateTime end) {
-		LocalDateTime start = end.minusHours(12).plusMinutes(1);
-		List<FlowImputate> list = flowImputateRepo.findByFlowTimeBetweenOrderByFlowTime(start, end);
-		for(FlowImputate flow : list) {
-			flow.setSum(flow.getFlowA() + flow.getFlowB());
-			String time = flow.getFlowTime().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-			flow.setStrtime(time);
 		}
 		//System.out.println("start : " + start.toString());
 		//System.out.println("end : " + end.toString());
