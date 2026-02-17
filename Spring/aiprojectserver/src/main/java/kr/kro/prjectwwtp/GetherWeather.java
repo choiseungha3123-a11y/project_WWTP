@@ -53,7 +53,7 @@ public class GetherWeather implements ApplicationRunner {
 //		System.out.println("enable : " + enable);
 	}
 	
-	@Scheduled(cron  = "${scheduler.gether.cron}") 
+	@Scheduled(cron  = "${scheduler.gether.cron}", zone="Asia/Seoul") 
 	public void fetchWeatherData() {
 		if(isFirst) {
 			isFirst = false;

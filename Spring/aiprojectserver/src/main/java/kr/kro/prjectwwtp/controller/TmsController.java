@@ -196,43 +196,48 @@ public class TmsController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@Scheduled(cron = "${scheduler.fakeday.cron}")
+	@Scheduled(cron = "${scheduler.fakeday.cron}", zone="Asia/Seoul")
+	@GetMapping("/makeFakeNow")
 	public void makeFakeDate() {
-		System.out.println("makeFakeDate");
-		LocalDateTime now = LocalDateTime.now();
-		LocalDateTime fakeTmeNow = tmsService.getFakeNow()
-									.withHour(now.getHour())
-									.withMinute(now.getMinute());
-		System.out.println("fakeTmeNow : " + fakeTmeNow);
-		
-		// 조회할 날짜(fakeTmeNow를 기준으로 이전 날짜와 해당 날짜의 보간 데이터 구성
-		if(!tmsService.existsByTmsTime(fakeTmeNow)) {
-			List<TmsImputate> list = tmsService.imputate(fakeTmeNow);
-			tmsService.saveTmsImputateList(list);
-		}
-		if(!tmsService.existsByTmsTime(fakeTmeNow.minusDays(1))) {
-			List<TmsImputate> list = tmsService.imputate(fakeTmeNow.minusDays(1));
-			tmsService.saveTmsImputateList(list);
-		}
-		
-		LocalDateTime fakeFlowNow = flowService.getFakeNow()
-				.withHour(now.getHour())
-				.withMinute(now.getMinute());
-		System.out.println("fakeFlowNow : " + fakeFlowNow);
-				
-		// 조회할 날짜(fakeTmeNow를 기준으로 이전 날짜와 해당 날짜의 보간 데이터 구성
-		if(!flowService.existsByFlowTime(fakeFlowNow)) {
-			List<FlowImputate> list = flowService.imputate(fakeFlowNow);
-			flowService.saveFlowImputateList(list);
-		}
-		if(!flowService.existsByFlowTime(fakeFlowNow.minusDays(1))) {
-			List<FlowImputate> list = flowService.imputate(fakeFlowNow.minusDays(1));
-			flowService.saveFlowImputateList(list);
+		try {
+			System.out.println("makeFakeDate");
+			LocalDateTime now = LocalDateTime.now();
+			LocalDateTime fakeTmeNow = tmsService.getFakeNow()
+										.withHour(now.getHour())
+										.withMinute(now.getMinute());
+			System.out.println("fakeTmeNow : " + fakeTmeNow);
+			
+			// 조회할 날짜(fakeTmeNow를 기준으로 이전 날짜와 해당 날짜의 보간 데이터 구성
+			if(!tmsService.existsByTmsTime(fakeTmeNow)) {
+				List<TmsImputate> list = tmsService.imputate(fakeTmeNow);
+				tmsService.saveTmsImputateList(list);
+			}
+			if(!tmsService.existsByTmsTime(fakeTmeNow.minusDays(1))) {
+				List<TmsImputate> list = tmsService.imputate(fakeTmeNow.minusDays(1));
+				tmsService.saveTmsImputateList(list);
+			}
+			
+			LocalDateTime fakeFlowNow = flowService.getFakeNow()
+					.withHour(now.getHour())
+					.withMinute(now.getMinute());
+			System.out.println("fakeFlowNow : " + fakeFlowNow);
+					
+			// 조회할 날짜(fakeTmeNow를 기준으로 이전 날짜와 해당 날짜의 보간 데이터 구성
+			if(!flowService.existsByFlowTime(fakeFlowNow)) {
+				List<FlowImputate> list = flowService.imputate(fakeFlowNow);
+				flowService.saveFlowImputateList(list);
+			}
+			if(!flowService.existsByFlowTime(fakeFlowNow.minusDays(1))) {
+				List<FlowImputate> list = flowService.imputate(fakeFlowNow.minusDays(1));
+				flowService.saveFlowImputateList(list);
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
 		}
 	}
 	
 	@GetMapping("/test")
-	@Scheduled(cron = "${scheduler.predict.cron}")
+	@Scheduled(cron = "${scheduler.predict.cron}", zone="Asia/Seoul")
 	public void getTmsPredict() {
 		if(!enablePredict) return;
 		try {
@@ -241,9 +246,13 @@ public class TmsController {
 									.withHour(now.getHour())
 									.withMinute(now.getMinute());
 			List<TmsImputate> tmsList = tmsService.getTmsImputateListByDate(fakeNow);
+			System.out.println("tmsList : " + tmsList.size());
 			List<WeatherDTO> aws368 = weatherService.findWeatherDTOByStnAndLogTimeBetween(368, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
+			System.out.println("aws368 : " + aws368.size());
 			List<WeatherDTO> aws541 = weatherService.findWeatherDTOByStnAndLogTimeBetween(541, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
+			System.out.println("aws541 : " + aws541.size());
 			List<WeatherDTO> aws569 = weatherService.findWeatherDTOByStnAndLogTimeBetween(569, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
+			System.out.println("aws569 : " + aws569.size());
 			
 			requestTms(aws368, aws541, aws569, tmsList);
 								

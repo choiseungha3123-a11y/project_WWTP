@@ -195,7 +195,7 @@ public class FlowController {
 	}
 	
 	@GetMapping("/test")
-	@Scheduled(cron = "${scheduler.predict.cron}")
+	@Scheduled(cron = "${scheduler.predict.cron}", zone="Asia/Seoul")
 	public void getFlowPredict() {
 		if(!enablePredict) return;
 		try {
@@ -204,9 +204,13 @@ public class FlowController {
 									.withHour(now.getHour())
 									.withMinute(now.getMinute());
 			List<FlowImputate> flowList = flowService.getFlowImputateListByDate(fakeNow);
+			System.out.println("flowList : " + flowList.size());
 			List<WeatherDTO> aws368 = weatherService.findWeatherDTOByStnAndLogTimeBetween(368, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
+			System.out.println("aws368 : " + aws368.size());
 			List<WeatherDTO> aws541 = weatherService.findWeatherDTOByStnAndLogTimeBetween(541, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
+			System.out.println("aws541 : " + aws541.size());
 			List<WeatherDTO> aws569 = weatherService.findWeatherDTOByStnAndLogTimeBetween(569, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
+			System.out.println("aws569 : " + aws569.size());
 			requestFlow(aws368, aws541, aws569, flowList);
 		} catch (Exception e) {
 			e.printStackTrace();

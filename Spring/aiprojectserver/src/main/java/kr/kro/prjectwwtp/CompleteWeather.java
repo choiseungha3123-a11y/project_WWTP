@@ -71,7 +71,7 @@ public class CompleteWeather implements ApplicationRunner {
 	}
 	
 
-	@Scheduled(cron = "${scheduler.complete.cron}")
+	@Scheduled(cron = "${scheduler.complete.cron}", zone="Asia/Seoul")
 	public void completeWeatherData() {
 		if(isFirst) {
 			isFirst = false;
