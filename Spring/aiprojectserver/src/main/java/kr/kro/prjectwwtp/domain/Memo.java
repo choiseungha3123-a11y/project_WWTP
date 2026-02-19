@@ -78,9 +78,6 @@ public class Memo{
     @Schema(description = "파일 종류")
     String fileType;
     @Lob
-    @Column(columnDefinition = "BLOB")
-    private byte[] thumnailsData;
-    @Lob
     @JsonIgnore
     @Column(columnDefinition = "MEDIUMBLOB")
     private byte[] imageData;
