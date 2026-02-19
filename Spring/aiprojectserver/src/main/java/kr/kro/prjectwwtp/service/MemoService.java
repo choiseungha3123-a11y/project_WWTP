@@ -1,5 +1,6 @@
 package kr.kro.prjectwwtp.service;
 
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -12,6 +13,7 @@ import kr.kro.prjectwwtp.domain.Memo;
 import kr.kro.prjectwwtp.domain.PageDTO;
 import kr.kro.prjectwwtp.persistence.MemoRepository;
 import lombok.RequiredArgsConstructor;
+import net.coobird.thumbnailator.Thumbnails;
 
 @Service
 @RequiredArgsConstructor
@@ -39,14 +41,25 @@ public class MemoService {
 	public void addMemo(Member member, String content, MultipartFile file) {
 		Memo newMemo = null;
 		byte[] imageData = null;
+		byte[] thumnailsData = null;
 		try {
 			if(file != null)
+			{
 				imageData = file.getBytes();
+				ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+				Thumbnails.of(file.getInputStream())
+						.size(100, 100)
+						.outputFormat("jpg")
+						.outputQuality(0.75)
+						.toOutputStream(outputStream);
+				thumnailsData = outputStream.toByteArray();
+			}
 			newMemo = Memo.builder()
 					.content(content)
 					.createMember(member)
 					.fileName(file.getOriginalFilename())
 					.fileType(file.getContentType())
+					.thumnailsData(thumnailsData)
 					.imageData(imageData)
 					.build();
 			memoRepo.save(newMemo);
@@ -64,14 +77,23 @@ public class MemoService {
 			throw new Exception("memoNo가 올바르지 않습니다.");
 		Memo modifyMemo = opt.get();
 		byte[] imageData = null;
+		byte[] thumnailsData = null;
 		try {
 			logService.addMemoLog(member, "modify", 0, 0, memoNo, content, modifyMemo.getContent());
 			modifyMemo.setContent(content);
 			modifyMemo.setModifyMember(member);
 			if(file != null) {
+				ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+				Thumbnails.of(file.getInputStream())
+						.size(100, 100)
+						.outputFormat("jpg")
+						.outputQuality(0.75)
+						.toOutputStream(outputStream);
+				thumnailsData = outputStream.toByteArray();
 				imageData = file.getBytes();
 				modifyMemo.setFileName(file.getOriginalFilename());
 				modifyMemo.setFileType(file.getContentType());
+				modifyMemo.setThumnailsData(thumnailsData);
 				modifyMemo.setImageData(imageData);
 			}
 			memoRepo.save(modifyMemo);

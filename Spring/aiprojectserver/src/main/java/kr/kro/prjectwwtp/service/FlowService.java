@@ -28,7 +28,6 @@ import kr.kro.prjectwwtp.domain.FlowImputate;
 import kr.kro.prjectwwtp.domain.FlowOrigin;
 import kr.kro.prjectwwtp.domain.FlowPredict;
 import kr.kro.prjectwwtp.domain.FlowSummary;
-import kr.kro.prjectwwtp.domain.TmsImputate;
 import kr.kro.prjectwwtp.persistence.FakeDateRepository;
 import kr.kro.prjectwwtp.persistence.FlowImputateRepository;
 import kr.kro.prjectwwtp.persistence.FlowInsertRepository;
