@@ -60,8 +60,9 @@ public class SecurityConfig {
 			.requestMatchers("/static/**").permitAll()
 			
 			// 대시보드 컨트롤
-			.requestMatchers("/api/board/**").hasAnyRole("MEMBER", "ADMIN")
+			.requestMatchers("/api/board/memo/image").permitAll()
 			.requestMatchers("/api/board/makeFakeNow").permitAll()
+			.requestMatchers("/api/board/**").hasAnyRole("MEMBER", "ADMIN")
 			
 			// 유입유량(AWS) 관련
 			.requestMatchers("/api/flowOrigin/upload").hasRole("ADMIN")

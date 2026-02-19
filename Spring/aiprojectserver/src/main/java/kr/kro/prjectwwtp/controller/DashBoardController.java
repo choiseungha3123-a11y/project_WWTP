@@ -155,31 +155,11 @@ public class DashBoardController {
 	@Operation(summary="메모에 첨부된 사진 확인", description = "첨부 파일 확인")
 	@Parameter(name = "memo_no", description = "메모 고유 번호", example = "1~")
 	public ResponseEntity<Object> getMemoImage(
-			HttpServletRequest request,
 			@RequestParam long memo_no) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
 				.build();
-		// 토큰 추출 및 검증
-		if(JWTUtil.isExpired(request))
-		{
-			res.setSuccess(false);
-			res.setErrorMsg("토큰이 만료되었습니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		Member member = JWTUtil.parseToken(request);
-		if(member == null){
-			res.setSuccess(false);
-			res.setErrorMsg("로그인이 필요합니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		if(member.getRole() == Role.ROLE_VIEWER) {
-			res.setSuccess(false);
-			res.setErrorMsg("권한이 올바르지 않습니다.");
-			return ResponseEntity.ok().body(res);
-		}
-		
 		Memo memo = memoService.findByMemoNo(memo_no);
 		if(memo == null) {
 			res.setSuccess(false);
