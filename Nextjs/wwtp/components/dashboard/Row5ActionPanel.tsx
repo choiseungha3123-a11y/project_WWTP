@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
-import { Send, AlertCircle, CheckCircle2, Trash2, User, Edit2, X, Save, Paperclip, ImageIcon } from "lucide-react";
+import { Send, AlertCircle, CheckCircle2, Trash2, User, Edit2, X, Save, Paperclip, ImageIcon, Download } from "lucide-react";
 
 interface Memo {
   memoNo: number;
@@ -33,8 +33,8 @@ export default function Row5ActionPanel() {
   const [editPreviewUrl, setEditPreviewUrl] = useState<string | null>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
 
-  // 이미지 확대 모달 State
-  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  // 이미지 확대 모달 State (이미지 경로와 이름을 함께 저장)
+  const [zoomedMemo, setZoomedMemo] = useState<{url: string, name: string} | null>(null);
 
   // --- Auth & Fetching ---
   const getAuthHeaders = useCallback((isFormData = false): HeadersInit => {
@@ -191,7 +191,7 @@ export default function Row5ActionPanel() {
     }
   };
 
-  const closeZoom = () => setZoomedImage(null);
+  const closeZoom = () => setZoomedMemo(null);
 
   return (
     <div className="bg-[#1a202c] p-6 rounded-4xl border border-white/5 h-full flex flex-col shadow-2xl relative">
@@ -231,7 +231,7 @@ export default function Row5ActionPanel() {
         {previewUrl && (
           <div className="flex flex-col gap-1.5">
             <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-blue-500/50 group shadow-lg">
-              <Image src={previewUrl} alt="preview" fill className="object-cover" unoptimized />
+              <Image src={previewUrl} alt="preview" fill className="object-cover cursor-pointer" onClick={() => setZoomedMemo({url: previewUrl, name: selectedFile?.name || 'Preview'})} unoptimized />
               <button 
                 onClick={() => { setSelectedFile(null); setPreviewUrl(null); if(fileInputRef.current) fileInputRef.current.value=""; }}
                 className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
@@ -272,7 +272,14 @@ export default function Row5ActionPanel() {
                     {editPreviewUrl && (
                       <div className="flex flex-col gap-1">
                         <div className="relative w-10 h-10">
-                          <Image src={editPreviewUrl} alt="edit preview" fill className="rounded-lg object-cover border border-white/10" unoptimized />
+                          <Image 
+                            src={editPreviewUrl} 
+                            alt="edit preview" 
+                            fill 
+                            className="rounded-lg object-cover border border-white/10 cursor-pointer" 
+                            onClick={() => setZoomedMemo({url: editPreviewUrl, name: editFile ? editFile.name : (memo.fileName || 'Untitled')})}
+                            unoptimized 
+                          />
                         </div>
                         <p className="text-[10px] text-slate-500 w-16 truncate text-center">
                           {editFile ? editFile.name : memo.fileName}
@@ -299,7 +306,7 @@ export default function Row5ActionPanel() {
                             alt="memo attach" 
                             fill
                             className="rounded-2xl object-cover border border-white/10 hover:scale-105 transition-transform cursor-pointer"
-                            onClick={() => setZoomedImage(memo.imageData || null)}
+                            onClick={() => setZoomedMemo({url: memo.imageData!, name: memo.fileName || 'Untitled'})}
                             unoptimized
                           />
                         </div>
@@ -340,30 +347,45 @@ export default function Row5ActionPanel() {
       </div>
 
       {/* --- 이미지 확대 모달 영역 --- */}
-      {zoomedImage && (
+      {zoomedMemo && (
         <div 
           className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
           onClick={closeZoom}
         >
           <div 
-            className="relative max-w-5xl max-h-[85vh] w-full md:w-1/2 overflow-hidden rounded-3xl border border-white/10 shadow-2xl bg-slate-900 flex items-center justify-center"
+            className="relative max-w-5xl w-full md:w-1/2 overflow-hidden rounded-3xl border border-white/10 shadow-2xl bg-slate-900 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <button 
-              onClick={closeZoom}
-              className="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/80 rounded-full text-white transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
+            {/* 상단바: 이름과 닫기 버튼 */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-white/5">
+              <div className="flex items-center gap-2 min-w-0">
+                <ImageIcon className="w-4 h-4 text-blue-400 shrink-0" />
+                <span className="text-sm text-slate-200 truncate font-medium">
+                  {zoomedMemo.name}
+                </span>
+              </div>
+              <button 
+                onClick={closeZoom}
+                className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             
-            <div className="relative w-full h-[80vh] p-2">
+            {/* 이미지 영역 */}
+            <div className="relative w-full h-[60vh] p-4 bg-slate-950/50">
                <Image 
-                src={zoomedImage} 
+                src={zoomedMemo.url} 
                 alt="Enlarged view" 
                 fill
-                className="object-contain rounded-xl"
+                className="object-contain"
                 unoptimized
               />
+            </div>
+
+            {/* 하단바 (선택사항: 다운로드 버튼 등 추가 가능) */}
+            <div className="px-6 py-3 flex justify-center bg-white/5 border-t border-white/5">
+              <p className="text-[11px] text-slate-500 italic">이미지 원본 보기 모드</p>
             </div>
           </div>
         </div>
