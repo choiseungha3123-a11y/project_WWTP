@@ -21,6 +21,7 @@ import reactor.netty.http.client.HttpClient;
 @Service
 @RequiredArgsConstructor
 public class FastApiService {
+	private LogService logService;
 	private WebClient webClient;
 	
 	@Value("${spring.FastAPI.URI}")
@@ -55,6 +56,7 @@ public class FastApiService {
 			System.out.println("Response Headers : " + e.getHeaders());
 			System.out.println("Response Body : " + e.getResponseBodyAsString());
 			//System.out.println("Request : " + pIn);
+			logService.addErrorLog("FastApiService.java", "getPredict()", e.getMessage());
 			throw new RuntimeException("API 호출 실패", e);
 		}
 	}

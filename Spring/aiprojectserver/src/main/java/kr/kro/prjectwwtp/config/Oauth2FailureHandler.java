@@ -51,6 +51,7 @@ public class Oauth2FailureHandler extends SimpleUrlAuthenticationFailureHandler 
 			response.sendRedirect(redirectURI);
 		}catch(IOException e) {
 			errorMsg = e.getMessage();
+			logService.addErrorLog("Oauth2FailureHandler.java", "onAuthenticationFailure()", e.getMessage());
 		}finally {
 			// 로그인 기록 추가
 			logService.addLoginLog(member, loginSuccess, userId, remoteInfo, socialAuth, errorMsg);

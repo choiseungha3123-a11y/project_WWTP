@@ -157,6 +157,7 @@ public class MemberController {
 		}catch (Exception e) {
 			res.setSuccess(false);
 			errorMsg = e.getMessage();
+			logService.addErrorLog("MemberController.java", "login()", e.getMessage());
 		}finally {
 			// 접속 로그 기록
 			logService.addLoginLog(member, loginSuccess, userId, remoteInfo, null, errorMsg);
@@ -197,6 +198,7 @@ public class MemberController {
 			res.setSuccess(false);
 			res.setErrorMsg("로그아웃 처리 중 오류가 발생했습니다.");
 			System.out.println("[MemberController] logout error: " + e.getMessage());
+			logService.addErrorLog("MemberController.java", "logout()", e.getMessage());
 		}
 		
 		return ResponseEntity.ok().body(res);
@@ -351,17 +353,29 @@ public class MemberController {
 	              "        본 메일은 <b>FlowWater</b> 서비스 이용을 위해 발송되었습니다.<br>" +
 	              "        본 메일의 인증은 10분 간만 유효합니다." +
 	              "    </p>" +
-	              "    <a href=\"" + validateLink + "\" style=\"display: inline-block; width: 210px; height: 45px; margin: 30px 5px 40px; background: #3498db; color: #ffffff; text-decoration: none; text-align: center; line-height: 45px; vertical-align: middle; font-size: 16px; border-radius: 5px;\" target=\"_blank\">인증 완료하기</a>" +
+	              "<table cellspacing='0' cellpadding='0' border='0' style='margin: 30px 5px 40px;'> " +
+	              "  <tr> " +
+	              "    <td align='center' bgcolor='#3498db' width='210' height='45' style='border-radius: 5px; color: #ffffff;'> " +
+	              "      <a href='" + validateLink + "' target='_blank' style='display: block; width: 210px; height: 45px; font-family: sans-serif; font-size: 16px; color: #ffffff; text-decoration: none; line-height: 45px; text-align: center; font-weight: bold;'> " +
+	              "        인증 완료하기 " +
+	              "      </a> " +
+	              "    </td> " +
+	              "  </tr> " +
+	              "</table>" +	 		              
 	              "    <p style=\"font-size: 16px; line-height: 26px; margin-top: 50px; padding: 0 5px;\">" +
 	              "        더이상 이 보고서를 받지 않으시려면<br>" +
 	              "        아래 버튼을 눌러 이메일 정보를 삭제하십시오..<br>" +
 	              "    </p>" +
-	              "    <a href=\"" + deleteLink + "\" style=\"display: inline-block; width: 210px; height: 45px; margin: 30px 5px 40px; background: #3498db; color: #ffffff; text-decoration: none; text-align: center; line-height: 45px; vertical-align: middle; font-size: 16px; border-radius: 5px;\" target=\"_blank\">수신거부</a>" +
+	              "<table cellspacing='0' cellpadding='0' border='0' style='margin: 30px 5px 40px;'> " +
+	              "  <tr> " +
+	              "    <td align='center' bgcolor='#3498db' width='210' height='45' style='border-radius: 5px; color: #ffffff;'> " +
+	              "      <a href='" + deleteLink + "' target='_blank' style='display: block; width: 210px; height: 45px; font-family: sans-serif; font-size: 16px; color: #ffffff; text-decoration: none; line-height: 45px; text-align: center; font-weight: bold;'> " +
+	              "        수신거부 " +
+	              "      </a> " +
+	              "    </td> " +
+	              "  </tr> " +
+	              "</table>" +	 		              
 	              "    <div style=\"border-top: 1px solid #DDD; padding: 5px;\">" +
-//	              "        <p style=\"font-size: 13px; line-height: 21px; color: #555;\">" +
-//	              "            만약 버튼이 작동하지 않는다면 아래 링크를 복사하여 브라우저에 붙여넣어 주세요.<br>" +
-//	              "            <span style=\"color: #3498db;\">" + validateLink + "</span>" +
-//	              "        </p>" +
 				  "        <p style=\"font-size: 12px; line-height: 21px; color: #777; margin: 0;\">" +
 				  "            도움이 필요하시면 <a href=\"https://www.projectwwtp.kro.kr/support\" style=\"color: #3498db; text-decoration: none;\">고객지원</a>으로 문의 바랍니다." +
 				  "        </p>" +
@@ -428,14 +442,22 @@ public class MemberController {
 		    "        </p>";
 	    	if(type.equals("이메일 인증")) {		    
 	    		body += "        <div style=\"background-color: #f0f8ff; padding: 20px; border-radius: 5px; margin: 20px 5px; border: 1px dashed #3498db;\">" +
-		    "            <p style=\"margin: 0; font-size: 15px; color: #333; text-align: center;\">" +
-		    "                <b>\"FlowWater와 함께 깨끗하고 스마트한 시작을 함께하세요!\"</b>" +
-		    "            </p>" +
-		    "        </div>" +
-		    "        <p style=\"font-size: 16px; line-height: 26px; padding: 0 5px;\">" +
-		    "            아래 버튼을 눌러 메인 화면으로 이동해 보세요." +
-		    "        </p>" +
-		    "        <a href=\"" + mainLink + "\" style=\"display: inline-block; width: 210px; height: 45px; margin: 30px 5px 40px; background: #3498db; color: #ffffff; text-decoration: none; text-align: center; line-height: 45px; vertical-align: middle; font-size: 16px; border-radius: 5px; font-weight: bold;\" target=\"_blank\">FlowWater 시작하기</a>";
+			    "            <p style=\"margin: 0; font-size: 15px; color: #333; text-align: center;\">" +
+			    "                <b>\"FlowWater와 함께 깨끗하고 스마트한 시작을 함께하세요!\"</b>" +
+			    "            </p>" +
+			    "        </div>" +
+			    "        <p style=\"font-size: 16px; line-height: 26px; padding: 0 5px;\">" +
+			    "            아래 버튼을 눌러 메인 화면으로 이동해 보세요." +
+			    "        </p>" +
+	            "<table cellspacing='0' cellpadding='0' border='0' style='margin: 30px 5px 40px;'> " +
+	            "  <tr> " +
+	            "    <td align='center' bgcolor='#3498db' width='210' height='45' style='border-radius: 5px; color: #ffffff;'> " +
+	            "      <a href='" + mainLink + "' target='_blank' style='display: block; width: 210px; height: 45px; font-family: sans-serif; font-size: 16px; color: #ffffff; text-decoration: none; line-height: 45px; text-align: center; font-weight: bold;'> " +
+	            "        FlowWater 시작하기 " +
+	            "      </a> " +
+	            "    </td> " +
+	            "  </tr> " +
+	            "</table>";
 	    	}
 		    body += "        <div style=\"border-top: 1px solid #DDD; padding: 15px 5px;\">" +
 		    "            <p style=\"font-size: 12px; line-height: 21px; color: #777; margin: 0;\">" +
@@ -450,7 +472,7 @@ public class MemberController {
 	
 
 	
-	boolean bSendEmail = true;
+	boolean bSendEmail = false;
 	@Scheduled(cron = "${scheduler.report.cron}", zone="Asia/Seoul")
 	@GetMapping("/mailtest")
 	public void makeReportMessage()
@@ -718,7 +740,15 @@ public class MemberController {
 				              "        더이상 이 보고서를 받지 않으시려면<br>" +
 				              "        아래 버튼을 눌러 이메일 정보를 삭제하십시오..<br>" +
 				              "    </p>" +
-				              "    <a href=\"" + deleteLink + "\" style=\"display: inline-block; width: 210px; height: 45px; margin: 30px 5px 40px; background: #3498db; color: #ffffff; text-decoration: none; text-align: center; line-height: 45px; vertical-align: middle; font-size: 16px; border-radius: 5px;\" target=\"_blank\">수신거부</a>" +	              
+				              "<table cellspacing='0' cellpadding='0' border='0' style='margin: 30px 5px 40px;'> " +
+				              "  <tr> " +
+				              "    <td align='center' bgcolor='#3498db' width='210' height='45' style='border-radius: 5px; color: #ffffff;'> " +
+				              "      <a href='" + deleteLink + "' target='_blank' style='display: block; width: 210px; height: 45px; font-family: sans-serif; font-size: 16px; color: #ffffff; text-decoration: none; line-height: 45px; text-align: center; font-weight: bold;'> " +
+				              "        수신거부 " +
+				              "      </a> " +
+				              "    </td> " +
+				              "  </tr> " +
+				              "</table>" +	 	              
 				              "    <div style=\"border-top: 1px solid #DDD; padding: 5px;\">" +
 							  "        <p style=\"font-size: 12px; line-height: 21px; color: #777; margin: 0;\">" +
 							  "            도움이 필요하시면 <a href=\"https://www.projectwwtp.kro.kr/support\" style=\"color: #3498db; text-decoration: none;\">고객지원</a>으로 문의 바랍니다." +
@@ -733,6 +763,7 @@ public class MemberController {
 			}
 		}catch(Exception e) {
 			e.printStackTrace();
+			logService.addErrorLog("MemberController.java", "makeReportMessage()", e.getMessage());
 		}
 		
 	}
@@ -764,6 +795,7 @@ public class MemberController {
 		} catch (Exception e) {
 			System.err.println("[saveChartFile] 파일 저장 중 오류 발생: " + e.getMessage());
 			e.printStackTrace();
+			logService.addErrorLog("MemberController.java", "saveChartFile()", e.getMessage());
 			throw new Exception("파일 저장 중 오류가 발생했습니다: " + e.getMessage());
 		}
 		
@@ -944,7 +976,7 @@ public class MemberController {
 			res.setErrorMsg("정보가 올바르지 않습니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		if(!validateMail(req.userEmail))
+		if(req.userEmail != null && !validateMail(req.userEmail))
 		{
 			res.setSuccess(false);
 			res.setErrorMsg("유효하지 않은 이메일 주소입니다.");
@@ -973,7 +1005,8 @@ public class MemberController {
 			res.setErrorMsg("존재하지 않는 회원정보입니다.");
 			return ResponseEntity.ok().body(res);
 		}
-		if(member.getUserNo() == req.userNo) {
+		//if(member.getUserNo() == req.userNo) {
+		if(member.getRole() != Role.ROLE_ADMIN) {
 			// 자기 정보 수정시
 			if(!validatePassword(req.password))
 			{

@@ -85,6 +85,7 @@ public class GetherWeather implements ApplicationRunner {
 		}catch (Exception e) {
 			// TODO: handle exception
 			e.printStackTrace();
+			logService.addErrorLog("GetherWeather.java", "fetchWeatherData()", e.getMessage());
 		}
 	}
 
@@ -180,10 +181,12 @@ public class GetherWeather implements ApplicationRunner {
 	            } catch (Exception e) {
 	                // 데이터 결측치(-99.0 등)나 파싱 에러 처리
 	                System.err.println("Line parsing error: " + line + " -> " + e.getMessage());
+	            	logService.addErrorLog("GetherWeather.java", "parseResponse() inner", e.getMessage());
 	            }
 	        }
         } catch(Exception e) {
         	errorMag = e.getMessage();
+        	logService.addErrorLog("GetherWeather.java", "parseResponse() outer", e.getMessage());
         } finally {
 			logService.addWeatherAPILog("Fetch", originSize,  returnSize, 0, uri, errorMag);
 		}

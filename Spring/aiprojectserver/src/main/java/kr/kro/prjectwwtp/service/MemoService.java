@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Memo;
@@ -18,6 +19,13 @@ public class MemoService {
 	private final LogService logService;
 	private final MemoRepository memoRepo;
 	
+	public Memo findByMemoNo(long memo_no) {
+		Optional<Memo> opt = 	memoRepo.findById(memo_no);
+		if(opt.isEmpty())
+			return null;
+		return opt.get();
+	}
+	
 	public PageDTO<Memo> findByDisableMemberIsNull(Member member, Pageable pageable) {
 		logService.addMemoLog(member, "list", pageable.getPageNumber(), pageable.getPageSize(), 0, null, null);
 		return new PageDTO<>(memoRepo.findByDisableMemberIsNull(pageable));
@@ -28,24 +36,51 @@ public class MemoService {
 		return new PageDTO<>(memoRepo.findByDisableMemberIsNotNull(pageable));
 	}
 	
-	public void addMemo(Member member, String content) {
-		Memo newMemo = Memo.builder()
-				.content(content)
-				.createMember(member)
-				.build();
-		memoRepo.save(newMemo);
-		logService.addMemoLog(member, "create", 0, 0, newMemo.getMemoNo(), content, null);
+	public void addMemo(Member member, String content, MultipartFile file) {
+		Memo newMemo = null;
+		byte[] imageData = null;
+		try {
+			if(file != null)
+				imageData = file.getBytes();
+			newMemo = Memo.builder()
+					.content(content)
+					.createMember(member)
+					.fileName(file.getOriginalFilename())
+					.fileType(file.getContentType())
+					.imageData(imageData)
+					.build();
+			memoRepo.save(newMemo);
+		}
+		catch(Exception e) {
+			logService.addErrorLog("MemoService.java", "addMemo()", e.getMessage());
+		}finally {
+			logService.addMemoLog(member, "create", 0, 0, newMemo.getMemoNo(), content, null);	
+		}
 	}
 	
-	public void modifyMemo(Member member, long memoNo, String content) throws Exception {
+	public void modifyMemo(Member member, long memoNo, String content, MultipartFile file) throws Exception {
 		Optional<Memo> opt = memoRepo.findByMemoNoAndDisableMemberIsNull(memoNo);
 		if(opt.isEmpty())
 			throw new Exception("memoNo가 올바르지 않습니다.");
 		Memo modifyMemo = opt.get();
-		logService.addMemoLog(member, "modify", 0, 0, memoNo, content, modifyMemo.getContent());
-		modifyMemo.setContent(content);
-		modifyMemo.setModifyMember(member);
-		memoRepo.save(modifyMemo);
+		byte[] imageData = null;
+		try {
+			logService.addMemoLog(member, "modify", 0, 0, memoNo, content, modifyMemo.getContent());
+			modifyMemo.setContent(content);
+			modifyMemo.setModifyMember(member);
+			if(file != null) {
+				imageData = file.getBytes();
+				modifyMemo.setFileName(file.getOriginalFilename());
+				modifyMemo.setFileType(file.getContentType());
+				modifyMemo.setImageData(imageData);
+			}
+			memoRepo.save(modifyMemo);
+		}
+		catch(Exception e) {
+			logService.addErrorLog("MemoService.java", "modifyMemo()", e.getMessage());
+		}finally {
+		logService.addMemoLog(member, "modify", 0, 0, modifyMemo.getMemoNo(), content, null);	
+		}
 	}
 	
 	public void disableMemo(Member member, long memoNo) throws Exception {

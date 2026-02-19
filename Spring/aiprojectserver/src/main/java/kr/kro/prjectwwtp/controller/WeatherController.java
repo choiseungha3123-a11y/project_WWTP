@@ -34,6 +34,7 @@ import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.Weather;
 import kr.kro.prjectwwtp.domain.responseDTO;
+import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.service.WeatherService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import lombok.AllArgsConstructor;
@@ -50,6 +51,7 @@ import lombok.ToString;
 @Tag(name="WeatherController", description = "날씨 데이터 조회용 API")
 public class WeatherController {
 	private final WeatherService weatherService;
+	private final LogService logService;
 	
 	@PostConstruct
 	public void init() {
@@ -223,6 +225,7 @@ public class WeatherController {
 		} catch(Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
+			logService.addErrorLog("WeatherController.java", "modifyWeatherData()", e.getMessage());
 		}
 		
 		return ResponseEntity.ok().body(res);

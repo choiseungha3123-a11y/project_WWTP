@@ -11,6 +11,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MultipartFile;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -40,6 +42,7 @@ import kr.kro.prjectwwtp.domain.TmsImputate;
 import kr.kro.prjectwwtp.domain.TmsPredict;
 import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.service.FlowService;
+import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.service.MemoService;
 import kr.kro.prjectwwtp.service.TmsService;
 import kr.kro.prjectwwtp.service.WeatherService;
@@ -59,6 +62,7 @@ public class DashBoardController {
 	private final TmsService tmsService;
 	private final FlowService flowService;
 	private final WeatherService weatherService;
+	private final LogService logService;
 	
 	@PostConstruct
 	public void init() {
@@ -147,12 +151,59 @@ public class DashBoardController {
 		return ResponseEntity.ok().body(res);
 	}
 	
+	@GetMapping("memo/image")
+	@Operation(summary="메모에 첨부된 사진 확인", description = "첨부 파일 확인")
+	@Parameter(name = "memo_no", description = "메모 고유 번호", example = "1~")
+	public ResponseEntity<Object> getMemoImage(
+			HttpServletRequest request,
+			@RequestParam long memo_no) {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		// 토큰 추출 및 검증
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			res.setErrorMsg("로그인이 필요합니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		if(member.getRole() == Role.ROLE_VIEWER) {
+			res.setSuccess(false);
+			res.setErrorMsg("권한이 올바르지 않습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		
+		Memo memo = memoService.findByMemoNo(memo_no);
+		if(memo == null) {
+			res.setSuccess(false);
+			res.setErrorMsg("메모 고유번호가 올바르지 않습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		
+		String fileName = memo.getFileName();
+		String fileType = memo.getFileType();
+		byte[] imageData = memo.getImageData();
+		res.addData(fileName);
+		res.addData(fileType);
+		res.addData(imageData);
+		
+		return ResponseEntity.ok().body(res);
+	}
+	
 	@Getter
 	@Setter
 	@ToString
 	static public class memoCreateDTO {
 		@Schema(name = "content", description = "메모 내용", example = "신규 메모")
 		private String content;
+		private MultipartFile file;
 	}
 	
 	@PutMapping("/memo/create")
@@ -162,7 +213,7 @@ public class DashBoardController {
 	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> putMemoCreate(
 			HttpServletRequest request,
-			@RequestBody memoCreateDTO req) {
+			@ModelAttribute memoCreateDTO req) {
 		System.out.println("token : " + request.getHeader("Authorization"));
 		responseDTO res = responseDTO.builder()
 				.success(true)
@@ -187,11 +238,12 @@ public class DashBoardController {
 			return ResponseEntity.ok().body(res);
 		}
 		try {
-			memoService.addMemo(member, req.content);	
+			memoService.addMemo(member, req.content, req.file);	
 		}
 		catch(Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
+			logService.addErrorLog("DashBoardController.java", "putMemoCreate()", e.getMessage());
 		}
 		
 		return ResponseEntity.ok().body(res);
@@ -205,6 +257,7 @@ public class DashBoardController {
 		private long memoNo;
 		@Schema(name = "content", description = "수정 메모 내용", example = "수정 메모")
 		private String content;
+		private MultipartFile file;
 	}
 	
 	@PostMapping("/memo/modify")
@@ -214,7 +267,7 @@ public class DashBoardController {
 	@ApiResponse(description = "success, errorMsg 값만 체크", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> postMemoModify(
 			HttpServletRequest request,
-			@RequestBody memoModifyDTO req) {
+			@ModelAttribute memoModifyDTO req) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.errorMsg(null)
@@ -238,11 +291,12 @@ public class DashBoardController {
 			return ResponseEntity.ok().body(res);
 		}
 		try {
-			memoService.modifyMemo(member, req.memoNo, req.content);
+			memoService.modifyMemo(member, req.memoNo, req.content, req.file);
 		}
 		catch(Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
+			logService.addErrorLog("DashBoardController.java", "postMemoModify()", e.getMessage());
 		}
 		
 		
@@ -293,6 +347,7 @@ public class DashBoardController {
 		catch(Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
+			logService.addErrorLog("DashBoardController.java", "postMemoDisable()", e.getMessage());
 		}
 		
 		
@@ -335,6 +390,7 @@ public class DashBoardController {
 		catch(Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
+			logService.addErrorLog("DashBoardController.java", "postMemoDelete()", e.getMessage());
 		}
 		
 		
@@ -440,6 +496,7 @@ public class DashBoardController {
 		}catch(Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
+			logService.addErrorLog("DashBoardController.java", "getBoardView()", e.getMessage());
 		}
 		
 		return ResponseEntity.ok().body(res);

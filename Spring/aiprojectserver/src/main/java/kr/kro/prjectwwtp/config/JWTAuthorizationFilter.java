@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.persistence.MemberRepository;
+import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.util.JWTUtil;
 import kr.kro.prjectwwtp.util.Util;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JWTAuthorizationFilter extends OncePerRequestFilter {
 	private final MemberRepository memberRepo;
+	private final LogService logService;
 
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -81,6 +83,7 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 		} catch (Exception e) {
 			System.out.println("[JWTAuthorizationFilter] Error during token validation: " + e.getMessage());
 			System.out.println("========== [JWTAuthorizationFilter] END (ERROR) ==========\n");
+			logService.addErrorLog("JWTAuthorizationFilter.java", "doFilterInternal()", e.getMessage());
 			//e.printStackTrace();
 		}
 		

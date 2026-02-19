@@ -65,6 +65,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 		} catch (IOException e) {
 			System.out.println("[JWTAuthenticationFilter] IOException: " + e.getMessage());
 			errorMsg = e.getMessage();
+			logService.addErrorLog("JWTAuthenticationFilter.java", "attemptAuthentication()", errorMsg);
 			throw new AuthenticationException("요청 처리 중 오류가 발생했습니다") {};
 		} finally {
 			logService.addAccessLog(member, userAgent, remoteInfo, method, requestURI, errorMsg);
@@ -125,6 +126,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 			loginSuccess = true;
 		}catch(Exception e) {
 			errorMsg = e.getMessage();
+			logService.addErrorLog("JWTAuthenticationFilter.java", "successfulAuthentication()", errorMsg);
 		}finally {
 			// 접속 로그 기록
 			logService.addLoginLog(member, loginSuccess, userId, remoteInfo, null, errorMsg);

@@ -21,6 +21,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import jakarta.servlet.http.HttpServletResponse;
 import kr.kro.prjectwwtp.persistence.MemberRepository;
+import kr.kro.prjectwwtp.service.LogService;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -29,6 +30,7 @@ public class SecurityConfig {
 	private final AuthenticationSuccessHandler oauth2SuccessHandler;
 	private final AuthenticationFailureHandler oauth2FailurHandler;
 	private final MemberRepository memberRepo;
+	private final LogService logService;
 	
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -100,7 +102,7 @@ public class SecurityConfig {
 		);
 		
 		// JWT 인가 필터 추가 (토큰 검증용) - JWTAuthenticationFilter 이후에 실행
-		JWTAuthorizationFilter jwtAuthorizationFilter = new JWTAuthorizationFilter(memberRepo);
+		JWTAuthorizationFilter jwtAuthorizationFilter = new JWTAuthorizationFilter(memberRepo, logService);
 		http.addFilterAfter(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
 		
 		// OAuth2 인증 추가

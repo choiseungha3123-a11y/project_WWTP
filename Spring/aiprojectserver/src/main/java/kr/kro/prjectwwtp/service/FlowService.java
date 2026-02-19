@@ -28,6 +28,7 @@ import kr.kro.prjectwwtp.domain.FlowImputate;
 import kr.kro.prjectwwtp.domain.FlowOrigin;
 import kr.kro.prjectwwtp.domain.FlowPredict;
 import kr.kro.prjectwwtp.domain.FlowSummary;
+import kr.kro.prjectwwtp.domain.TmsImputate;
 import kr.kro.prjectwwtp.persistence.FakeDateRepository;
 import kr.kro.prjectwwtp.persistence.FlowImputateRepository;
 import kr.kro.prjectwwtp.persistence.FlowInsertRepository;
@@ -42,6 +43,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class FlowService {
+	private final LogService logService;
 	private final FlowOriginRepository flowOriginRepo;
 	private final FlowImputateRepository flowImputateRepo;
 	private final FlowInsertRepository insertRepo;
@@ -159,19 +161,23 @@ public class FlowService {
 		LocalDateTime start = end.minusDays(1).plusMinutes(1);
 		LocalDateTime now = LocalDateTime.now().minusDays(1);
 		List<FlowImputate> list = flowImputateRepo.findByFlowTimeBetweenOrderByFlowTime(start, end);
+		List<FlowImputate> ret = new ArrayList<FlowImputate>();
 		for(FlowImputate flow : list) {
 			flow.setSum(flow.getFlowA() + flow.getFlowB());
 			LocalDateTime t = flow.getFlowTime();
+			if(t.getMinute() != 0 && t.getMinute() != 30)
+				continue;
 			String day = now.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 			if(t.getDayOfMonth() != start.getDayOfMonth())
 				day = now.plusDays(1).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 			String time = flow.getFlowTime().format(DateTimeFormatter.ofPattern("HHmmss"));
 			flow.setStrtime(day + time);
+			ret.add(flow);
 		}
 		//System.out.println("start : " + start.toString());
 		//System.out.println("end : " + end.toString());
 		//System.out.println("getFlowImputateListByDate size : " + list.size());
-		return list;
+		return ret;
 	}
 	
 	public List<FlowImputate> imputate(LocalDateTime today) {
@@ -361,6 +367,7 @@ public class FlowService {
 		} catch (Exception e) {
 			System.err.println("[saveToCsv] CSV 파일 저장 중 오류 발생: " + e.getMessage());
 			e.printStackTrace();
+			logService.addErrorLog("FlowService.java", "saveToCsv()", e.getMessage());
 			throw new Exception("CSV 파일 저장 중 오류가 발생했습니다: " + e.getMessage());
 		}
 	}
@@ -440,6 +447,7 @@ public class FlowService {
 						
 					} catch (Exception e) {
 						System.out.println("[loadFromCsv] 경고: 라인 " + lineNo + " 파싱 중 오류 발생 - " + e.getMessage() + ", 스킵");
+						logService.addErrorLog("FlowService.java", "loadFromCsv() inner", e.getMessage());
 						continue;
 					}
 				}
@@ -453,6 +461,7 @@ public class FlowService {
 			System.err.println("[loadFromCsv] CSV 파일 로드 중 오류 발생: " + e.getMessage());
 			e.printStackTrace();
 			//throw new Exception("CSV 파일 로드 중 오류가 발생했습니다: " + e.getMessage());
+			logService.addErrorLog("FlowService.java", "loadFromCsv() outer", e.getMessage());
 			return null;
 		}
 	}
@@ -508,6 +517,9 @@ public class FlowService {
 		Map<LocalDateTime, FlowPredict> uniqueMap = new HashMap<>();
 		for (FlowPredict predict : allList) {
 			LocalDateTime flowTime = predict.getFlowTime().withSecond(0).withNano(0);
+			// 0분, 30분의 예측값만을 이용
+			if(flowTime.getMinute() != 0 && flowTime.getMinute() != 30)
+				continue;
 			// 첫 번째 것이 flow_no가 가장 크므로(DESC 정렬됨) 그것만 유지
 			if (!uniqueMap.containsKey(flowTime)) {
 				uniqueMap.put(flowTime, predict);
@@ -556,17 +568,7 @@ public class FlowService {
 //		return result;
 //	}
 	
-	public void savePredictList(LocalDateTime time, double[] array) {
-		List<FlowPredict> list = new ArrayList<>();
-		for(int i = 0; i < array.length; ++i)
-			list.add(FlowPredict.builder()
-						.flowTime(time.plusMinutes((i + 1)*30))
-						.flowValue(array[i])
-						.build());
-		flowPredictRepo.saveAll(list);
-	}
-	
-	public List<FlowPredict> getFlowAcc(LocalDateTime now) {
-		return null;
+	public void savePredictList(FlowPredict[] array) {
+		flowPredictRepo.saveAll(Arrays.asList(array));
 	}
 }

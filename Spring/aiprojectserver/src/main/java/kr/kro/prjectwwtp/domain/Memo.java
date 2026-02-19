@@ -2,6 +2,7 @@ package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -12,6 +13,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
@@ -69,4 +71,14 @@ public class Memo{
     @Temporal(TemporalType.TIMESTAMP)
     @Schema(description = "메모 종료 처리 시간", example = "2026-01-30T15:30:00")
 	LocalDateTime disableTime;
+    
+    @Schema(description = "업로드 사진 파일명")
+    String fileName;
+    @JsonIgnore
+    @Schema(description = "파일 종류")
+    String fileType;
+    @Lob
+    @JsonIgnore
+    @Column(columnDefinition = "MEDIUMBLOB")
+    private byte[] imageData;
 }

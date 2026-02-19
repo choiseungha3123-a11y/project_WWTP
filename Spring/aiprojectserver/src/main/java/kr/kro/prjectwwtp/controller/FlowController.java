@@ -135,6 +135,7 @@ public class FlowController {
 		} catch (Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
+			logService.addErrorLog("FlowController.java", "postFlowOriginUpload()", e.getMessage());
 		} finally {
 			logService.addFlowLog(member, "list", saveCount, errorMsg);
 		}
@@ -188,6 +189,7 @@ public class FlowController {
 			res.setSuccess(false);
 			errorMsg = e.getMessage();
 			res.setErrorMsg(errorMsg);
+			logService.addErrorLog("FlowController.java", "getFlowOriginList()", e.getMessage());
 		} finally {
 			logService.addFlowLog(member, "list", listSize, errorMsg);
 		}
@@ -214,6 +216,7 @@ public class FlowController {
 			requestFlow(aws368, aws541, aws569, flowList);
 		} catch (Exception e) {
 			e.printStackTrace();
+			logService.addErrorLog("FlowController.java", "getFlowPredict()", e.getMessage());
 		}		 	
 	}
 
@@ -241,18 +244,18 @@ public class FlowController {
 			predictIn<FlowImputate> pIn = new predictIn<>(input);
 			
 			fastApiResponseDTO response = apiService.getPredict("/predict/flow", pIn);
-			LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
 			if(response.isOk()) {
-				double[] predictions = extractPredictions(response);
+				FlowPredict[] predictions = extractPredictions(response);
 				predictSize = predictions.length;
 				System.out.println("예측값 (0.5h~12.0h): " + java.util.Arrays.toString(predictions));
-				flowService.savePredictList(now, predictions);
+				flowService.savePredictList(predictions);
 			}
 			else {
 				errorMsg = response.getError();
 			}
 		}catch(Exception e) {
 			errorMsg = e.getMessage();
+			logService.addErrorLog("FlowController.java", "requestFlow()", e.getMessage());
 		}
 		finally {
 			logService.addFlowLog(null, "predict", predictSize, errorMsg);
@@ -264,9 +267,9 @@ public class FlowController {
 	 * @param response FastAPI 응답 DTO
 	 * @return predictions 배열 (크기: 12), 추출 실패 시 null
 	 */
-	private double[] extractPredictions(fastApiResponseDTO response) {
+	private FlowPredict[] extractPredictions(fastApiResponseDTO response) {
 		int predictSize = 24;
-		double[] predictions = new double[predictSize];
+		FlowPredict[] predictions = new FlowPredict[predictSize];
 		ObjectMapper mapper = new ObjectMapper();
 		
 		try {
@@ -276,14 +279,18 @@ public class FlowController {
 			}
 			
 			Map<String, Object> mapOutput = response.getOutput();
-			Map<String, Object> mapPredictions = mapper.convertValue(mapOutput.get("predictions"),new TypeReference<>() {});			
+			Map<String, Object> mapPredictions = mapper.convertValue(mapOutput.get("predictions"),new TypeReference<>() {});
+			LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
 			// output에서 predictions 데이터 추출
 			for(int index = 1; index <= predictSize; index++) {
 				String key = index/2 + (index % 2 == 0 ? ".0h" : ".5h");
 				Object value = mapPredictions.get(key);
 				
 				if(value != null) {
-					predictions[index - 1] = ((Number) value).doubleValue();
+					predictions[index - 1] = FlowPredict.builder()
+							.flowValue(((Number) value).doubleValue())
+							.flowTime(now.plusMinutes(index * 30))
+							.build();
 				} else {
 					System.out.println(response);
 					System.err.println("예측값 누락 (" + key + ")");
@@ -294,6 +301,7 @@ public class FlowController {
 			return predictions;
 		} catch (NumberFormatException e) {
 			System.err.println("예측값을 숫자로 변환하는 중 오류 발생: " + e.getMessage());
+			logService.addErrorLog("FlowController.java", "extractPredictions()", e.getMessage());
 			return null;
 		} catch (Exception e) {
 			System.err.println("예측값 추출 중 오류 발생: " + e.getMessage());

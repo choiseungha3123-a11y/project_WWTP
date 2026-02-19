@@ -90,6 +90,9 @@ sudo mysql\_secure\_installation
 
 mysql -V
 
+\#이미지 업로드를 위해서 쿼리 처리용량 증량(20M, MEDIUMBLOB)
+SET GLOBAL max_allowed_packet=20971520;
+
 
 
 4\. Java (OpenJDK) 설정

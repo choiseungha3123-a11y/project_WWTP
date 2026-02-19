@@ -2,12 +2,9 @@ package kr.kro.prjectwwtp.service;
 
 
 
-import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
-import java.util.Properties;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -62,7 +59,6 @@ public class MailService {
 
 	public void sendEmail(Member member, String subject, String bodyHtml) {
         String type = "send One";
-		String messageId = null;
 		String errorMsg = null;
 		try {
 //			Destination destination = new Destination().withToAddresses(member.getUserEmail());
@@ -85,14 +81,14 @@ public class MailService {
 				errorMsg = response.getBody();
 		} catch(Exception e) {
 			errorMsg = e.getMessage();
+			logService.addErrorLog("MailService.java", "sendEmail()", e.getMessage());
 		} finally {
-			logService.addMailLog(member, type, messageId, errorMsg);	
+			logService.addMailLog(member, type, errorMsg);	
 		}
 	}
 	
-	public void sendEmail(List<String> addressList, String subjectText, String bodyText) {
+	public void sendEmailList(List<String> addressList, String subjectText, String bodyText) {
         String type = "send All";
-        String messageId = null;
 		String errorMsg = null;
         try {
 //			Destination destination = new Destination().withToAddresses(addressList);
@@ -101,8 +97,9 @@ public class MailService {
 //			System.out.println("Email send response: " + result);
         } catch (Exception e) {
 			errorMsg = e.getMessage();
+			logService.addErrorLog("MailService.java", "sendEmailList()", e.getMessage());
 		} finally {
-			logService.addMailLog(null, type, messageId, errorMsg);	
+			logService.addMailLog(null, type, errorMsg);	
 		}
 	}
 	
@@ -176,7 +173,6 @@ public class MailService {
 //	}
 	public void sendEmailWithAttachment(Member member, String subject, String bodyHtml, String fileContent, String fileName) {
 		String type = "sendReport";
-        String messageId = null;
 		String errorMsg = null;
         try {
         	Email from = new Email(fromEmail);
@@ -197,8 +193,9 @@ public class MailService {
 				errorMsg = response.getBody();
         } catch (Exception e) {
 			errorMsg = e.getMessage();
+			logService.addErrorLog("MailService.java", "sendEmailWithAttachment()", e.getMessage());
 		} finally {
-			logService.addMailLog(null, type, messageId, errorMsg);	
+			logService.addMailLog(member, type, errorMsg);	
 		}
 	}
 	

@@ -12,11 +12,12 @@ import org.springframework.stereotype.Service;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @Converter
+@RequiredArgsConstructor
 public class CryptoStringConverter implements AttributeConverter<String, String> {
-	
 	@Value("${db.cryp.key}")
 	private String crypKey;
 	@Value("${db.cryp.iv}")

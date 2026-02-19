@@ -138,6 +138,7 @@ public class TmsController {
 		} catch (Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
+			logService.addErrorLog("TmsController.java", "postTmsOriginUpload()", e.getMessage());
 		} finally {
 			logService.addTmsLog(member, "upload", saveCount, errorMsg);
 		}
@@ -190,6 +191,7 @@ public class TmsController {
 		} catch (Exception e) {
 			res.setSuccess(false);
 			res.setErrorMsg(e.getMessage());
+			logService.addErrorLog("TmsController.java", "getTmsOriginList()", e.getMessage());
 		} finally {
 			logService.addTmsLog(member, "list", listSize, errorMsg);
 		}
@@ -233,6 +235,7 @@ public class TmsController {
 			}
 		}catch(Exception e) {
 			e.printStackTrace();
+			logService.addErrorLog("TmsController.java", "makeFakeDate()", e.getMessage());
 		}
 	}
 	
@@ -258,6 +261,7 @@ public class TmsController {
 								
 		} catch (Exception e) {
 			e.printStackTrace();
+			logService.addErrorLog("TmsController.java", "getTmsPredict()", e.getMessage());
 		}
 	}
 	
@@ -291,6 +295,7 @@ public class TmsController {
 			}
 		}catch(Exception e) {
 			errorMsg = e.getMessage();
+			logService.addErrorLog("TmsController.java", "requestTms()", e.getMessage());
 		}
 		finally {
 			logService.addTmsLog(null, "predict", predictSize, errorMsg);
@@ -373,6 +378,7 @@ public class TmsController {
 			return predictions;
 		} catch (NumberFormatException e) {
 			System.err.println("예측값을 숫자로 변환하는 중 오류 발생: " + e.getMessage());
+			logService.addErrorLog("TmsController.java", "extractPredictions()", e.getMessage());
 			return null;
 		} catch (Exception e) {
 			System.err.println("예측값 추출 중 오류 발생: " + e.getMessage());

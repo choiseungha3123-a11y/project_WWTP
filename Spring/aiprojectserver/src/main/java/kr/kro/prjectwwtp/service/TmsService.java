@@ -47,6 +47,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class TmsService {
+	private final LogService logService;
 	private final TmsOriginRepository tmsOriginRepo;
 	private final TmsImputateRepository tmsImputateRepo;
 	private final TmsInsertRepository tmsInsertRepo;
@@ -168,18 +169,22 @@ public class TmsService {
 		LocalDateTime start = end.minusDays(1).plusMinutes(1);
 		LocalDateTime now = LocalDateTime.now().minusDays(1);
 		List<TmsImputate> list = tmsImputateRepo.findByTmsTimeBetweenOrderByTmsTime(start, end);
+		List<TmsImputate> ret = new ArrayList<TmsImputate>();
 		for(TmsImputate tms : list) {
 			LocalDateTime t = tms.getTmsTime();
+			if(t.getMinute() != 0 && t.getMinute() != 30)
+				continue;
 			String day = now.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 			if(t.getDayOfMonth() != start.getDayOfMonth())
 				day = now.plusDays(1).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 			String time = tms.getTmsTime().format(DateTimeFormatter.ofPattern("HHmmss"));
 			tms.setStrtime(day + time);
+			ret.add(tms);
 		}
 		//System.out.println("start : " + start.toString());
 		//System.out.println("end : " + end.toString());
 		//System.out.println("getTmsImputateListByDate size : " + list.size());
-		return list;
+		return ret;
 	}
 	
 	public List<TmsImputate> imputate(LocalDateTime today) {
@@ -389,6 +394,7 @@ public class TmsService {
 		} catch (Exception e) {
 			System.err.println("[saveToCsv] CSV 파일 저장 중 오류 발생: " + e.getMessage());
 			e.printStackTrace();
+			logService.addErrorLog("TmsService.java", "saveToCsv()", e.getMessage());
 			throw new Exception("CSV 파일 저장 중 오류가 발생했습니다: " + e.getMessage());
 		}
 	}
@@ -472,6 +478,7 @@ public class TmsService {
 						
 					} catch (Exception e) {
 						System.out.println("[loadFromCsv] 경고: 라인 " + lineNo + " 파싱 중 오류 발생 - " + e.getMessage() + ", 스킵");
+						logService.addErrorLog("TmsService.java", "loadFromCsv() inner", e.getMessage());
 						continue;
 					}
 				}
@@ -484,6 +491,7 @@ public class TmsService {
 		} catch (Exception e) {
 			System.err.println("[loadFromCsv] CSV 파일 로드 중 오류 발생: " + e.getMessage());
 			e.printStackTrace();
+			logService.addErrorLog("TmsService.java", "loadFromCsv() outer", e.getMessage());
 			//throw new Exception("CSV 파일 로드 중 오류가 발생했습니다: " + e.getMessage());
 			return null;
 		}
@@ -597,6 +605,9 @@ public class TmsService {
 		Map<LocalDateTime, TmsPredict> uniqueMap = new HashMap<>();
 		for(TmsPredict predict : allList) {
 			LocalDateTime tmsTime = predict.getTmsTime().withSecond(0).withNano(0);
+			// 0분, 30분의 예측값만을 이용
+			if(tmsTime.getMinute() != 0 && tmsTime.getMinute() != 30)
+				continue;
 			if(!uniqueMap.containsKey(tmsTime)) {
 				uniqueMap.put(tmsTime, predict);
 			}

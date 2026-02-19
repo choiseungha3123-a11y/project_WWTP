@@ -29,20 +29,11 @@ import lombok.ToString;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-public class MailLog {
+public class ErrorLog {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Schema(description = "고유번호", example = "1~")
 	private long log_no;
-	@Schema(description = "로그 종류", example = "upload || ")
-	private String type;
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-	@JoinColumn(name="userNo")
-	@Schema(description = "요청 회원", example = "1~")
-	private Member member;
-	@Column(name="userNo", insertable = false, updatable = false)
-    private Long userNo;
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(updatable = false)
 	@Builder.Default
@@ -50,4 +41,8 @@ public class MailLog {
 	private LocalDateTime logTime = LocalDateTime.now();
 	@Schema(description = "오류 로그", example = "null | 오류 내용")
 	private String errorMsg;
+	@Schema(description = "오류 발생 파일명", example = "XXXX.java")
+	private String errorSource;
+	@Schema(description = "오류 발생 함수명", example = "XXXX()")
+	private String errorFunction;
 }
