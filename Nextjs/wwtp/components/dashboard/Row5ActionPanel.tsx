@@ -33,7 +33,7 @@ export default function Row5ActionPanel() {
   const [editPreviewUrl, setEditPreviewUrl] = useState<string | null>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
 
-  // 이미지 확대 모달 State (이미지 경로와 이름을 함께 저장)
+  // 이미지 확대 모달 State
   const [zoomedMemo, setZoomedMemo] = useState<{url: string, name: string} | null>(null);
 
   // --- Auth & Fetching ---
@@ -191,10 +191,19 @@ export default function Row5ActionPanel() {
     }
   };
 
+  const handleDownload = (url: string, fileName: string) => {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const closeZoom = () => setZoomedMemo(null);
 
   return (
-    <div className="bg-[#1a202c] p-6 rounded-4xl border border-white/5 h-full flex flex-col shadow-2xl relative">
+    <div className="bg-[#1a202c] p-4 sm:p-6 rounded-4xl border border-white/5 h-full flex flex-col shadow-2xl relative">
       {/* 상단 헤더 */}
       <div className="shrink-0 mb-4">
         <h3 className="text-[16px] font-bold text-blue-400 flex items-center gap-2 mb-4">
@@ -205,7 +214,7 @@ export default function Row5ActionPanel() {
         </div>
       </div>
 
-      {/* 등록 입력부 */}
+      {/* 등록 입력부 - 모바일 최적화 버튼 */}
       <div className="shrink-0 space-y-3 mb-6">
         <div className="flex gap-2">
           <input 
@@ -214,24 +223,36 @@ export default function Row5ActionPanel() {
             onChange={(e) => setMemoInput(e.target.value)}
             placeholder="조치 사항 입력..."
             onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
-            className="flex-1 bg-slate-800/50 border border-white/10 rounded-2xl px-5 py-3 text-sm text-slate-200 focus:border-blue-500 outline-none transition-all placeholder:text-slate-600"
+            className="flex-1 min-w-0 bg-slate-800/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-slate-200 focus:border-blue-500 outline-none transition-all placeholder:text-slate-600"
           />
           <input type="file" ref={fileInputRef} onChange={(e) => handleFileChange(e, false)} className="hidden" accept="image/*" />
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className={`p-3 rounded-2xl border border-white/10 transition-colors ${selectedFile ? 'text-blue-400 bg-blue-500/20 border-blue-500/50' : 'text-slate-400 hover:bg-white/5'}`}
+            className={`shrink-0 p-3 rounded-2xl border border-white/10 transition-colors ${selectedFile ? 'text-blue-400 bg-blue-500/20 border-blue-500/50' : 'text-slate-400 hover:bg-white/5'}`}
           >
             <Paperclip className="w-5 h-5" />
           </button>
-          <button onClick={handleRegister} disabled={loading} className="bg-blue-600 hover:bg-blue-500 px-6 rounded-2xl font-bold text-sm text-white flex items-center gap-2 shadow-lg disabled:opacity-50 transition-all">
-            <Send className="w-4 h-4" /> 등록
+          <button 
+            onClick={handleRegister} 
+            disabled={loading} 
+            className="shrink-0 bg-blue-600 hover:bg-blue-500 px-4 sm:px-6 rounded-2xl font-bold text-sm text-white flex items-center gap-2 shadow-lg disabled:opacity-50 transition-all"
+          >
+            <Send className="w-4 h-4" /> 
+            <span className="hidden sm:inline">등록</span> {/* 모바일에서 텍스트 숨김 */}
           </button>
         </div>
 
         {previewUrl && (
           <div className="flex flex-col gap-1.5">
             <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-blue-500/50 group shadow-lg">
-              <Image src={previewUrl} alt="preview" fill className="object-cover cursor-pointer" onClick={() => setZoomedMemo({url: previewUrl, name: selectedFile?.name || 'Preview'})} unoptimized />
+              <Image 
+                src={previewUrl} 
+                alt="preview" 
+                fill 
+                className="object-cover cursor-pointer" 
+                onClick={() => setZoomedMemo({url: previewUrl, name: selectedFile?.name || 'preview_image'})}
+                unoptimized 
+              />
               <button 
                 onClick={() => { setSelectedFile(null); setPreviewUrl(null); if(fileInputRef.current) fileInputRef.current.value=""; }}
                 className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
@@ -267,7 +288,8 @@ export default function Row5ActionPanel() {
                   <div className="flex items-center gap-4">
                     <input type="file" ref={editFileInputRef} onChange={(e) => handleFileChange(e, true)} className="hidden" accept="image/*" />
                     <button onClick={() => editFileInputRef.current?.click()} className="flex items-center gap-2 text-xs text-slate-400 bg-white/5 px-3 py-2 rounded-lg hover:bg-white/10">
-                      <ImageIcon className="w-4 h-4" /> {editFile ? "변경됨" : "사진 수정"}
+                      <ImageIcon className="w-4 h-4" /> 
+                      <span className="hidden sm:inline">{editFile ? "변경됨" : "사진 수정"}</span>
                     </button>
                     {editPreviewUrl && (
                       <div className="flex flex-col gap-1">
@@ -277,7 +299,7 @@ export default function Row5ActionPanel() {
                             alt="edit preview" 
                             fill 
                             className="rounded-lg object-cover border border-white/10 cursor-pointer" 
-                            onClick={() => setZoomedMemo({url: editPreviewUrl, name: editFile ? editFile.name : (memo.fileName || 'Untitled')})}
+                            onClick={() => setZoomedMemo({url: editPreviewUrl, name: editFile ? editFile.name : (memo.fileName || 'edit_image')})}
                             unoptimized 
                           />
                         </div>
@@ -295,7 +317,7 @@ export default function Row5ActionPanel() {
                 /* 일반 모드 */
                 <>
                   <div className="flex gap-4">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-200 leading-relaxed break-all">{memo.content}</p>
                     </div>
                     {memo.imageData && (
@@ -306,7 +328,7 @@ export default function Row5ActionPanel() {
                             alt="memo attach" 
                             fill
                             className="rounded-2xl object-cover border border-white/10 hover:scale-105 transition-transform cursor-pointer"
-                            onClick={() => setZoomedMemo({url: memo.imageData!, name: memo.fileName || 'Untitled'})}
+                            onClick={() => setZoomedMemo({url: memo.imageData!, name: memo.fileName || 'attached_image'})}
                             unoptimized
                           />
                         </div>
@@ -318,15 +340,15 @@ export default function Row5ActionPanel() {
                   </div>
 
                   <div className="flex justify-between items-end mt-4">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs text-slate-500 flex items-center gap-1.5"><User className="w-3 h-3" /> {memo.createMember?.userName}</span>
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <span className="text-xs text-slate-500 flex items-center gap-1.5 truncate"><User className="w-3 h-3" /> {memo.createMember?.userName}</span>
                       <span className="text-[11px] text-slate-600 font-mono tracking-tighter">
                         {new Date(memo.createTime).toLocaleString('ko-KR', {
                           year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
                         })}
                       </span>
                     </div>
-                    <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                       <button 
                         onClick={() => { 
                           setEditingMemoNo(memo.memoNo); 
@@ -349,31 +371,40 @@ export default function Row5ActionPanel() {
       {/* --- 이미지 확대 모달 영역 --- */}
       {zoomedMemo && (
         <div 
-          className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-200"
           onClick={closeZoom}
         >
           <div 
-            className="relative max-w-5xl w-full md:w-1/2 overflow-hidden rounded-3xl border border-white/10 shadow-2xl bg-slate-900 flex flex-col"
+            className="relative max-w-5xl w-full sm:w-[80vw] md:w-1/2 overflow-hidden rounded-3xl border border-white/10 shadow-2xl bg-slate-900 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* 상단바: 이름과 닫기 버튼 */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-white/5">
-              <div className="flex items-center gap-2 min-w-0">
-                <ImageIcon className="w-4 h-4 text-blue-400 shrink-0" />
-                <span className="text-sm text-slate-200 truncate font-medium">
+            {/* 상단바: 이미지 이름 + 다운로드 버튼 + 닫기 버튼 */}
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-white/5 bg-slate-800/50">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <ImageIcon className="w-5 h-5 text-blue-400 shrink-0" />
+                <span className="text-sm text-slate-100 truncate font-semibold select-all">
                   {zoomedMemo.name}
                 </span>
               </div>
-              <button 
-                onClick={closeZoom}
-                className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-2">
+                <button 
+                  onClick={() => handleDownload(zoomedMemo.url, zoomedMemo.name)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-xl text-xs font-bold transition-all border border-blue-500/30"
+                >
+                  <Download className="w-4 h-4" /> 
+                  <span className="hidden sm:inline">다운로드</span>
+                </button>
+                <button 
+                  onClick={closeZoom}
+                  className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
             
             {/* 이미지 영역 */}
-            <div className="relative w-full h-[60vh] p-4 bg-slate-950/50">
+            <div className="relative w-full h-[50vh] sm:h-[60vh] p-4 sm:p-6 bg-black/20 flex items-center justify-center">
                <Image 
                 src={zoomedMemo.url} 
                 alt="Enlarged view" 
@@ -383,9 +414,11 @@ export default function Row5ActionPanel() {
               />
             </div>
 
-            {/* 하단바 (선택사항: 다운로드 버튼 등 추가 가능) */}
-            <div className="px-6 py-3 flex justify-center bg-white/5 border-t border-white/5">
-              <p className="text-[11px] text-slate-500 italic">이미지 원본 보기 모드</p>
+            {/* 하단바 */}
+            <div className="px-6 py-3 flex justify-center bg-slate-800/30 border-t border-white/5">
+              <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium tracking-tight text-center">
+                PREVIEW MODE — USE THE DOWNLOAD BUTTON TO SAVE
+              </p>
             </div>
           </div>
         </div>
