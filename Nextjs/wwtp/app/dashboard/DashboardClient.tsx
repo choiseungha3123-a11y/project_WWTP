@@ -21,7 +21,8 @@ export default function DashboardPage() {
     userNo: 0,
     userId: "",
     userName: "",
-    userRole: ""
+    userRole: "",
+    userEmail: "" // 이메일 필드 추가
   });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -34,11 +35,14 @@ export default function DashboardPage() {
       router.replace("/");
       return;
     }
+    
+    // 로컬스토리지에서 이메일 정보도 가져옵니다.
     setUserData({
       userNo: Number(localStorage.getItem('userNo')),
       userId: localStorage.getItem('userId') || "",
       userName: localStorage.getItem('userName') || "사용자",
-      userRole: savedRole
+      userRole: savedRole,
+      userEmail: localStorage.getItem('userEmail') || "" 
     });
     
     const now = new Date();
@@ -116,6 +120,8 @@ export default function DashboardPage() {
                   </div>
                   <p className="font-bold text-xl text-white leading-tight">{userData.userName}</p>
                   <p className="text-sm text-slate-500 mt-1">{userData.userId}</p>
+                  {/* 이메일 표시 추가 */}
+                  <p className="text-[11px] text-slate-400 mt-1 break-all px-4 text-center">{userData.userEmail}</p>
                   <span className="mt-3 px-3 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest">
                     {userData.userRole}
                   </span>
@@ -125,7 +131,7 @@ export default function DashboardPage() {
                     <span className="text-lg text-slate-500">👤</span> 개인정보 수정
                   </button>
                    {userData.userRole === "ROLE_ADMIN" && (
-                    <>
+                   <>
                     <button 
                       onClick={() => { router.push("/admin/member"); setIsProfileOpen(false); }} 
                       className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-slate-300 font-medium"
@@ -155,37 +161,31 @@ export default function DashboardPage() {
       <main className="flex-1 grid grid-cols-10 gap-6 lg:overflow-hidden min-h-0">
         
         <section className="col-span-12 lg:col-span-6 flex flex-col gap-6 min-h-0">
-          {/* Row 1: 시스템 체크 및 지표 카드 */}
           <div id="row1-container" className="flex-none drop-shadow-sm">
             <Row1Status />
           </div>
           
-          {/* Row 2: 차트 */}
           <div className="flex-1 lg:min-h-0 bg-white/2 border border-white/5 rounded-4xl overflow-hidden shadow-inner">
             <Row3Charts />
           </div>
         </section>
 
-        {/* [오른쪽 섹션] 가로 4/10 (2/5) */}
         <section className="col-span-12 lg:col-span-4 flex flex-col gap-6 min-h-0">
-          {/* Row 3: Event Detection */}
           <div className="flex-none bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
             <Row2Alerts />
           </div>
           
-          {/* Row 4: 운영 리스크 점수 */}
           <div className="flex-none bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
             <Row4RiskDetail />
           </div>
           
-          {/* Row 5: 운영 조치 패널 */}
           <div className="flex-1 lg:min-h-0 bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
             <Row5ActionPanel />
           </div>
         </section>
       </main>
 
-      {/* 개인정보 수정 모달 */}
+      {/* 개인정보 수정 모달 - userEmail 추가 전달 */}
       <EditProfileModal 
         isOpen={isEditModalOpen} 
         onClose={() => setIsEditModalOpen(false)} 
@@ -193,10 +193,21 @@ export default function DashboardPage() {
           userNo: userData.userNo, 
           id: userData.userId, 
           name: userData.userName, 
-          role: userData.userRole 
+          role: userData.userRole,
+          email: userData.userEmail // 추가
         }} 
-        onUpdateSuccess={(newId, newName) => { 
-          setUserData(prev => ({ ...prev, userId: newId, userName: newName })); 
+        onUpdateSuccess={(newId, newName, newEmail) => { 
+          // 상태 업데이트
+          setUserData(prev => ({ 
+            ...prev, 
+            userId: newId, 
+            userName: newName,
+            userEmail: newEmail || prev.userEmail 
+          })); 
+          // 로컬스토리지 동기화
+          localStorage.setItem('userId', newId);
+          localStorage.setItem('userName', newName);
+          if (newEmail) localStorage.setItem('userEmail', newEmail);
         }} 
       />
     </div>

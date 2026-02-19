@@ -128,7 +128,7 @@ export default function Row1Status() {
         />
         <StatusCard 
           label="기온 | 강우"
-          value={weatherData ? `${roundVal(weatherData.TA)}°C | ${weatherData.RN_15m > 0 ? `${roundVal(weatherData.RN_15m)}mm` : "맑음"}` : (tmsError ? "Error" : "Loading...")}
+          value={weatherData ? `${roundVal(weatherData.TA)}°C | ${weatherData.RN_15m > 0 ? `${roundVal(weatherData.RN_15m)}mm` : "강우없음"}` : (tmsError ? "Error" : "Loading...")}
           status={(weatherData && weatherData.RN_15m > 5) ? "danger" : (weatherData && weatherData.RN_15m > 0) ? "warning" : (tmsError ? "danger" : "normal")}
           time={weatherData?.SYS_TIME}
           isError={!!tmsError}
