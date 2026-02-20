@@ -1,0 +1,140 @@
+package kr.kro.prjectwwtp.service;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+
+import kr.kro.prjectwwtp.config.PasswordEncoder;
+import kr.kro.prjectwwtp.domain.Member;
+import kr.kro.prjectwwtp.domain.Role;
+import kr.kro.prjectwwtp.persistence.MemberRepository;
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class MemberService {
+	private final MemberRepository memberRepo;
+	private PasswordEncoder encoder = new PasswordEncoder();
+	
+	public Member getByIdAndPassword(String userId, String password) {
+		Optional<Member> opt =  memberRepo.findByUserId(userId);
+		if(opt.isEmpty()) {
+			return null;
+		}
+		Member member = opt.get();
+		if(!encoder.matches(password, member.getPassword())) {
+			return null;
+		}
+		return member;
+	}
+	
+	public Member findByNo(long userNo) {
+		Optional<Member> opt = memberRepo.findById(userNo);
+		if(opt.isEmpty()) {
+			return null;
+		}
+		return opt.get();
+	}
+	
+	public Member findById(String userId) {
+		Optional<Member> opt = memberRepo.findByUserId(userId);
+		if(opt.isEmpty()) {
+			return null;
+		}
+		return opt.get();
+	}
+	
+	public boolean checkId(String userId) {
+		return memberRepo.findByUserId(userId).isPresent();
+	}
+	
+	public boolean checkEmail(String userEmail) {
+		return memberRepo.findByUserEmail(userEmail).isPresent();
+	}
+	
+	public List<Member> getMemberList() {
+		return memberRepo.findAll();
+	}
+	
+	public void saveAll(List<Member> list) {
+		memberRepo.saveAll(list);
+	}
+	
+	public void addMember(String userId, String password, String userName, String userEmail) {
+		memberRepo.save(Member.builder()
+				.userId(userId)
+				.password(encoder.encode(password))
+				.userName(userName)
+				.userEmail(userEmail)
+				.role(Role.ROLE_MEMBER)
+				.build());
+	}
+	
+	public void modifyMember(Member member, String userId, String password, String userName, String userEmail, Role role) {
+		if(userId != null && userId.length() > 0)
+			member.setUserId(userId);
+		if(password != null && password.length() > 0)
+			member.setPassword(encoder.encode(password));
+		if(userName != null && userName.length() > 0)
+			member.setUserName(userName);
+		if(userEmail != null && userEmail.length() > 0) {
+			member.setUserEmail(userEmail);
+			member.setValidateEmail(false);
+			member.setValidateKey(null);
+		}
+		if(role != null)
+			member.setRole(role);
+		memberRepo.save(member);
+	}
+	
+	public Member addSocialMember(String socialAuth, String userId, String userName) {
+		Member member = Member.builder()
+				.userName(userName)
+				.userId(userId)
+				.password("socialUser")
+				.socialAuth(socialAuth)
+				.role(Role.ROLE_VIEWER)
+				.build();
+		memberRepo.save(member);
+		return member;
+	}
+	
+	public Member findBySocialAuth(String socialAuth) {
+		Optional<Member> opt = memberRepo.findBySocialAuth(socialAuth); 
+		if(opt.isEmpty())
+			return null;
+		return opt.get();
+	}
+	
+	public void deleteMember(Member member) {
+		memberRepo.delete(member);
+	}
+	
+	public void addEmailKey(Long userNo, String key) {
+		Member member = findByNo(userNo);
+		member.setValidateKey(key);
+		memberRepo.save(member);
+	}
+	
+	public void validEmail(Long userNo) {
+		Member member = findByNo(userNo);
+		member.setValidateEmail(true);
+		member.setValidateKey(null);
+		memberRepo.save(member);
+	}
+	
+	public void delteEmail(Long userNo) {
+		Member member = findByNo(userNo);
+		member.setValidateEmail(false);
+		member.setValidateKey(null);
+		member.setUserEmail(null);
+		memberRepo.save(member);
+	}
+	
+	public List<Member> getValidateEmailMember() {
+		List<Member> list =  memberRepo.findByUserEmailIsNotNullAndValidateKeyIsNullAndValidateEmailTrue();
+		return list;
+	}
+
+}

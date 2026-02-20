@@ -6,6 +6,8 @@ public enum Role {
 	@JsonProperty("ROLE_MEMBER")
 	ROLE_MEMBER,
 	@JsonProperty("ROLE_ADMIN")
-	ROLE_ADMIN;
+	ROLE_ADMIN,
+	@JsonProperty("ROLE_VIEWER")
+	ROLE_VIEWER;
 }
 
