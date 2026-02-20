@@ -283,7 +283,7 @@ public class TmsController {
 		String errorMsg = null;
 		int predictSize = 0;
 		try {
-		Input<TmsImputate> input = new Input<>(aws368, aws541, aws569, tmsList);
+			Input<TmsImputate> input = new Input<>(aws368, aws541, aws569, tmsList);
 			predictIn<TmsImputate> pIn = new predictIn<>(input);
 			
 			fastApiResponseDTO response = apiService.getPredict("/predict/tms", pIn);

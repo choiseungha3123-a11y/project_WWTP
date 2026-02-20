@@ -28,15 +28,24 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {
+		Member member = null;
+		String method = request.getMethod();
+		String userAgent = request.getHeader("User-Agent");
+		if (userAgent == null) {
+			userAgent = "Unknown";
+		}
+		String remoteAddr = Util.getRemoteAddress(request);
+		int remotePort = request.getRemotePort();
+		String remoteInfo = remoteAddr + ":" + remotePort;
+		String errorMsg = null;
+		
 		JWTUtil.setMemberRepository(memberRepo);
 		
 		String requestPath = request.getRequestURI();
-		String method = request.getMethod();
-		String remoteAddr = Util.getRemoteAddress(request);
 		System.out.println("\n========== [JWTAuthorizationFilter] START ==========");
 		System.out.println("[JWTAuthorizationFilter] Method: " + method);
 		System.out.println("[JWTAuthorizationFilter] Path: " + requestPath);
-		System.out.println("[JWTAuthorizationFilter] IP: " + remoteAddr);
+		System.out.println("[JWTAuthorizationFilter] IP: " + remoteInfo);
 		
 		String jwtToken = request.getHeader(HttpHeaders.AUTHORIZATION);
 		System.out.println("[JWTAuthorizationFilter] Authorization header: " + (jwtToken != null ? "존재함 (" + jwtToken.substring(0, Math.min(20, jwtToken.length())) + "...)" : "없음"));
@@ -69,7 +78,7 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 				return;
 			}
 			
-			Member member = opt.get();
+			member = opt.get();
 			System.out.println("[JWTAuthorizationFilter] Found member: " + member.getUserId());
 			
 			// SecurityUser 객체 생성
@@ -84,7 +93,10 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 			System.out.println("[JWTAuthorizationFilter] Error during token validation: " + e.getMessage());
 			System.out.println("========== [JWTAuthorizationFilter] END (ERROR) ==========\n");
 			logService.addErrorLog("JWTAuthorizationFilter.java", "doFilterInternal()", e.getMessage());
+			errorMsg = e.getMessage();
 			//e.printStackTrace();
+		}finally {
+			logService.addAccessLog(member, userAgent, remoteInfo, method, requestPath, errorMsg);
 		}
 		
 		// SecurityFilterChain의 다음 필터로 이동

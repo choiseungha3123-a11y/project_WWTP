@@ -42,12 +42,12 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 		int remotePort = request.getRemotePort();
 		String remoteInfo = remoteAddr + ":" + remotePort;
 		
-		String requestURI = request.getRequestURI();
+		String requestPath = request.getRequestURI();
 		String errorMsg = null;
 		
 		System.out.println("\n========== [JWTAuthenticationFilter] attemptAuthentication START ==========");
 		System.out.println("[JWTAuthenticationFilter] Request Method: " + method);
-		System.out.println("[JWTAuthenticationFilter] Request URI: " + requestURI);
+		System.out.println("[JWTAuthenticationFilter] Request URI: " + requestPath);
 		
 		try {
 			ObjectMapper mapper = new ObjectMapper();
@@ -68,7 +68,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 			logService.addErrorLog("JWTAuthenticationFilter.java", "attemptAuthentication()", errorMsg);
 			throw new AuthenticationException("요청 처리 중 오류가 발생했습니다") {};
 		} finally {
-			logService.addAccessLog(member, userAgent, remoteInfo, method, requestURI, errorMsg);
+			logService.addAccessLog(member, userAgent, remoteInfo, method, requestPath, errorMsg);
 		}
 	}
 	
