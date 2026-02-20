@@ -3,7 +3,6 @@ package kr.kro.prjectwwtp.controller;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -30,7 +29,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.controller.WeatherController.WeatherDTO;
 import kr.kro.prjectwwtp.domain.FlowImputate;
@@ -65,11 +63,6 @@ public class TmsController {
 	
 	@Value("${predict.enable}")
 	private boolean enablePredict;
-	
-	@PostConstruct
-	public void init() {
-		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
-	}
 	
 	@ExceptionHandler(MissingServletRequestParameterException.class)
 	public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex) {
@@ -198,7 +191,7 @@ public class TmsController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@Scheduled(cron = "${scheduler.fakeday.cron}", zone="Asia/Seoul")
+	@Scheduled(cron = "${scheduler.fakeday.cron}", zone="${spring.timezone}")
 	@GetMapping("/makeFakeNow")
 	public void makeFakeDate() {
 		try {
@@ -240,7 +233,7 @@ public class TmsController {
 	}
 	
 	@GetMapping("/test")
-	@Scheduled(cron = "${scheduler.predict.cron}", zone="Asia/Seoul")
+	@Scheduled(cron = "${scheduler.predict.cron}", zone="${spring.timezone}")
 	public void getTmsPredict() {
 		if(!enablePredict) return;
 		try {

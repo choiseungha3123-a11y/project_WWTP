@@ -7,7 +7,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -18,7 +17,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import jakarta.annotation.PostConstruct;
 import kr.kro.prjectwwtp.domain.Weather;
 import kr.kro.prjectwwtp.domain.WeatherComplete;
 import kr.kro.prjectwwtp.persistence.WeatherCompleteRepository;
@@ -46,11 +44,6 @@ public class CompleteWeather implements ApplicationRunner {
 	
 	private final WeatherCompleteRepository completeRepo;
 	private final GetherWeather getherWeather;
-	
-	@PostConstruct
-	public void init() {
-		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
-	}
 
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
@@ -71,7 +64,7 @@ public class CompleteWeather implements ApplicationRunner {
 	}
 	
 
-	@Scheduled(cron = "${scheduler.complete.cron}", zone="Asia/Seoul")
+	@Scheduled(cron = "${scheduler.complete.cron}", zone="${spring.timezone}")
 	public void completeWeatherData() {
 		if(isFirst) {
 			isFirst = false;

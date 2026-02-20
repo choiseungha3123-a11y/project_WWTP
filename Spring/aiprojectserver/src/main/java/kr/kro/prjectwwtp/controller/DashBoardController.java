@@ -2,7 +2,6 @@ package kr.kro.prjectwwtp.controller;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.TimeZone;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -29,7 +28,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.controller.WeatherController.WeatherDTO;
 import kr.kro.prjectwwtp.domain.FlowImputate;
@@ -63,11 +61,6 @@ public class DashBoardController {
 	private final FlowService flowService;
 	private final WeatherService weatherService;
 	private final LogService logService;
-	
-	@PostConstruct
-	public void init() {
-		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
-	}
 	
 	@ExceptionHandler(MissingServletRequestParameterException.class)
 	public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex) {

@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.TimeZone;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import jakarta.annotation.PostConstruct;
 import kr.kro.prjectwwtp.domain.Weather;
 import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.service.WeatherService;
@@ -37,11 +35,6 @@ public class GetherWeather implements ApplicationRunner {
 	
 	@Value("${scheduler.enable}")
 	private boolean enableGether;
-	
-	@PostConstruct
-	public void init() {
-		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
-	}
 
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
@@ -53,7 +46,7 @@ public class GetherWeather implements ApplicationRunner {
 //		System.out.println("enable : " + enable);
 	}
 	
-	@Scheduled(cron  = "${scheduler.gether.cron}", zone="Asia/Seoul") 
+	@Scheduled(cron  = "${scheduler.gether.cron}", zone="${spring.timezone}") 
 	public void fetchWeatherData() {
 		if(isFirst) {
 			isFirst = false;

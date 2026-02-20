@@ -2,13 +2,11 @@ package kr.kro.prjectwwtp.util;
 
 import java.util.Date;
 import java.util.Optional;
-import java.util.TimeZone;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Claim;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
@@ -29,11 +27,6 @@ public class JWTUtil {
 	public static final String useridClaim = "Userid";
 	public static final String usernameClaim = "Username";
 	public static final String roleClaim = "Role";
-	
-	@PostConstruct
-	public void init() {
-		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
-	}
 	
 	public static void setKey(String key) {
 		JWT_KEY = key;

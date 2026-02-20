@@ -39,11 +39,6 @@ import lombok.ToString;
 public class MailController {
 	private final MailService mailService;
 	
-	@PostConstruct
-	public void init() {
-		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
-	}
-	
 	@ExceptionHandler(MissingServletRequestParameterException.class)
 	public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex) {
 		responseDTO res = responseDTO.builder()

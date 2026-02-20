@@ -2,7 +2,6 @@ package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -24,20 +23,30 @@ import lombok.ToString;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-public class ErrorLog {
+public class TmsData {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Schema(description = "고유번호", example = "1~")
-	private long log_no;
+	@Column(name = "data_no") // DB 컬럼명은 그대로 유지
+	private long dataNo; // 필드명을 CamelCase로 변경
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(updatable = false)
-	@Builder.Default
-	@Schema(description = "로그 생성 시간", example = "2026-01-30T15:30:00")
-	private LocalDateTime logTime = LocalDateTime.now();
-	@Schema(description = "오류 로그", example = "null | 오류 내용")
-	private String errorMsg;
-	@Schema(description = "오류 발생 파일명", example = "XXXX.java")
-	private String errorSource;
-	@Schema(description = "오류 발생 함수명", example = "XXXX()")
-	private String errorFunction;
+	LocalDateTime time;
+	int stn;
+	
+	double wd1;
+	double wd2;
+	double wds;
+	double wss;
+	double wd10;
+	double ws10;
+	double ta;
+	double re;
+	double rn15m;
+	double rn60m;
+	double rn12h;
+	double rnday;
+	double hm;
+	double pa;
+	double ps;
+	double td; 
 }

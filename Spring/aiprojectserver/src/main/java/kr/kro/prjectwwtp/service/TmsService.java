@@ -18,14 +18,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import jakarta.annotation.PostConstruct;
 import kr.kro.prjectwwtp.domain.FakeDate;
 import kr.kro.prjectwwtp.domain.FlowSummary;
 import kr.kro.prjectwwtp.domain.TmsImputate;
@@ -55,11 +53,6 @@ public class TmsService {
 	private final TmsPredictRepository tmsPredictRepo;
 	private final FlowSummaryRepository flowSummaryRepo;
 	private final FakeDateRepository fakeDateRepo;
-	
-	@PostConstruct
-	public void init() {
-		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
-	}
 
 	/**
 	 * Parse CSV file and save TmsOrigin entries.

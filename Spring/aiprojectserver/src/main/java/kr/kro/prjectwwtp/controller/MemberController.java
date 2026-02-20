@@ -472,8 +472,8 @@ public class MemberController {
 	
 
 	
-	boolean bSendEmail = false;
-	@Scheduled(cron = "${scheduler.report.cron}", zone="Asia/Seoul")
+	boolean bSendEmail = true;
+	@Scheduled(cron = "${scheduler.report.cron}", zone="${spring.timezone}")
 	@GetMapping("/mailtest")
 	public void makeReportMessage()
 	{

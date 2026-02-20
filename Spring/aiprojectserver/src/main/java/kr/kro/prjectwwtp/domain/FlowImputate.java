@@ -1,13 +1,11 @@
 package kr.kro.prjectwwtp.domain;
 
 import java.time.LocalDateTime;
-import java.util.TimeZone;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.annotation.PostConstruct;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -30,10 +28,6 @@ import lombok.ToString;
 @NoArgsConstructor
 @Entity
 public class FlowImputate {
-	@PostConstruct
-	public void init() {
-		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
-	}
 	
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

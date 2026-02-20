@@ -16,13 +16,11 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import jakarta.annotation.PostConstruct;
 import kr.kro.prjectwwtp.domain.FakeDate;
 import kr.kro.prjectwwtp.domain.FlowImputate;
 import kr.kro.prjectwwtp.domain.FlowOrigin;
@@ -54,11 +52,6 @@ public class FlowService {
 	 * Parse CSV file and save FlowOrigin entries.
 	 * Returns detailed import statistics in FlowImportResult.
 	 */
-	
-	@PostConstruct
-	public void init() {
-		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
-	}
 	
 	@Transactional
 	public int saveFromCsv(MultipartFile file) throws Exception {
