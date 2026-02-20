@@ -82,7 +82,8 @@ export default function Row2Charts() {
   const [isClient, setIsClient] = useState(false);
   
   // 현재 시점 (분기점)
-  const currentTime = useMemo(() => new Date("2026-02-19T10:15:00"), []);
+  const currentTime = useMemo(() => new Date(), []);
+  console.log('currentTime', currentTime);
 
   useEffect(() => {
     setIsClient(true);
@@ -184,7 +185,7 @@ export default function Row2Charts() {
           </h3>
         </div>
         <div className="flex-1 w-full min-h-0"> 
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={362}>
             <LineChart data={inflowChartData} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
               <XAxis dataKey="displayTime" tick={{fontSize: 9}} stroke="#475569" />
@@ -215,7 +216,7 @@ export default function Row2Charts() {
           </h3>
         </div>
         <div className="flex-1 w-full min-h-0">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={362}>
             <LineChart data={waterChartData} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
               <XAxis dataKey="displayTime" tick={{fontSize: 9}} stroke="#475569" />

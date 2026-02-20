@@ -96,7 +96,8 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 			errorMsg = e.getMessage();
 			//e.printStackTrace();
 		}finally {
-			logService.addAccessLog(member, userAgent, remoteInfo, method, requestPath, errorMsg);
+			if(!requestPath.endsWith("/health"))
+				logService.addAccessLog(member, userAgent, remoteInfo, method, requestPath, errorMsg);
 		}
 		
 		// SecurityFilterChain의 다음 필터로 이동

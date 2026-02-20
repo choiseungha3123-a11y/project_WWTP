@@ -60,6 +60,7 @@ public class SecurityConfig {
 			.requestMatchers("/static/**").permitAll()
 			
 			// 대시보드 컨트롤
+			.requestMatchers("/api/board/health").permitAll()
 			.requestMatchers("/api/board/memo/image").permitAll()
 			.requestMatchers("/api/board/makeFakeNow").permitAll()
 			.requestMatchers("/api/board/**").hasAnyRole("MEMBER", "ADMIN")
@@ -97,6 +98,8 @@ public class SecurityConfig {
 			// 날씨 수집 관련
 			.requestMatchers("/api/weather/list").permitAll()
 			.requestMatchers("/api/weather/modify").hasRole("ADMIN")
+			
+			.requestMatchers("/api/public/**").permitAll()
 
 			// 그 외는 허용
 			.anyRequest().permitAll()

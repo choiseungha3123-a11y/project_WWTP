@@ -12,9 +12,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class AiprojectserverApplication {
 
 	public static void main(String[] args) {
-		TimeZone.setDefault(TimeZone.getTimeZone("${spring.timezone}"));
-		SpringApplication.run(AiprojectserverApplication.class, args);
+		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
 		System.out.println(LocalDateTime.now());
+		SpringApplication.run(AiprojectserverApplication.class, args);
 	}
 
 }
