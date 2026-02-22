@@ -4,6 +4,129 @@
 
 ---
 
+## 📅 2026년 2월 22일
+
+### 📂 작업 파일
+```
+notebook/DL/LSTM_TMS.ipynb
+notebook/DL/toc_experiment.py
+notebook/DL/tp_experiment.py
+```
+
+### TP 하이퍼파라미터 그리드 탐색
+
+- 기존 최고 R2: 0.6252 (hidden=512, layers=4, lr=2e-4)
+- window_size=48 고정 (24시간)
+- TP는 LC_SPLIT_RATIOS (80/10/10), stability_ratio=0.2
+
+**Phase 1: 핵심 파라미터 탐색 (64개 조합)**
+
+- hidden_size: [128, 256, 384, 512]
+- num_layers: [1, 2, 3, 4]
+- learning_rate: [2e-4, 5e-4, 1e-3, 2e-3]
+- 고정: dropout=0.2, batch=2048, window=48, wd=0
+
+**Phase 1 결과**:
+- hidden=384, layers=1이 최고 (R2=0.6265)
+- layers=1~2가 layers=3~4보다 우수
+- lr=1e-3~2e-3이 최적 범위
+- hidden=384가 최적 (512보다 나음)
+
+**Phase 2: 보조 파라미터 미세 조정 (64개 조합)**
+
+- 기반: hidden=384, layers=1, lr=1e-3
+- dropout: [0.1, 0.15, 0.2, 0.3]
+- batch_size: [1024, 2048]
+- attention: [False, True]
+- weight_decay: [0, 1e-4, 5e-4, 1e-3]
+
+**Phase 2 결과**:
+- attention=True 사용 시 성능 대폭 하락 (약 0.35~0.52)
+- dropout=0.1이 최적 (낮은 드롭아웃)
+- batch_size=2048이 더 좋은 성능
+- weight_decay=0이 최적 (정규화 불필요)
+
+### TP 최적 레시피 (R2: 0.6252 → 0.6378, +2.0% 향상)
+
+|파라미터|기존|최적|
+|:---:|:---:|:---:|
+|hidden_size|512|384|
+|num_layers|4|1|
+|dropout|0.2|0.1|
+|learning_rate|2e-4|1e-3|
+|batch_size|2048|2048|
+|window_size|48|48|
+|weight_decay|0|0|
+|use_attention|False|False|
+
+**핵심 발견**:
+- layers=1이 layers=4보다 TP에서도 훨씬 우수 (TOC와 동일 패턴)
+- 작은 모델(384, 1layer)이 큰 모델(512, 4layer)보다 성능 우수
+- 높은 학습률(1e-3)이 낮은 학습률(2e-4)보다 효과적
+- attention 메커니즘은 이 데이터셋에서 일관적으로 성능 하락 유발
+
+### TOC 하이퍼파라미터 그리드 탐색
+
+- 교수님 조언: TOC는 작은 모델에 더 적합할 수 있음
+- 기존 최고 R2: 0.4731 (hidden=256, layers=2, lr=1e-3)
+
+**Phase 1: 핵심 파라미터 탐색 (36개 조합)**
+
+- hidden_size: [128, 192, 256, 384]
+- num_layers: [1, 2, 3]
+- learning_rate: [5e-4, 1e-3, 2e-3]
+- 고정: dropout=0.2, batch=2048, window=48, wd=1e-4
+
+**Phase 1 결과**:
+- layers=1이 압도적으로 우수 (Top 10 중 8개가 layers=1)
+- hidden_size가 클수록 성능 향상 (384 > 256 > 192 > 128)
+- Phase 1 최고: R2=0.5597 (hidden=384, layers=1, lr=1e-3)
+
+**Phase 2: 보조 파라미터 미세 조정 (144개 조합)**
+
+- 기반: hidden=384, layers=1, lr=1e-3
+- dropout: [0.1, 0.15, 0.2, 0.3]
+- batch_size: [1024, 2048]
+- window_size: [24, 48, 72]
+- attention: [False, True]
+- weight_decay: [0, 1e-4, 1e-3]
+
+**Phase 2 결과**:
+- attention=True 사용 시 성능 하락 (약 0.35~0.43)
+- window_size=72가 최적 (36시간 윈도우)
+- weight_decay=1e-3이 최적
+- batch_size=2048이 더 안정적
+
+### TOC 최적 레시피 (R2: 0.4731 → 0.5762, +21.8% 향상)
+
+|파라미터|기존|최적|
+|:---:|:---:|:---:|
+|hidden_size|256|384|
+|num_layers|2|1|
+|dropout|0.2|0.2|
+|learning_rate|1e-3|1e-3|
+|batch_size|2048|2048|
+|window_size|48|72|
+|weight_decay|1e-4|1e-3|
+|use_attention|False|False|
+
+**핵심 발견**:
+- layers=1이 layers=2, 3보다 TOC에서 훨씬 우수
+- 큰 hidden_size(384)가 더 나은 표현력 제공
+- 긴 윈도우(72=36시간)가 TOC 예측에 도움
+- 강한 정규화(weight_decay=1e-3)가 과적합 억제에 효과적
+
+### LSTM 02/22 최고 성능
+- FLOW: 0.8166
+- TOC: 0.5762
+- SS: 0.6712
+- TN: 0.9011
+- TP: 0.6378
+- FLUX: 0.6296
+- PH: 0.8432
+
+---
+
 ## 📅 2026년 2월 13일
 
 ### 📂 작업 파일
@@ -87,11 +210,12 @@ src/main.py
 - FLUX: 0.6296
 - PH: 0.8432
 
-### ✅ 다음 할 일 (2026/02/19)
+### ✅ 다음 할 일 (2026/02/23)
 
-- [] 작은 모델의 성능 확인
+- [X] 작은 모델의 성능 확인
 
 ---
+
 
 ## 📅 2026년 2월 12일
 
