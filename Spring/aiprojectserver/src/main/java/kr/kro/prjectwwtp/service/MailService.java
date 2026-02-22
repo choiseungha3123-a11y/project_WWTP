@@ -91,7 +91,7 @@ public class MailService {
 		              "    </p>" +
 		              "<table cellspacing='0' cellpadding='0' border='0' style='margin: 30px 5px 40px;'> " +
 		              "  <tr> " +
-		              "    <td align='center' bgcolor='#3498db' width='210' height='45' style='border-radius: 5px; color: #ffffff;'> " +
+		              "    <td align='center' bgcolor='#FF4444' width='210' height='45' style='border-radius: 5px; color: #ffffff;'> " +
 		              "      <a href='" + deleteLink + "' target='_blank' style='display: block; width: 210px; height: 45px; font-family: sans-serif; font-size: 16px; color: #ffffff; text-decoration: none; line-height: 45px; text-align: center; font-weight: bold;'> " +
 		              "        수신거부 " +
 		              "      </a> " +
@@ -563,7 +563,7 @@ public class MailService {
 	              "    </p>" +
 	              "<table cellspacing='0' cellpadding='0' border='0' style='margin: 30px 5px 40px;'> " +
 	              "  <tr> " +
-	              "    <td align='center' bgcolor='#3498db' width='210' height='45' style='border-radius: 5px; color: #ffffff;'> " +
+	              "    <td align='center' bgcolor='#FF4444' width='210' height='45' style='border-radius: 5px; color: #ffffff;'> " +
 	              "      <a href='" + deleteLink + "' target='_blank' style='display: block; width: 210px; height: 45px; font-family: sans-serif; font-size: 16px; color: #ffffff; text-decoration: none; line-height: 45px; text-align: center; font-weight: bold;'> " +
 	              "        수신거부 " +
 	              "      </a> " +
