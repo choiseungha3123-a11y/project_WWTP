@@ -62,20 +62,17 @@ st.subheader("3) 타겟별 상세 (학습 곡선 / 예측 분석)")
 tabs = st.tabs([TARGET_LABELS[t] for t in TARGET_ORDER])
 for target, tab in zip(TARGET_ORDER, tabs):
     with tab:
-        c1, c2 = st.columns(2)
         learning_path = get_png_path("learning_curve", target)
         pred_path = get_png_path("prediction", target)
 
-        with c1:
-            st.markdown("**학습 곡선**")
-            if learning_path.exists():
-                st.image(str(learning_path), use_container_width=True)
-            else:
-                st.warning(f"파일 없음: {learning_path}")
+        st.markdown("**학습 곡선**")
+        if learning_path.exists():
+            st.image(str(learning_path), use_container_width=True)
+        else:
+            st.warning(f"파일 없음: {learning_path}")
 
-        with c2:
-            st.markdown("**예측 분석**")
-            if pred_path.exists():
-                st.image(str(pred_path), use_container_width=True)
-            else:
-                st.warning(f"파일 없음: {pred_path}")
+        st.markdown("**예측 분석**")
+        if pred_path.exists():
+            st.image(str(pred_path), use_container_width=True)
+        else:
+            st.warning(f"파일 없음: {pred_path}")

@@ -1,15 +1,16 @@
 """
-TP 하이퍼파라미터 그리드 탐색 실험
+PH 하이퍼파라미터 그리드 탐색 실험
 ====================================
-현재 최고 R2: 0.6252 (hidden=512, layers=4, lr=2e-4)
+타겟: PH_VU (pH, 30분 평균)
+DATA_LEAKAGE_CONFIG: safe_process_features = [FLUX_VU, TOC_VU, SS_VU, TN_VU, TP_VU]
 
 실험 전략:
-  - 현재 설정 주변 + 다양한 크기 탐색 (hidden 128~512)
-  - 레이어 수 1~4
-  - 학습률 2e-4 ~ 2e-3
+  - Phase 1: 핵심 파라미터 탐색 (hidden 256~512, layers 1~2, lr 5e-4~2e-3) - 18 조합
+  - Phase 2: 최적 핵심 파라미터 기반 보조 파라미터 미세 조정 - 18 조합
   - window_size=48 고정 (24시간)
-  - TP는 LC_SPLIT_RATIOS (80/10/10) 사용
-  - 특성 선택: stability_ratio=0.2 (완화)
+  - LC_SPLIT_RATIOS (80/10/10) 사용
+  - 특성 선택: stability_ratio=0.3
+  - 누적 인사이트: layers=1이 대체로 우수, attention 제외, batch=2048 선호
 """
 import sys
 import os
@@ -20,7 +21,7 @@ from pathlib import Path
 from datetime import datetime
 
 # ====== 프로젝트 경로 설정 ======
-PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
+PROJECT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_DIR))
 
 import numpy as np
@@ -37,11 +38,11 @@ import notebook.feature.WF_feature_selection as wf_fs
 import notebook.feature.feature_engineering as feat_eng
 
 # ====== 글로벌 설정 ======
-MODE = "tp"
+MODE = "ph"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 TIME_COL = "SYS_TIME"
 RANDOM_SEED = 42
-CURRENT_BEST_R2 = 0.6252
+CURRENT_BEST_R2 = 0.8432  # 현재 최고 (노트북 탐색 결과)
 
 # 경로 설정
 DATA_DIR = PROJECT_DIR / "data"
@@ -61,24 +62,29 @@ PH_TARGET = "PH_VU"
 SPLIT_RATIOS = {"train": 0.7, "val": 0.2, "test": 0.1}
 LC_SPLIT_RATIOS = {"train": 0.8, "val": 0.1, "test": 0.1}
 
-# ====== Phase 1: 핵심 파라미터 탐색 (64 조합) ======
+# ====== Phase 1: 핵심 파라미터 탐색 ======
+# 누적 인사이트:
+#   - TP/TOC: layers=1이 압도적, FLUX/SS: layers=2가 약간 우수
+#   - lr=2e-4는 너무 느려 제외, 5e-4~2e-3 탐색
+#   - hidden=128 성능 한계 -> 256~512 탐색
+# 총 18 조합
 PHASE1_GRID = {
-    "hidden_size": [128, 256, 384, 512],
-    "num_layers": [1, 2, 3, 4],
-    "learning_rate": [2e-4, 5e-4, 1e-3, 2e-3],
+    "hidden_size": [256, 384, 512],
+    "num_layers": [1, 2],
+    "learning_rate": [5e-4, 1e-3, 2e-3],
     # 고정
     "dropout": [0.2],
     "batch_size": [2048],
     "window_size": [48],
     "use_attention": [False],
     "weight_decay": [0],
-    "split_type": ["lc"],  # TP는 LC_SPLIT_RATIOS (80/10/10)
+    "split_type": ["lc"],  # PH도 LC_SPLIT_RATIOS (80/10/10)
     "shuffle": [True],
 }
 
 
 # ======================================================================
-# 데이터 로드 및 전처리 함수들 (노트북에서 추출)
+# 데이터 로드 및 전처리 함수들
 # ======================================================================
 
 def load_data(data_dir):
@@ -315,7 +321,7 @@ def preprocess_data(dfs):
     """전처리 + 특성 선택 (WF) -> X, y 반환"""
     aligned_dfs = align_data(dfs)
 
-    # FLUX 차분 처리
+    # FLUX_VU 차분 처리 (PH의 safe 특성으로 포함되므로 diff 형태가 더 의미 있음)
     if 'tms' in aligned_dfs and 'FLUX_VU' in aligned_dfs['tms'].columns:
         flux = aligned_dfs['tms']['FLUX_VU'].copy()
         flux_diff = flux.diff()
@@ -407,10 +413,10 @@ def preprocess_data(dfs):
     )
     results = wf_selector.run(model_type="rf", verbose=True)
 
-    # TP: stability_ratio를 낮춰서 더 많은 특성 확보 (노트북과 동일)
-    sr = 0.2
+    # PH: stability_ratio=0.3
+    sr = 0.3
     recommended_idx = wf_selector.get_recommended_features(stability_ratio=sr)
-    print(f"\nTP 모드: stability_ratio={sr} (완화)")
+    print(f"\nPH 모드: stability_ratio={sr}")
 
     MIN_FEATURES = 10
     if len(recommended_idx) < MIN_FEATURES:
@@ -560,7 +566,7 @@ def ensure_2d_y(y):
 
 
 # ======================================================================
-# 학습 & 평가 (간소화 버전 - 실험용)
+# 학습 & 평가
 # ======================================================================
 
 def train_and_evaluate(X, y, config, verbose=False):
@@ -569,7 +575,7 @@ def train_and_evaluate(X, y, config, verbose=False):
     if torch.cuda.is_available():
         torch.cuda.manual_seed(RANDOM_SEED)
 
-    # 분할 - TP는 LC_SPLIT_RATIOS 사용
+    # 분할 - PH는 LC_SPLIT_RATIOS 사용
     ratio = LC_SPLIT_RATIOS if config["split_type"] == "lc" else SPLIT_RATIOS
     X_train, y_train, X_val, y_val, X_test, y_test = split_timewise(X, y, ratio)
 
@@ -781,7 +787,7 @@ def train_and_evaluate(X, y, config, verbose=False):
 # 메인 실험 루프
 # ======================================================================
 
-RESULTS_FILE = "tp_experiment_results.csv"
+RESULTS_FILE = "ph_experiment_results.csv"
 
 def run_experiments(X, y, grid, top_n=5):
     """그리드의 모든 조합을 실행하고 결과를 정리"""
@@ -791,10 +797,13 @@ def run_experiments(X, y, grid, top_n=5):
 
     total = len(combinations)
     print(f"\n{'='*70}")
-    print(f"TP 하이퍼파라미터 실험 시작")
+    print(f"PH 하이퍼파라미터 실험 시작")
     print(f"{'='*70}")
     print(f"총 실험 수: {total}")
-    print(f"현재 최고 R2: {CURRENT_BEST_R2}")
+    if CURRENT_BEST_R2 is not None:
+        print(f"현재 최고 R2: {CURRENT_BEST_R2}")
+    else:
+        print(f"현재 최고 R2: 미탐색 (첫 실험)")
     print(f"GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'}")
     print(f"{'='*70}\n")
 
@@ -864,11 +873,14 @@ def run_experiments(X, y, grid, top_n=5):
               f"batch={row['batch_size']}, wd={row['weight_decay']}, "
               f"epochs={row.get('epochs', 'N/A')}, time={row.get('time_sec', 'N/A')}s")
 
-    print(f"\n기존 최고 R2: {CURRENT_BEST_R2}")
-    if best_r2 > CURRENT_BEST_R2:
-        print(f"* 새로운 최고 R2: {best_r2:.4f} (개선: +{(best_r2 - CURRENT_BEST_R2):.4f})")
+    if CURRENT_BEST_R2 is not None:
+        print(f"\n기존 최고 R2: {CURRENT_BEST_R2}")
+        if best_r2 > CURRENT_BEST_R2:
+            print(f"* 새로운 최고 R2: {best_r2:.4f} (개선: +{(best_r2 - CURRENT_BEST_R2):.4f})")
+        else:
+            print(f"현재 실험 최고 R2: {best_r2:.4f}")
     else:
-        print(f"현재 실험 최고 R2: {best_r2:.4f}")
+        print(f"\n이번 실험 최고 R2: {best_r2:.4f}")
 
     save_path = RESULTS_DIR / RESULTS_FILE
     df_results.to_csv(save_path, index=False)
@@ -886,17 +898,18 @@ def run_phase2(X, y, best_config, top_n=10):
     print(f"{'='*70}")
 
     # window_size=48 고정 (사용자 요청)
-    # 4 dropout x 2 batch x 2 attn x 4 wd = 64 조합
+    # attention=True는 이 데이터셋에서 일관적으로 성능 하락 -> False만 사용
+    # 3 dropout x 2 batch x 3 wd = 18 조합
     phase2_grid = {
         "hidden_size": [best_config["hidden_size"]],
         "num_layers": [best_config["num_layers"]],
         "learning_rate": [best_config["learning_rate"]],
-        "dropout": [0.1, 0.15, 0.2, 0.3],
+        "dropout": [0.1, 0.15, 0.2],
         "batch_size": [1024, 2048],
         "window_size": [48],  # 고정
-        "use_attention": [False, True],
-        "weight_decay": [0, 1e-4, 5e-4, 1e-3],
-        "split_type": ["lc"],  # TP는 LC_SPLIT_RATIOS
+        "use_attention": [False],  # attention은 이 데이터셋에서 일관적으로 성능 하락
+        "weight_decay": [0, 1e-4, 1e-3],
+        "split_type": ["lc"],  # PH는 LC_SPLIT_RATIOS
         "shuffle": [True],
     }
 
@@ -909,16 +922,16 @@ def run_phase2(X, y, best_config, top_n=10):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="TP Hyperparameter Search")
+    parser = argparse.ArgumentParser(description="PH Hyperparameter Search")
     parser.add_argument("--phase", type=int, default=1, choices=[1, 2],
                        help="Phase 1: 핵심 파라미터 탐색, Phase 2: 미세 조정")
-    parser.add_argument("--best-hidden", type=int, default=512)
-    parser.add_argument("--best-layers", type=int, default=4)
-    parser.add_argument("--best-lr", type=float, default=2e-4)
+    parser.add_argument("--best-hidden", type=int, default=384)
+    parser.add_argument("--best-layers", type=int, default=1)
+    parser.add_argument("--best-lr", type=float, default=1e-3)
     args = parser.parse_args()
 
     print("=" * 70)
-    print("TP 하이퍼파라미터 그리드 탐색")
+    print("PH 하이퍼파라미터 그리드 탐색")
     print(f"Phase: {args.phase}")
     print(f"Device: {DEVICE}")
     print("=" * 70)
@@ -930,7 +943,7 @@ if __name__ == "__main__":
     print(f"전처리 완료: X shape = {X.shape}")
 
     if args.phase == 1:
-        # Phase 1: 핵심 파라미터 탐색 (hidden, layers, lr) - 64 조합
+        # Phase 1: 핵심 파라미터 탐색
         results = run_experiments(X, y, PHASE1_GRID, top_n=10)
     else:
         # Phase 2: 보조 파라미터 미세 조정

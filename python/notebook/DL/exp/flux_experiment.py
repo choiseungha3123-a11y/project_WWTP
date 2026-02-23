@@ -20,7 +20,7 @@ from pathlib import Path
 from datetime import datetime
 
 # ====== 프로젝트 경로 설정 ======
-PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
+PROJECT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_DIR))
 
 import numpy as np

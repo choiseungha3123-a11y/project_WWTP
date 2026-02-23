@@ -13,6 +13,7 @@ notebook/DL/ss_experiment.py
 notebook/DL/tn_experiment.py
 notebook/DL/ph_experiment.py
 notebook/DL/flow_experiment.py
+demo
 ```
 
 ### FLOW 하이퍼파라미터 그리드 탐색
@@ -298,6 +299,11 @@ notebook/DL/flow_experiment.py
 - TP: 0.6201
 - FLUX: 0.6241
 - PH: 0.8574
+
+### Streamlit 배포
+
+- demo 폴더 생성 및 학습 곡선, 예측 그래프 시각화
+
 
 ### ✅ 다음 할 일 (2026년 2월 24일)
 
