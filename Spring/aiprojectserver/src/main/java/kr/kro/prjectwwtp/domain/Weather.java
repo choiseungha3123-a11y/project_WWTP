@@ -69,4 +69,16 @@ public class Weather {
 	private double ps;
 	@Schema(description = "이슬점온도 (C)")
 	private double td; 
+	
+	public boolean isValid() {
+		if (this.ta  < -99
+				|| this.rn15m  < -99
+				|| this.rn60m  < -99
+				|| this.rn12h  < -99
+				|| this.rnday  < -99
+				|| this.hm  < -99
+				|| this.td < -99)
+			return false;
+		return true;
+	}
 }

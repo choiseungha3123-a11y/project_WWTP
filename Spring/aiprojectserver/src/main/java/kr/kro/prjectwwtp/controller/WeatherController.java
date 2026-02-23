@@ -95,25 +95,25 @@ public class WeatherController {
 //		int stn;
 		@JsonProperty("TA")
 		@Schema(description = "1분 평균 기온 (C)")
-		double ta;
+		Double ta;
 		@JsonProperty("RN_15m")
 		@Schema(description = "15분 누적 강수량 (mm)")
-		double rn15m;
+		Double rn15m;
 		@JsonProperty("RN_60m")
 		@Schema(description = "60분 누적 강수량 (mm)")
-		double rn60m;
+		Double rn60m;
 		@JsonProperty("RN_12H")
 		@Schema(description = "12시간 누적 강수량 (mm)")
-		double rn12h;
+		Double rn12h;
 		@JsonProperty("RN_DAY")
 		@Schema(description = "일 누적 강수량 (mm)")
-		double rnday;
+		Double rnday;
 		@JsonProperty("HM")
 		@Schema(description = "1분 평균 상대습도 (%)")
-		double hm;
+		Double hm;
 		@JsonProperty("TD")
 		@Schema(description = "이슬점온도 (C)")
-		double td; 
+		Double td; 
 		@JsonProperty("distance")
 		@Schema(description = "처리장과의 거리")
 		double distance;

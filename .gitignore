@@ -1,1 +1,4 @@
 miniproject.pem
+Spring/aiprojectserver/src/main/resources/application-api.properties
+Spring/aiprojectserver/src/main/resources/application-db.properties
+Spring/aiprojectserver/src/main/resources/application-oauth2.properties
