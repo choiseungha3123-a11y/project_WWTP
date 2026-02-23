@@ -9,6 +9,7 @@ Spring Boot 기반 AI 프로젝트 서버의 설정 파일 안내입니다.
 - [공용 설정 (application.properties)](#공용-설정)
 - [DB 설정 (application-db.properties)](#db-설정)
 - [OAuth2 설정 (application-oauth2.properties)](#oauth2-설정)
+- [API 설정 (application-api.properties)(#API-설정)
 
 ---
 
@@ -192,4 +193,38 @@ spring.security.oauth2.client.registration.kakao.scope=
 spring.security.oauth2.client.registration.google.redirect-uri=
 spring.security.oauth2.client.registration.naver.redirect-uri=
 spring.security.oauth2.client.registration.kakao.redirect-uri=
+```
+
+
+## API 설정
+파일명: `application-api.properties`
+> ⚠️ **보안 주의:** 이 파일은 버전 관리(Git 등)에 포함하지 마세요.
+
+```properties
+# API HUB 인증키
+spring.apihub.authKey=
+
+# API HUB에서 데이터를 가져올 API 주소
+spring.apihub.baseUrl=
+
+# 예측을 담당할 python Fastapi 주소
+spring.FastAPI.URI=
+
+# 이메일 발송을 담당할 API 주소
+spring.EmailAPI.URI=
+
+# Sendgrid Mail ID
+spring.sendgrid.id=
+
+# Sendgrid API키
+spring.sendgrid.api-key=
+
+# 이메일 보내는이로 보여질 메일주소
+spring.sendgrid.from-email=
+
+# JWT 토큰 인코딩 키
+jwt.key=
+
+# 이메일 인증 인코딩 키
+util.key=
 ```
