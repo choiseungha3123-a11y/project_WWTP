@@ -4,21 +4,927 @@
 
 ---
 
+## 📅 2026년 2월 23일
+
+### 📂 작업 파일
+```
+notebook/DL/flux_experiment.py
+notebook/DL/ss_experiment.py
+notebook/DL/tn_experiment.py
+notebook/DL/ph_experiment.py
+notebook/DL/flow_experiment.py
+demo
+```
+
+### FLOW 하이퍼파라미터 그리드 탐색
+
+- 기존 최고 R2: 0.8166 (노트북 탐색 결과)
+- window_size=48 고정, LC_SPLIT_RATIOS (80/10/10), stability_ratio=0.3
+- WF 특성 선택 결과: 10개 선택 (Q_in lag/diff/ewma/roll - 자체 lag 특성 위주, 기상 특성 없음)
+- 데이터 기간: 2025/09/02 ~ 2025/12/03 (~3개월, 4314 샘플) - TMS 대비 매우 짧음
+
+**Phase 1: 핵심 파라미터 탐색 (18개 조합)**
+
+- hidden_size: [256, 384, 512]
+- num_layers: [1, 2]
+- learning_rate: [5e-4, 1e-3, 2e-3]
+- 고정: dropout=0.2, batch=2048, wd=0
+
+**Phase 1 결과**:
+- hidden=512, layers=2, lr=2e-3가 최고 (R2=0.8659) → 기존 최고(0.8166) 돌파! (+4.9%)
+- layers=2가 layers=1보다 우수 (SS/FLUX와 동일 패턴, TP/TOC/PH와 반대)
+- lr=2e-3가 최적 (높은 학습률 효과적)
+- hidden=512가 최적 (더 큰 모델이 유리, TN/PH와 동일)
+
+**Phase 2: 보조 파라미터 미세 조정 (18개 조합)**
+
+- 기반: hidden=512, layers=2, lr=2e-3
+- dropout: [0.1, 0.15, 0.2]
+- batch_size: [1024, 2048]
+- weight_decay: [0, 1e-4, 1e-3]
+
+**Phase 2 결과**:
+- Phase 1 결과 유지 (dropout=0.2, batch=2048, wd=0) R2=0.8659
+- wd=1e-3는 일관적으로 성능 하락 (강한 정규화가 FLOW에 해롭)
+- batch=2048이 1024보다 우수 (대부분의 지표와 동일)
+- dropout=0.2가 최적 (Phase 1 기본값 유지)
+
+### FLOW 최적 레시피 (R2: 0.8166 → 0.8659, +4.9% 향상)
+
+|파라미터|기존(노트북)|실험 최적|
+|:---:|:---:|:---:|
+|hidden_size|256|512|
+|num_layers|3|2|
+|dropout|0.2|0.2|
+|learning_rate|2e-4|2e-3|
+|batch_size|2048|2048|
+|window_size|48|48|
+|weight_decay|0|0|
+|use_attention|False|False|
+
+**핵심 발견**:
+- layers=2가 최적 (SS/FLUX/TN과 동일, layers=1보다 FLOW 복잡한 패턴 포착에 유리)
+- 높은 학습률(2e-3)이 최적 (SS/TN/PH와 동일)
+- hidden=512가 최적 (더 큰 모델이 복잡한 유량 패턴 학습에 유리)
+- WF 특성: Q_in 자체 lag/ewma만 선택 (기상 정보 기여 없음 - 유량은 자기회귀적)
+- wd=1e-3 금지 (FLOW에서만 일관되게 큰 성능 하락)
+
+---
+
+### PH 하이퍼파라미터 그리드 탐색
+
+- 기존 최고 R2: 0.8432 (노트북 탐색 결과)
+- window_size=48 고정, LC_SPLIT_RATIOS (80/10/10), stability_ratio=0.3
+- WF 특성 선택 결과: 10개 선택 (PH_VU lag/roll/diff/ewma, TA_541, TN_VU roll_std)
+
+**Phase 1: 핵심 파라미터 탐색 (18개 조합)**
+
+- hidden_size: [256, 384, 512]
+- num_layers: [1, 2]
+- learning_rate: [5e-4, 1e-3, 2e-3]
+- 고정: dropout=0.2, batch=2048, wd=0
+
+**Phase 1 결과**:
+- hidden=512, layers=1, lr=2e-3가 최고 (R2=0.8705) → 기존 최고(0.8432) 돌파! (+3.2%)
+- layers=1이 layers=2보다 우수 (TP/TOC와 동일 패턴)
+- lr=2e-3가 최적 (SS/TN과 동일, 높은 학습률 효과적)
+- hidden=512가 최적 (TN과 동일)
+
+**Phase 2: 보조 파라미터 미세 조정 (18개 조합)**
+
+- 기반: hidden=512, layers=1, lr=2e-3
+- dropout: [0.1, 0.15, 0.2]
+- batch_size: [1024, 2048]
+- weight_decay: [0, 1e-4, 1e-3]
+
+**Phase 2 결과**:
+- dropout=0.1, batch=1024, wd=0이 최적 (R2=0.8719) → 추가 향상!
+- batch=1024가 batch=2048보다 우수 (다른 지표와 반대 경향 - PH 특성)
+- dropout=0.1이 최적 (낮은 드롭아웃이 PH에 효과적, TP와 동일)
+- wd=0이 최적 (정규화 불필요)
+
+### PH 최적 레시피 (R2: 0.8432 → 0.8719, +3.4% 향상)
+
+|파라미터|기존(노트북)|실험 최적|
+|:---:|:---:|:---:|
+|hidden_size|512|512|
+|num_layers|4|1|
+|dropout|0.2|0.1|
+|learning_rate|2e-4|2e-3|
+|batch_size|2048|1024|
+|window_size|48|48|
+|weight_decay|0|0|
+|use_attention|False|False|
+
+**핵심 발견**:
+- layers=1이 layers=4보다 PH에서도 우수 (TP/TOC와 동일 패턴)
+- 높은 학습률(2e-3)이 최적 (SS/TN과 동일)
+- batch=1024가 최적 (다른 지표와 달리 작은 배치 선호 - PH만의 특성)
+- dropout=0.1이 최적 (낮은 드롭아웃이 효과적, TP와 동일)
+- WF 특성: PH_VU 자체 lag/ewma + 기온(TA_541) + TN_VU 변동성
+
+---
+
+### TN 하이퍼파라미터 그리드 탐색
+
+- 기존 최고 R2: 0.9011 (노트북 탐색 결과, 모든 지표 중 최고)
+- window_size=48 고정, LC_SPLIT_RATIOS (80/10/10), stability_ratio=0.3
+- WF 특성 선택 결과: 10개 선택 (TN_VU lag/roll/diff/ewma, PH_VU, 기상)
+
+**Phase 1: 핵심 파라미터 탐색 (18개 조합)**
+
+- hidden_size: [256, 384, 512]
+- num_layers: [1, 2]
+- learning_rate: [5e-4, 1e-3, 2e-3]
+- 고정: dropout=0.2, batch=2048, wd=0
+
+**Phase 1 결과**:
+- hidden=512, layers=2, lr=2e-3가 최고 (R2=0.9019) → 기존 최고(0.9011) 소폭 돌파!
+- 전체 R2 편차 매우 작음 (0.8920~0.9019) → TN이 이미 포화에 가까운 상태
+- layers=2가 약간 우수하나 layers=1과 차이 미미
+- 큰 모델(512)이 작은 모델보다 소폭 우수 (TP/TOC/SS와 반대)
+
+**Phase 2: 보조 파라미터 미세 조정 (18개 조합)**
+
+- 기반: hidden=512, layers=2, lr=2e-3
+- Phase 1 결과 유지 (dropout=0.2, batch=2048, wd=0) R2=0.9019
+- wd=1e-3 + dropout=0.15, batch=1024 조합도 R2=0.9008로 준수
+
+### TN 최적 레시피 (R2: 0.9011 → 0.9019, +0.1% 향상)
+
+|파라미터|기존(노트북)|실험 최적|
+|:---:|:---:|:---:|
+|hidden_size|512|512|
+|num_layers|4|2|
+|dropout|0.2|0.2|
+|learning_rate|2e-4|2e-3|
+|batch_size|2048|2048|
+|window_size|48|48|
+|weight_decay|0|0|
+|use_attention|False|False|
+
+**핵심 발견**:
+- TN은 R2 0.90 수준에서 거의 포화 → 개선 여지 매우 제한적
+- 전체 18개 조합 모두 R2 0.89~0.90 수렴 (지표 자체의 높은 예측 가능성)
+- lr=2e-3가 최적 (SS와 동일, 높은 lr이 효과적)
+- hidden=512가 약간 우수 (다른 지표와 반대 경향)
+- WF 특성: TN_VU 자체 lag/diff/ewma + PH_VU + 기온 변동성
+
+---
+
+### SS 하이퍼파라미터 그리드 탐색
+
+- 기존 최고 R2: 0.6712 (노트북 탐색 결과)
+- window_size=48 고정, LC_SPLIT_RATIOS (80/10/10), stability_ratio=0.3
+- WF 특성 선택 결과: 11개 선택 (SS_VU lag/roll/ewma/diff, PH_VU roll_std/IQR, doy_sin/cos)
+
+**Phase 1: 핵심 파라미터 탐색 (18개 조합)**
+
+- hidden_size: [256, 384, 512]
+- num_layers: [1, 2]
+- learning_rate: [5e-4, 1e-3, 2e-3]
+- 고정: dropout=0.2, batch=2048, wd=0
+
+**Phase 1 결과**:
+- hidden=256, layers=2, lr=2e-3가 최고 (R2=0.6905) → 기존 최고(0.6712) 돌파!
+- layers=2가 layers=1보다 우수 (FLUX와 동일 패턴, TP/TOC와 반대)
+- lr=2e-3가 최적 (높은 학습률이 SS에 효과적)
+- hidden=256이 최적 (더 작은 모델이 더 나음)
+- epochs=31 일관적 (MIN_EPOCHS에서 early stop)
+
+**Phase 2: 보조 파라미터 미세 조정 (18개 조합)**
+
+- 기반: hidden=256, layers=2, lr=2e-3
+- dropout: [0.1, 0.15, 0.2]
+- batch_size: [1024, 2048]
+- weight_decay: [0, 1e-4, 1e-3]
+
+**Phase 2 결과**:
+- Phase 1 결과 유지 (dropout=0.2, batch=2048, wd=0) R2=0.6905
+- batch_size=2048이 일관적으로 우수
+- wd=0이 최적 (정규화 불필요)
+- dropout=0.2가 최적 (Phase 1 기본값 그대로)
+
+### SS 최적 레시피 (R2: 0.6712 → 0.6905, +2.9% 향상)
+
+|파라미터|기존(노트북)|실험 최적|
+|:---:|:---:|:---:|
+|hidden_size|512|256|
+|num_layers|4|2|
+|dropout|0.2|0.2|
+|learning_rate|2e-4|2e-3|
+|batch_size|2048|2048|
+|window_size|48|48|
+|weight_decay|0|0|
+|use_attention|False|False|
+
+**핵심 발견**:
+- layers=2가 layers=1보다 SS에서 우수 (FLUX와 동일, TP/TOC와 반대)
+- 높은 학습률(2e-3)이 최적 (TP/TOC의 1e-3보다 더 높음)
+- 작은 모델(256, 2layer)이 큰 모델(512, 4layer)보다 성능 우수
+- WF 특성: SS_VU 자체 lag/ewma 특성 + PH_VU 변동성 + 계절성(doy)
+
+---
+
+### FLUX 하이퍼파라미터 그리드 탐색
+
+- 기존 최고 R2: 0.6296 (hidden=512, layers=4, attention=True)
+- window_size=48 고정, LC_SPLIT_RATIOS (80/10/10), stability_ratio=0.3
+- WF 특성 선택 결과: 11개 선택 (FLUX_VU lag/diff/ewma, SS/TOC roll_std, 기상)
+- TP/TOC 인사이트 반영: lr=2e-4 제외, layers=3~4 제외, attention 제외
+
+**Phase 1: 핵심 파라미터 탐색 (18개 조합)**
+
+- hidden_size: [256, 384, 512]
+- num_layers: [1, 2]
+- learning_rate: [5e-4, 1e-3, 2e-3]
+- 고정: dropout=0.2, batch=2048, wd=0
+
+**Phase 1 결과**:
+- hidden=256, layers=2, lr=5e-4가 최고 (R2=0.5981)
+- FLUX는 layers=2가 layers=1보다 약간 우수 (TP/TOC와 달리)
+- lr=5e-4가 최적 (더 느린 학습이 FLUX에 효과적)
+- hidden이 클수록 반드시 좋지 않음 (256 > 384 > 512 순서)
+
+**Phase 2: 보조 파라미터 미세 조정 (18개 조합)**
+
+- 기반: hidden=256, layers=2, lr=5e-4
+- dropout: [0.1, 0.15, 0.2]
+- batch_size: [1024, 2048]
+- weight_decay: [0, 1e-4, 1e-3]
+- attention: 제외 (TP/TOC에서 일관적으로 성능 하락)
+
+**Phase 2 결과**:
+- dropout=0.1, batch=2048, wd=1e-4가 최적 (R2=0.6062)
+- batch_size=2048이 일관적으로 1024보다 우수
+- wd=1e-4가 약간의 정규화 효과 제공
+- 기존 최고 R2(0.6296) 미달성
+
+### FLUX 실험 결론 및 분석
+
+**최적 레시피 (R2: 0.5981 → 0.6062, 개선 시도)**
+
+|파라미터|기존(노트북)|실험 최적|
+|:---:|:---:|:---:|
+|hidden_size|512|256|
+|num_layers|4|2|
+|dropout|0.2|0.1|
+|learning_rate|2e-4|5e-4|
+|batch_size|2048|2048|
+|window_size|48|48|
+|weight_decay|0|1e-4|
+|use_attention|True|False|
+
+**기존 최고(0.6296) 미달성 원인 분석**:
+- WF 특성 선택이 너무 공격적 (812개 → 11개, 99.3% 감소)
+- 기존 노트북 모델은 attention=True + 더 많은 특성 사용
+- FLUX는 다른 지표와 달리 더 많은 특성이 필요할 수 있음
+- 향후 개선 방향: stability_ratio를 더 낮추거나(0.1) 특성 수 최소 기준 확대
+
+### LSTM 02/23 최고 성능
+- FLOW: **0.8659** (02/23 그리드 탐색으로 개선)
+- TOC: 0.5762
+- SS: **0.6905** (02/23 그리드 탐색으로 개선)
+- TN: **0.9019** (02/23 그리드 탐색으로 개선)
+- TP: 0.6378
+- FLUX: 0.6296
+- PH: **0.8719** (02/23 그리드 탐색으로 개선)
+
+-> 같은 레시피로 재현하여도 위 성능을 내는 모델을 저장하지 못함
+
+- FLOW: 0.8425
+- TOC: 0.5574
+- SS: 0.6906
+- TN: 0.9011
+- TP: 0.6201
+- FLUX: 0.6241
+- PH: 0.8574
+
+### Streamlit 배포
+
+- demo 폴더 생성 및 학습 곡선, 예측 그래프 시각화
+
+
+### ✅ 다음 할 일 (2026년 2월 24일)
+
+---
+
+## 📅 2026년 2월 22일
+
+### 📂 작업 파일
+```
+notebook/DL/LSTM_TMS.ipynb
+notebook/DL/toc_experiment.py
+notebook/DL/tp_experiment.py
+```
+
+### TP 하이퍼파라미터 그리드 탐색
+
+- 기존 최고 R2: 0.6252 (hidden=512, layers=4, lr=2e-4)
+- window_size=48 고정 (24시간)
+- TP는 LC_SPLIT_RATIOS (80/10/10), stability_ratio=0.2
+
+**Phase 1: 핵심 파라미터 탐색 (64개 조합)**
+
+- hidden_size: [128, 256, 384, 512]
+- num_layers: [1, 2, 3, 4]
+- learning_rate: [2e-4, 5e-4, 1e-3, 2e-3]
+- 고정: dropout=0.2, batch=2048, window=48, wd=0
+
+**Phase 1 결과**:
+- hidden=384, layers=1이 최고 (R2=0.6265)
+- layers=1~2가 layers=3~4보다 우수
+- lr=1e-3~2e-3이 최적 범위
+- hidden=384가 최적 (512보다 나음)
+
+**Phase 2: 보조 파라미터 미세 조정 (64개 조합)**
+
+- 기반: hidden=384, layers=1, lr=1e-3
+- dropout: [0.1, 0.15, 0.2, 0.3]
+- batch_size: [1024, 2048]
+- attention: [False, True]
+- weight_decay: [0, 1e-4, 5e-4, 1e-3]
+
+**Phase 2 결과**:
+- attention=True 사용 시 성능 대폭 하락 (약 0.35~0.52)
+- dropout=0.1이 최적 (낮은 드롭아웃)
+- batch_size=2048이 더 좋은 성능
+- weight_decay=0이 최적 (정규화 불필요)
+
+### TP 최적 레시피 (R2: 0.6252 → 0.6378, +2.0% 향상)
+
+|파라미터|기존|최적|
+|:---:|:---:|:---:|
+|hidden_size|512|384|
+|num_layers|4|1|
+|dropout|0.2|0.1|
+|learning_rate|2e-4|1e-3|
+|batch_size|2048|2048|
+|window_size|48|48|
+|weight_decay|0|0|
+|use_attention|False|False|
+
+**핵심 발견**:
+- layers=1이 layers=4보다 TP에서도 훨씬 우수 (TOC와 동일 패턴)
+- 작은 모델(384, 1layer)이 큰 모델(512, 4layer)보다 성능 우수
+- 높은 학습률(1e-3)이 낮은 학습률(2e-4)보다 효과적
+- attention 메커니즘은 이 데이터셋에서 일관적으로 성능 하락 유발
+
+### TOC 하이퍼파라미터 그리드 탐색
+
+- 교수님 조언: TOC는 작은 모델에 더 적합할 수 있음
+- 기존 최고 R2: 0.4731 (hidden=256, layers=2, lr=1e-3)
+
+**Phase 1: 핵심 파라미터 탐색 (36개 조합)**
+
+- hidden_size: [128, 192, 256, 384]
+- num_layers: [1, 2, 3]
+- learning_rate: [5e-4, 1e-3, 2e-3]
+- 고정: dropout=0.2, batch=2048, window=48, wd=1e-4
+
+**Phase 1 결과**:
+- layers=1이 압도적으로 우수 (Top 10 중 8개가 layers=1)
+- hidden_size가 클수록 성능 향상 (384 > 256 > 192 > 128)
+- Phase 1 최고: R2=0.5597 (hidden=384, layers=1, lr=1e-3)
+
+**Phase 2: 보조 파라미터 미세 조정 (144개 조합)**
+
+- 기반: hidden=384, layers=1, lr=1e-3
+- dropout: [0.1, 0.15, 0.2, 0.3]
+- batch_size: [1024, 2048]
+- window_size: [24, 48, 72]
+- attention: [False, True]
+- weight_decay: [0, 1e-4, 1e-3]
+
+**Phase 2 결과**:
+- attention=True 사용 시 성능 하락 (약 0.35~0.43)
+- window_size=72가 최적 (36시간 윈도우)
+- weight_decay=1e-3이 최적
+- batch_size=2048이 더 안정적
+
+### TOC 최적 레시피 (R2: 0.4731 → 0.5762, +21.8% 향상)
+
+|파라미터|기존|최적|
+|:---:|:---:|:---:|
+|hidden_size|256|384|
+|num_layers|2|1|
+|dropout|0.2|0.2|
+|learning_rate|1e-3|1e-3|
+|batch_size|2048|2048|
+|window_size|48|72|
+|weight_decay|1e-4|1e-3|
+|use_attention|False|False|
+
+**핵심 발견**:
+- layers=1이 layers=2, 3보다 TOC에서 훨씬 우수
+- 큰 hidden_size(384)가 더 나은 표현력 제공
+- 긴 윈도우(72=36시간)가 TOC 예측에 도움
+- 강한 정규화(weight_decay=1e-3)가 과적합 억제에 효과적
+
+### LSTM 02/22 최고 성능
+- FLOW: 0.8166
+- TOC: 0.5762
+- SS: 0.6712
+- TN: 0.9011
+- TP: 0.6378
+- FLUX: 0.6296
+- PH: 0.8432
+
+---
+
+## 📅 2026년 2월 13일
+
+### 📂 작업 파일
+```
+notebook/DL/LSTM_TMS.ipynb
+notebook/DL/LSTM_FLOW.ipynb
+notebook/DL/LSTM_TMS_dropna.ipynb
+notebook/DL/LSTM_FLOW_dropna.ipynb
+src/main.py
+```
+
+### fc layer 추가 후 성능 확인
+
+- FLUX의 경우 fc layer를 추가함으로써 성능 향상됨
+
+-> 다른 지표에 대해서도 fc layer를 추가하면 성능 향상되는가?
+
+**결과**:
+- FLOW: 0.8166
+- TOC: 0.4587
+- SS: 0.6712
+- FLUX: 0.6296
+
+-> TN, TP, PH의 경우 복잡한 모델일 때 성능 저하됨
+
+### 작은 모델의 성능 확인
+
+- 김태연 교수님께서 특성 TMS 지표는 작은 모델에 더 적합할 수 있다고 조언
+
+  - TOC: 512 -> 256, 4 -> 2, 2e-4 -> 1e-3
+
+**결과**:
+- TOC: 0.4731(실험 중단 다음주에 계속하기)
+
+### main.py 현재 최고 모델의 구조로 마이그레이션
+
+- LSTMRegressor 클래스 통합
+  - head_hidden_size 파라미터 제거
+  - deep_head: bool 파라미터 추가
+  - Head 구조를 노트북과 동일하게 3단계로 분기:
+    - hidden >= 256 & deep_head = True -> 4-layer(flow, toc, ss)
+    - hidden >= 256 & deep_head = False -> 3-layer(tn, tp, flux, ph)
+    - hidden < 256 -> 2-layer
+
+- FlowLSTMRegressor 클래스 제거
+
+- TMS_TARGETS 설정 업데이트
+
+  |타겟|hidden|layers|attn|deep_head|
+  |:---:|:---:|:---:|:---:|:---:|
+  |toc|256 (←128)|2 (←3)|False|True|
+  |ss|512 (←64)|4 (←2)|False (←True)|True|
+  |tn|512 (←64)|4 (←2)|False|False|
+  |tp|512 (←64)|4 (←2)|False (←True)|False|
+  |flux|512 (←128)|4 (←3)|True|False|
+  |ph|512 (←64)|4 (←2)|False|False|
+
+- FLOW_CONFIG 업데이트
+  - hidden=256 (←128), layers=3, dropout=0.2 (←0.3), deep_head=True
+  - num_heads 제거 (노트북에서 4로 고정)
+
+- 구조 개선
+  - 기능에 따라 config.py / models.py / schemas.py / loader.py / preprocess.py / predict.py로 분리
+  - main.py에서 import하여 사용
+
+### 기존 LSTM 모델 이외의 SOTA 모델 찾아보기
+
+- DA-LSTM
+- TCN-LSTM
+- 확률적 seq2seq
+- iTransformer
+- PatchTST
+- TFT(temporal fusion transformer)
+
+### LSTM 02/13 최고 성능
+- FLOW: 0.8166
+- TOC: 0.4731
+- SS: 0.6712
+- TN: 0.9011
+- TP: 0.6252
+- FLUX: 0.6296
+- PH: 0.8432
+
+### ✅ 다음 할 일 (2026/02/23)
+
+- [X] 작은 모델의 성능 확인
+
+---
+
+
+## 📅 2026년 2월 12일
+
+### 📂 작업 파일
+```
+notebook/DL/LSTM_TMS.ipynb
+```
+
+### LSTM 02/11 최고 성능
+- FLOW: 0.79**(레시피 기억 안남)
+- TOC: 0.4238
+- SS: 0.5990
+- TN: 0.9011
+- TP: 0.5938
+- FLUX: 0.4851
+- PH: 0.8432
+
+### notebook/DL/LSTM_TMS.ipynb
+
+- 학습 결과를 바탕으로 성능을 올리기 위한 방법
+  - SS: 데이터 분포 급변으로 SS 후반 붕괴
+    → 슬라이딩 윈도우 재학습 or 더 많은 학습 데이터 필요
+  - TP: train 기간과 test 기간 분포 차이
+    → 시퀀스 길이 조정
+  - FLUX: 학습 데이터 편향
+    → 손실함수에 bias 패널티 추가
+  - TOC/SS: 특성 부족 가능성
+    → 추가 feature 발굴, 시퀀스 길이 조정
+
+### SS
+
+- 시퀀스 길이 조정: 0.8 / 0.1 / 0.1 사용 & batch_size = 512
+  → 0.5990에서 0.6175로 상승
+
+- learning curve가 너무 튀어서 lr을 2e-4로 수정
+  → 0.6175에서 0.6367로 상승
+
+- shuffle = True
+  → 0.6367에서 0.65 ~ 0.66
+
+- 최소 특성 개수 설정(10개)
+  → 성능 저하
+
+- 슬라이딩 윈도우 재학습
+  → 성능 저하
+
+### TP
+
+- 시퀀스 길이 조정: 0.8 / 0.1 / 0.1 사용
+  → 0.5938에서 0.6252
+
+- shuffle = True
+  → 보다 안정적으로 성능이 0.6에 수렴함
+
+- TP 추세 특성 추가
+  → 성능 저하
+
+- StandardScaler에서 RobustScaler 변경
+  → 성능 저하
+
+### FLUX
+
+- 기존 tms 모델처럼 fc layer를 한 층 추가
+  → 0.4851에서 0.6097
+
+- 새로운 손실함수 BiasAwareLoss 사용
+  → 성능 저하
+
+### TOC
+
+- 시퀀스 길이 조정: 0.8 / 0.1 / 0.1 사용
+  → 성능 유지(사용하지 않음)
+
+- shuffle = True
+  → 성능 유지
+  → learning curve가 이전보다 매끄럽게 나타남
+
+### LSTM 02/12 최고 성능
+- FLOW: 0.79**
+- TOC: 0.4238
+- SS: 0.6630
+- TN: 0.9011
+- TP: 0.6252
+- FLUX: 0.6097
+- PH: 0.8432
+
+### ✅ 다음 할 일 (2026/02/12)
+- [] 결측치나 이상치에 대한 drop만 사용 시 LSTM 성능 확인
+- [X] fc layer를 추가하고 성능 확인
+
+---
+
+## 📅 2026년 2월 11일
+
+### 📂 작업 파일
+```
+notebook/DL/LSTM_TMS.ipynb
+src/main.py
+```
+
+### main.py 수정
+
+- 현재 최고 성능을 내는 모델, 스케일러, 특성에 맞게 하이퍼파라미터 수정
+- 전처리 과정 역시 현재 LSTM_FLOW.ipynb와 LSTM_TMS.ipynb와 동일하게 수정
+
+-> model/save/* 와 data/recommand_features/* 만 로드하면 사용할 수 있도록 설정
+
+**추가 요구사항**:
+- frontend에 표기될 때 시간해상도를 30분 간격으로 설정
+
+-> 예측 시간해상도를 1시간에서 30분으로 수정
+-> 또한 기존 모델이 1시간 뒤를 예측하는 모델이었으나, 30분 간격으로
+
+### LSTM_TMS 성능 확인
+
+- R2 
+  - TOC: 0.2759
+  - SS: 0.3548
+  - TP: -0.0601
+  - FLUX: 0.2251
+
+- Learning curve
+  - TOC: val_loss가 train_loss보다 커서 중간에 멈춤(에포크 19)
+  - SS: 전반적으로 학습을 진행할수록 loss가 작아지지만, train loss가 상대적으로 많이 작은 반면, val loss는 큰 편
+  -> val_loss가 train_loss보다 커서 중간에 멈춤(에포크 17)
+  - TP: val_loss가 시작부터 거의 0에 수렴함
+  -> train과 val의 데이터셋의 분포가 차이에 의해 나타날 수 있음
+  - FLUX: TOC와 SS의 learning curve와 유사한 형태(에포크 17에서 early stop)
+
+=> TOC, SS, FLUX 학습 시, val_loss가 train_loss보다 커서 조기 종료하는 기능 사용하지 않고 학습해보기
+
+### LSTM_TMS 조기 종료 조건 수정
+
+- 단 1회의 v_loss > avg_loss 되면 조기 종료
+
+-> 연속 5회 증가 or val이 train의 3배 초과 두 조건 모두 충족해야 조기 종료
+  - 종료 메시지와 연속 횟수, 배율 표시
+
+**결과**:
+- TOC: 0.2759 -> 0.27 ~ 0.29
+- SS: 0.3548 -> 0.33 ~ 0.37
+- FLUX: 0.2251 -> 0.14 ~ 0.29
+
+### GPU를 충분히 활용할 수 있도록 batch_size 수정
+
+- 기존 batch_size 32 ~ 128: GPU 메모리의 1GB도 사용하지 않음
+
+-> 256 이상으로 잡아 GPU에 많은 학습 데이터(1GB 이상)를 넣고 학습
+-> 512 이상일 경우 LR도 키워야 함
+
+**결과**:
+- TOC: 0.27 ~ 0.29 -> 0.3 ~ 0.35
+- SS: 0.33 ~ 0.37 -> 0.35 ~ 0.39
+- FLUX: 0.14 ~ 0.29 -> 0.32 ~ 0.41
+
+### LSTM 하이퍼파라미터 수정
+
+- 기존 hidden_size: 32 ~ 64 -> 256 ~ 512
+- 기존 layers: 2 ~ 3 -> 3 ~ 4
+
+**결과**:
+- GPU 성능을 거의 다 사용
+- 반드시 서버 컴퓨터에서 학습해야 함
+
+### LSTM 02/11 최고 성능
+- FLOW: 0.79**(레시피 기억 안남)
+- TOC: 0.4238
+- SS: 0.5990
+- TN: 0.9011
+- TP: 0.5938
+- FLUX: 0.4851
+- PH: 0.8432
+
+-> TOC/TP: R²가 음수에서 양수로 전환 → 모델이 "쓸모없음"에서 "예측 가능"으로 전환
+-> PH: +51.5%로 가장 큰 상대적 향상
+-> TN: 0.9 달성 → 이미 높은 성능에서 추가 향상
+-> FLOW: 기존에도 잘 학습되어 있어서 변화 거의 없음
+
+## ✅ 다음 할 일 (2026/02/11)
+- [X] LSTM_TMS 성능 올리기
+  - toc / ss / tp / flux
+
+---
+
+## 📅 2026년 2월 10일
+
+### 📂 작업 파일
+```
+notebook/DL/LSTM_FLOW.ipynb
+notebook/DL/LSTM_TMS.ipynb
+notebook/EDA/flow_tms_periodicity_eda.ipynb
+```
+
+### LSTM 성능 향상
+
+- LSTM_TMS에 적용한 lag 특성들을 LSTM_FLOW에 추가
+  - 기존 R2 0.6 -> 0.7899 성능 향상
+
+- 시간 특성 추가(LSTM_TMS)
+  - ss: 0.2133 -> 0.53** -> 이상치 처리 과정 수정 후 성능 떨어짐(0.39**)
+  - tn: 0.7769 -> 0.8062
+  - ph: 0.5567 -> 0.7490
+
+### LSTM 모델 early stop 기능 추가
+
+- val loss가 train loss보다 커지는 경우 학습을 종료하는 기능 추가
+- 최소 에포크 설정 가능: 현재 15
+
+-> 초기 불안정한 학습 구간은 무시
+-> 충분한 학습 기회 보장
+-> 불필요하게 긴 학습 방지
+
+### EDA
+
+- flow 지표에 대한 시간대, hour × weekday의 설명력(eta2)이 큼
+  - level_TankA, level_TankB: 0.78, 0.84
+  - flow_TankA, flow_TankB: 0.34~0.41, 0.37~0.44
+- ph에 대한 월/주 계절성 설명력(eta2)이 큼
+  - month: 0.52
+  - iso_week: 0.61
+
+-> flow 예측 시, hour_sin/cos, weekday, hour × weekday 특성 반드시 포함
+-> ph 예측 시, month, iso_week(+ hour_sin/cos 보조) 특성 포함
+-> 공통 시간 특성으로 hour × weekday, weekday, iso_week 추가
+
+### TMS learning curve plot 이상
+
+- TOC: results/DL/toc_learning_curve.png
+- TP: results/DL/tp_learning_curve.png
+- FLUX: results/DL/flux_learning_curve.png
+
+-> 데이터 확인(EDA) 및 이상치 처리 개선
+
+### 이상치 처리 방법 수정
+
+- outliers_domain() 함수는 물리적으로 불가능한 값을 거르기 위해 존재
+
+-> tms 지표의 배출허용기준을 사용하여 해당 기준의 2배가 넘는 수치일 경우 이상치로 처리
+
+### TOC
+
+- 성능이 가장 낮은 tms 지표이므로 이를 중점으로 성능 개선 시도
+
+- 하이퍼파라미터
+  - hidden_size: 64 -> 128
+  - batch_size: 32 -> 64
+  - learning_rate: 5e-4 -> 2e-4
+  - dropout: 0.2 -> 0.15
+  - validation ratio: 0.15 -> 0.2
+  - shuffle: True -> False
+  - Patience: 20 -> 25
+- Attention 제거
+
+**결과**:
+- R2: -2.2168 -> 0.2941
+
+### FLUX
+
+- tms의 flux 지표는 하루동안의 flux 값을 누적 증가
+
+-> 값을 그대로 사용하기 보다는 바로 전 값을 차분하여 사용하는 것이 맞음
+-> 음수 값은 해당 지점에서 초기화되었음을 의미: 0으로 클리핑
+-> 경기도 일 평균 배출유량 8.55의 4배 34.2를 기준으로 이상치 처리(outliers_domain())
+
+- 하이퍼파라미터
+  - hidden_size: 64 -> 128
+  - batch_size: 32 -> 128
+  - learning_rate: 5e-4 -> 2e-4
+  - dropout: 0.2 -> 0.15
+  - split ratio: 0.7/0.15/0.15 -> 0.8/0.1/0.1
+  - shuffle: True
+  - Patience: 20 -> 25
+
+**결과**:
+- R2: -0.0069 -> 0.3015
+
+### TP
+
+- 하이퍼파라미터
+  - hidden_size: 64 -> 128
+  - batch_size: 32 -> 128
+  - learning_rate: 5e-4 -> 2e-4
+  - dropout: 0.2 -> 0.15
+  - validation ratio: 0.15 -> 0.2
+  - shuffle: True -> False
+  - Patience: 20 -> 25
+
+**결과**:
+- R2: -0.4059 -> -0.0009
+
+**한상곤 교수님 조언**:
+- TP의 경우 데이터 값 범위가 매우 좁아 모델 자체가 힘을 못 쓰는 경우일 수 있음
+
+-> 모델을 매우 복잡하게 만들거나 많은 특성을 밀어넣어 성능을 올리는 방법 추천
+
+### LSTM 코드 수정(numpy -> pytorch)
+
+- TimeSeriesWindowDataset: 
+```python
+  np.asarray → torch.as_tensor
+  [:, None] → .unqueeze(1)
+  torch.from_numpy() + np.asarray → 직접 tensor 슬라이싱
+```
+- report_and_fix:
+```python
+  모든 numpy 연산 → torch.isnan/isinf/nanmean/where 로 교체
+  하위 호환성을 위해 끝에 .numpy() 반환 유지
+```
+
+- evaluate_model:
+```python
+  R² 계산 .numpy() 경유 제거 → tensor 연산으로 직접 계산 후 .item() 추출
+```
+
+- ensure_2d_y:
+```python
+	np.asarray → torch.as_tensor
+  [:, None] → .unsqueeze(1)
+```
+
+### ✅ 다음 할 일 (2026/02/11)
+- [X] LSTM_TMS 성능 올리기
+  - toc / ss / tp / flux
+
+
+## 📅 2026년 2월 9일
+
+### 📂 작업 파일
+```
+src/main.py
+notebook/DL/LSTM_FLOW.ipynb
+notebook/DL/LSTM_TMS.ipynb
+notebook/feature/feature_engineering.py
+```
+
+### backend와 연결
+
+- 지난 주에 타입 정의가 맞지 않아 422 오류가 발생
+- 이를 해결하기 위해 코드 수정
+
+**어려운 점**:
+- fastAPI가 http2를 지원하지 않아 body의 내용이 사라지는 현상 발생
+-> Backend에서 WebClient 사용, http1.1 버전을 호출
+
+**결과**:
+- 저장된 scaler, recommand feature, model을 로드
+- backend에서 WebClient 사용하여 해결
+- flow와 tms 예측에 따른 json 형태 맞춤
+
+### LSTM_TMS의 성능 향상 시도
+
+- tms 지표에 대한 성능이 평균보다 못 하기 때문
+- feature_engineering.py: add_target_lag_features() 추가
+  - Lag: k = 2, 4, 6, 12, 24, 48, 72 steps (1시간~36시간)
+  - Rolling: mean/std/max/min, 윈도우 = 6, 12, 24, 72 steps
+  - Diff: k = 1, 2, 6 steps 차분
+  - 변화율: k = 1, 6 steps
+  - EWMA: span = 6, 12 ,24
+- 이상치 처리에서 EWMA 계산값이 실제 데이터에 반영되도록 수정
+
+**결과**:
+- OUTLIER_CONFIG(zscore, both=False)
+  - TOC_VU: R2 -1.8612 -> 0.2973
+  - SS_VU: R2 -0.5181 -> 0.2133
+  - TN_VU: R2 -0.1558 -> 0.7769
+  - TP_VU: R2 -2.1524 -> -0.4059
+  - FLUX_VU: R2 -0.0079 -> -0.0069
+  - PH_VU: R2 -0.1669 -> 0.5567
+
+**걸리는 점**:
+- 선택된 특성 대부분이 target에 의해서 결정됨
+- TP와 FLUX를 제외한 나머지 tms 지표에 대해서는 이전보다 좋은 성능
+- TP와 FLUX 성능 최우선 개선 필요
+- 일부 지표에 대한 learning curve plot의 val plot이 이상함(거의 0에 수렴)
+
+### TP와 FLUX 성능 향상 시도
+
+- preproceess_data() 특성 선택 비활성화
+  - MODE == "tp" | "flux"일 때 WF 특성 선택 건너뛰고 전체 특성 사용
+  - 기존 2 ~ 4개 특성 -> 최소 10개 이상 
+
+### ✅ 다음 할 일 (2026/02/10)
+- [X] LSTM 성능 개선 시도
+- [X] 성능이 낮은 지표에 대한 EDA
+
+---
+
 ## 📅 2026년 2월 6일
 
 ### 📂 작업 파일
 ```
-notebook/DL/LSTM.ipynb
-notebook\feature\WF_feature_selection.py
-notebook\feature\feature_engineering.py
-archive\
+notebook/DL/LSTM_FLOW.ipynb
+notebook/DL/LSTM_TMS.ipynb
+notebook/DL/analyze_predictions.py
+notebook/feature/WF_feature_selection.py
+notebook/feature/feature_engineering.py
+archive
+src/main.py
 ```
 
-### LSTM 모델 성능 향상
+### LSTM_FLOW 모델 성능 향상
 
 **이유**:
 - flow에 대한 LSTM 모델 성능도 R2 기준 0.3 수준
-- tms 지표에 대한 예측은 더욱 처참함
 
 **내용**:
 - 하이퍼파라미터 수정
@@ -40,6 +946,20 @@ archive\
   - 낮은 flow(< 320): MAPE 27.05%
   - 중간 flow(320 - 400): MAPE 5.17%
   - 높은 flow(> 400): MAPE 6.40%
+
+### LSTM_TMS 모델 성능 향상 시도
+
+**이유**:
+- tms에 대한 LSTM 모델 성능은 R2 기준 거의 마이너스 값
+
+**내용**:
+- OUTLIER_CONFIG(zscore, both=False)
+  - TOC_VU: R2 -1.8612
+  - SS_VU: R2 -0.5181
+  - TN_VU: R2 -0.1558
+  - TP_VU: R2 -2.1524
+  - FLUX_VU: R2 -0.0079
+  - PH_VU: R2 -0.1669
 
 ### LSTM 파일 MAPE 값 수정
 
@@ -68,8 +988,24 @@ archive\
 
 - archive/README.md 참조
 
+### analyze_predictions.py 생성
+
+- test 데이터에 대한 예측값을 results/DL/{mode}_predictions.csv에 저장
+- 실측값과 예측값의 차이를 시각적으로 확인하기 위해 작성
+  - 시계열 비교(실측 vs. 예측)
+  - 산점도 (실측 vs. 예측)
+  - 예측 에러 시계열
+  - 구간별 예측 정확도(MAPE)
+
+### src/main.py 수정
+
+- backend에 모델이 예측한 값이 serving하기 위해 model에 데이터가 입력되는 형식에 맞게 전처리 코드 작성
+- backend json과 동일한 타입으로 predict 받기
+
 ### ✅ 다음 할 일 (2026/02/09)
-- [] LSTM 성능 개선
+- [X] LSTM 성능 개선
+- [X] LSTM 특성에 target 컬럼의 lagging 추가
+- [X] backend와 연결하기
 
 ---
 
