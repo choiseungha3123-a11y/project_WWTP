@@ -1,0 +1,13 @@
+data.zip
+data
+data/pred
+data/processed
+data/output
+data/actual
+data/raw
+
+.env
+
+
+archive/old_data/output
+archive/old_data/processed
