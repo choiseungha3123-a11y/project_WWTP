@@ -9,7 +9,7 @@ Spring Boot 기반 AI 프로젝트 서버의 설정 파일 안내입니다.
 - [공용 설정 (application.properties)](#공용-설정)
 - [DB 설정 (application-db.properties)](#db-설정)
 - [OAuth2 설정 (application-oauth2.properties)](#oauth2-설정)
-- [API 설정 (application-api.properties)(#API-설정)
+- [API 설정 (application-api.properties)](#API-설정)
 
 ---
 
