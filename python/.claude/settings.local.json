@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(jupyter nbconvert:*)",
+      "Bash(python:*)",
+      "Bash(ls:*)",
+      "Bash(del c:project_WWTPbuild_notebook.py)",
+      "Bash(findstr:*)",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(python3:*)",
+      "Bash(cat:*)",
+      "Bash(/c/Users/user/AppData/Local/Microsoft/WindowsApps/python3:*)",
+      "Bash(git lfs:*)",
+      "Bash(git rm:*)",
+      "Bash(where:*)",
+      "Bash(C:Userskimucminiconda3python.exe -c \"import json; f=open\\(r''c:\\\\project_WWTP\\\\python\\\\notebook\\\\DL\\\\LSTM_TMS.ipynb'',''r'',encoding=''utf-8''\\); nb=json.load\\(f\\); f.close\\(\\); print\\(''Total cells:'', len\\(nb[''cells'']\\)\\); [print\\(f''Cell {i}: {c[\"\"cell_type\"\"]}, lines={len\\(c[\"\"source\"\"]\\)}''\\) for i,c in enumerate\\(nb[''cells'']\\)]\")",
+      "Bash(dir:*)",
+      "Bash(cmd.exe:*)",
+      "Bash(powershell.exe -Command:*)",
+      "Bash(cd:*)",
+      "Bash(PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \"/mnt/c/Users/kimuc/miniconda3/envs/AIproject/python.exe\":*)",
+      "Bash(PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \"C:/Users/kimuc/miniconda3/envs/AIproject/python.exe\":*)",
+      "Bash(PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \"C:/Users/kimuc/miniconda3/envs/AIproject/python.exe\" -c:*)",
+      "Bash(PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \"C:\\\\Users\\\\kimuc\\\\miniconda3\\\\envs\\\\AIproject\\\\python.exe\":*)"
+    ]
+  }
+}

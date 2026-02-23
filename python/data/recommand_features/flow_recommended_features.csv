@@ -1,0 +1,16 @@
+index,feature_name
+27,flow_TankA_tlag_2
+29,flow_TankA_tlag_6
+36,flow_TankA_troll_max_6
+40,flow_TankA_troll_max_12
+54,flow_TankA_tpct_6
+58,flow_TankB_tlag_2
+82,flow_TankB_tdiff_2
+83,flow_TankB_tdiff_6
+85,flow_TankB_tpct_6
+620,TA_541_lag_48steps
+665,hour
+669,hour_sin
+670,hour_cos
+673,weekday
+675,hour_x_weekday
