@@ -302,7 +302,25 @@ demo
 
 ### Streamlit 배포
 
-- demo 폴더 생성 및 학습 곡선, 예측 그래프 시각화
+**구조**: `demo/` 폴더, 멀티페이지 앱 (`streamlit run demo/app.py`)
+
+| 페이지 | 파일 | 주요 기능 |
+|---|---|---|
+| 홈 | `app.py` | R² 성능 요약 바 차트, 시스템 구성 개요 |
+| 성능 대시보드 | `pages/1_성능_대시보드.py` | 최종 R² 비교, 단계별 성능 변화 꺾은선, 타겟별 학습 곡선·예측 그래프(PNG) |
+| 예측 분석 | `pages/2_예측_분석.py` | 인터랙티브 시계열(실측 vs 예측), 산점도, 오차 분포 히스토그램, R²/RMSE/MAE 표시 |
+| 모델 정보 | `pages/3_모델_정보.py` | 모델 구조 테이블(hidden/layers/attention/head), 추천 피처 목록, LSTM 다이어그램 |
+| 라이브 추론 | `pages/4_라이브_추론.py` | 실제 모델·스케일러 로드, CSV 업로드 or 수동 입력, 12시간 Autoregressive 예측 궤적 |
+
+**유틸리티** (`demo/utils/`):
+- `constants.py` — `FINAL_R2`, `STAGE_R2`, `TARGET_LABELS`, `TARGET_ORDER`
+- `data_loader.py` — PNG 경로 조회, 예측 결과 CSV 로드, 추천 피처 목록 로드
+- `metrics.py` — `compute_metrics` (R², RMSE, MAE)
+- `live_infer.py` — `load_runtime_artifacts`, `run_inference`, `validate_and_align_input`, `build_trajectory_df`
+
+**템플릿** (`demo/live_infer_templates/`):
+- 7개 타겟 기본 템플릿 CSV (48행 × n_features, 0으로 채움)
+- `real_segment/` — 실제 데이터 기반 템플릿 (날짜: 20250928)
 
 
 ### ✅ 다음 할 일 (2026년 2월 24일)
@@ -1810,6 +1828,9 @@ MAPE(%):   7445272.5
 #### 결론
 - ✅ Q_in: 어느 정도 성능이 나옴
 - ❌ TMS 지표: 기상 데이터만으로 6개의 종속변수를 예측하다보니 성능이 너무 낮음
+
+#### 문제점
+- 
 
 ### ✅ 다음 할 일 (2026/01/27)
 - [X] 시간 특성(feature): 1시간, 2시간, 24시간
