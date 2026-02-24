@@ -9,7 +9,6 @@ interface WeatherRecord { SYS_TIME: string; TA: number; RN_15m: number; RN_60m?:
 interface FlowRecord { SYS_TIME?: string; flowTime?: string; Q_in?: number; flowValue?: number; level_TankA?: number; level_TankB?: number; flow_TankA?: number; flow_TankB?: number; }
 type BoardRecord = TmsRecord | WeatherRecord | FlowRecord;
 interface BoardViewResponse { success: boolean; dataList: BoardRecord[][]; }
-interface HealthResponse { success: boolean; message?: string; checkTime?: string; }
 interface StatusCardProps { label: string; value: string | number; status: "normal" | "warning" | "danger"; time?: string | null; isError?: boolean; unit?: string; }
 
 // ----------------------------------------------------------------------
@@ -30,13 +29,11 @@ const formatTime = (timeStr?: string | null) => {
   return timeStr;
 };
 
-// [수정] 소수점 2자리로 변경 (toFixed(2))
 const roundVal = (val: number | undefined | null) => {
   if (val === undefined || val === null || isNaN(Number(val))) return "0.00";
   return Number(val).toFixed(2);
 };
 
-// [추가] 유입유량 등 큰 숫자에 콤마 + 소수점 2자리 적용
 const formatNumberWithComma = (val: number | undefined | null) => {
   if (val === undefined || val === null || isNaN(Number(val))) return "0.00";
   return Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -60,35 +57,17 @@ const fetcher = async (url: string) => {
 export default function Row1Status() {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
   const [isClient, setIsClient] = useState(false);
-  const [errorStartTime, setErrorStartTime] = useState<string | null>(null);
 
   useEffect(() => { setIsClient(true); }, []);
 
+  // 주요 데이터 페칭 (30분 간격 - 필요에 따라 조정 가능)
   const { data: tmsRaw, error: tmsError } = useSWR<BoardViewResponse>(
     isClient ? `${API_BASE_URL}/api/board/boardView` : null, fetcher, { refreshInterval: 30 * 60 * 1000, revalidateOnFocus: true }
   );
 
-  const { data: healthRaw, error: healthError } = useSWR<HealthResponse>(
-    isClient ? `${API_BASE_URL}/api/board/health` : null, fetcher, { refreshInterval: 30 * 1000 }
-  );
-
-  const isSystemOk = !!healthRaw && healthRaw.success === true && !healthError;
-
-  useEffect(() => {
-    const isCurrentlyDown = !!healthError || (healthRaw && !healthRaw.success);
-    if (isCurrentlyDown) {
-      if (!errorStartTime) {
-        const now = new Date();
-        const formatted = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        setErrorStartTime(healthRaw?.checkTime || formatted);
-      }
-    } else if (healthRaw?.success) {
-      setErrorStartTime(null);
-    }
-  }, [healthRaw, healthError, errorStartTime]);
-
   const dataList = tmsRaw?.success ? tmsRaw.dataList : [];
 
+  // 데이터 추출 로직
   const tmsData = dataList.find((l): l is TmsRecord[] => l.length > 0 && 'TOC_VU' in l[0])?.slice(-1)[0] || null;
   const weatherData = dataList.find((l): l is WeatherRecord[] => l.length > 0 && 'TA' in l[0])?.slice(-1)[0] || null;
   const flowRawData = dataList.find((l): l is FlowRecord[] => l.length > 0 && ('Q_in' in l[0] || 'flowValue' in l[0]))?.slice(-1)[0] || null;
@@ -100,23 +79,9 @@ export default function Row1Status() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className={`w-full p-4 rounded-xl border flex items-center justify-between shadow-sm transition-all duration-500 ${isSystemOk ? "bg-slate-800/40 border-white/5" : "bg-red-900/20 border-red-500/30"}`}>
-        <div className="flex items-center gap-3">
-          <span className="text-slate-300 font-bold text-lg">시스템 체크 :</span>
-          <span className={`text-lg font-black ${isSystemOk ? "text-emerald-400" : "text-red-400"}`}>{isSystemOk ? "정상" : "비정상"}</span>
-          <span className="relative flex h-4 w-4 ml-1">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isSystemOk ? "bg-emerald-400" : "bg-red-500"}`}></span>
-            <span className={`relative inline-flex rounded-full h-4 w-4 ${isSystemOk ? "bg-emerald-500" : "bg-red-600"}`}></span>
-          </span>
-        </div>
-        {!isSystemOk && errorStartTime && (
-          <div className="flex items-center gap-2 text-red-300 bg-red-950/50 px-3 py-1 rounded-lg border border-red-500/20">
-            <span className="text-sm font-semibold">⚠️ 감지시간:</span>
-            <span className="text-lg font-mono font-bold">{errorStartTime}</span>
-          </div>
-        )}
-      </div>
-
+      {/* 이전의 "시스템 체크" 상단 바가 제거되었습니다. 
+         이제 데이터 카드들이 바로 그리드로 표시됩니다.
+      */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <StatusCard 
           label="유입유량"
