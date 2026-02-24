@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 TARGET_ORDER = ["flow", "toc", "ss", "tn", "tp", "flux", "ph"]
 
@@ -77,4 +77,56 @@ STAGE_R2 = {
         "flux": 0.62,
         "ph": 0.85,
     },
+}
+
+# ── 운영 KPI ────────────────────────────────────────────────────────────────────
+
+# 타겟 운영 중요도 등급
+# Tier 1: 규제 기준·운영 안정성 직결, 예측 신뢰도 높음
+# Tier 2: 배출 허용 기준 연계, 중간 예측 성능
+# Tier 3: 예측 불확실성 높음, 추세 참고 수준
+OPERATIONAL_TIERS = [
+    {
+        "id": 1,
+        "label": "핵심 지표",
+        "desc": "규제 기준·운영 안정성 직결 / 예측 신뢰도 높음",
+        "targets": ["tn", "ph", "flow"],
+    },
+    {
+        "id": 2,
+        "label": "주요 관리 지표",
+        "desc": "배출 허용 기준 연계 / 중간 예측 성능",
+        "targets": ["ss", "tp", "flux"],
+    },
+    {
+        "id": 3,
+        "label": "보조 지표",
+        "desc": "예측 불확실성 높음 / 정성적 경향 참고 수준",
+        "targets": ["toc"],
+    },
+]
+
+# 기준초과 이벤트 탐지를 위한 운영 임계치
+# None  → 실데이터 95th percentile (유량 계열)
+# float → 상한 초과 기준 (단위: 각 타겟 단위)
+# tuple → (하한, 상한) 범위 이탈 기준 (pH)
+# 참고: 하수도법 및 물환경보전법 방류 허용 기준
+OPERATIONAL_THRESHOLDS: dict[str, float | tuple | None] = {
+    "flow": None,        # 유입유량 — 95th percentile (m³/h 단위)
+    "toc":  15.0,        # TOC 15 mg/L (방류 허용 기준)
+    "ss":   10.0,        # SS  10 mg/L (방류 허용 기준)
+    "tn":   10.0,        # TN  10 mg/L (방류 허용 기준)
+    "tp":   0.5,         # TP   0.5 mg/L (방류 허용 기준)
+    "flux": None,        # 방류유량 — 95th percentile (m³/h 단위)
+    "ph":   (5.8, 8.6),  # pH 5.8 ~ 8.6 (범위 이탈 기준)
+}
+
+OPERATIONAL_THRESHOLD_LABELS: dict[str, str] = {
+    "flow": "p95 (m³/h, 데이터 기반)",
+    "toc":  "15 mg/L",
+    "ss":   "10 mg/L",
+    "tn":   "10 mg/L",
+    "tp":   "0.5 mg/L",
+    "flux": "p95 (m³/h, 데이터 기반)",
+    "ph":   "pH 5.8 ~ 8.6",
 }
