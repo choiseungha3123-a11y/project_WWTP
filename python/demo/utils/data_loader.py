@@ -44,4 +44,14 @@ def get_png_path(kind: str, target: str) -> Path:
     if kind == "prediction":
         return save_dir / f"prediction_analysis_{target}.png"
 
+    if kind == "diagnosis":
+        return save_dir / f"{target}_diagnosis.png"
+
     raise ValueError(f"지원하지 않는 kind입니다: {kind}")
+
+
+def load_experiment_results(target: str) -> pd.DataFrame:
+    path = ROOT_DIR / "results" / "DL" / f"{target}_experiment_results.csv"
+    if not path.exists():
+        raise FileNotFoundError(f"실험 결과 CSV를 찾을 수 없습니다: {path}")
+    return pd.read_csv(path)
