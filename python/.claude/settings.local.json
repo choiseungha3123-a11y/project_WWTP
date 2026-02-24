@@ -23,7 +23,9 @@
       "Bash(PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \"/mnt/c/Users/kimuc/miniconda3/envs/AIproject/python.exe\":*)",
       "Bash(PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \"C:/Users/kimuc/miniconda3/envs/AIproject/python.exe\":*)",
       "Bash(PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \"C:/Users/kimuc/miniconda3/envs/AIproject/python.exe\" -c:*)",
-      "Bash(PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \"C:\\\\Users\\\\kimuc\\\\miniconda3\\\\envs\\\\AIproject\\\\python.exe\":*)"
+      "Bash(PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \"C:\\\\Users\\\\kimuc\\\\miniconda3\\\\envs\\\\AIproject\\\\python.exe\":*)",
+      "Bash(git -C c:/project_WWTP log --oneline -10)",
+      "Bash(git -C c:/project_WWTP show --stat ecb2dc8)"
     ]
   }
 }

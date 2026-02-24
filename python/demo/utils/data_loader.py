@@ -42,8 +42,6 @@ def get_png_path(kind: str, target: str) -> Path:
         return save_dir / f"{target}_learning_curve.png"
 
     if kind == "prediction":
-        if target == "flow":
-            return dl_dir / "prediction_analysis_flow.png"
         return save_dir / f"prediction_analysis_{target}.png"
 
     raise ValueError(f"지원하지 않는 kind입니다: {kind}")

@@ -4,6 +4,329 @@
 
 ---
 
+## 📅 2026년 2월 23일
+
+### 📂 작업 파일
+```
+notebook/DL/flux_experiment.py
+notebook/DL/ss_experiment.py
+notebook/DL/tn_experiment.py
+notebook/DL/ph_experiment.py
+notebook/DL/flow_experiment.py
+demo
+```
+
+### FLOW 하이퍼파라미터 그리드 탐색
+
+- 기존 최고 R2: 0.8166 (노트북 탐색 결과)
+- window_size=48 고정, LC_SPLIT_RATIOS (80/10/10), stability_ratio=0.3
+- WF 특성 선택 결과: 10개 선택 (Q_in lag/diff/ewma/roll - 자체 lag 특성 위주, 기상 특성 없음)
+- 데이터 기간: 2025/09/02 ~ 2025/12/03 (~3개월, 4314 샘플) - TMS 대비 매우 짧음
+
+**Phase 1: 핵심 파라미터 탐색 (18개 조합)**
+
+- hidden_size: [256, 384, 512]
+- num_layers: [1, 2]
+- learning_rate: [5e-4, 1e-3, 2e-3]
+- 고정: dropout=0.2, batch=2048, wd=0
+
+**Phase 1 결과**:
+- hidden=512, layers=2, lr=2e-3가 최고 (R2=0.8659) → 기존 최고(0.8166) 돌파! (+4.9%)
+- layers=2가 layers=1보다 우수 (SS/FLUX와 동일 패턴, TP/TOC/PH와 반대)
+- lr=2e-3가 최적 (높은 학습률 효과적)
+- hidden=512가 최적 (더 큰 모델이 유리, TN/PH와 동일)
+
+**Phase 2: 보조 파라미터 미세 조정 (18개 조합)**
+
+- 기반: hidden=512, layers=2, lr=2e-3
+- dropout: [0.1, 0.15, 0.2]
+- batch_size: [1024, 2048]
+- weight_decay: [0, 1e-4, 1e-3]
+
+**Phase 2 결과**:
+- Phase 1 결과 유지 (dropout=0.2, batch=2048, wd=0) R2=0.8659
+- wd=1e-3는 일관적으로 성능 하락 (강한 정규화가 FLOW에 해롭)
+- batch=2048이 1024보다 우수 (대부분의 지표와 동일)
+- dropout=0.2가 최적 (Phase 1 기본값 유지)
+
+### FLOW 최적 레시피 (R2: 0.8166 → 0.8659, +4.9% 향상)
+
+|파라미터|기존(노트북)|실험 최적|
+|:---:|:---:|:---:|
+|hidden_size|256|512|
+|num_layers|3|2|
+|dropout|0.2|0.2|
+|learning_rate|2e-4|2e-3|
+|batch_size|2048|2048|
+|window_size|48|48|
+|weight_decay|0|0|
+|use_attention|False|False|
+
+**핵심 발견**:
+- layers=2가 최적 (SS/FLUX/TN과 동일, layers=1보다 FLOW 복잡한 패턴 포착에 유리)
+- 높은 학습률(2e-3)이 최적 (SS/TN/PH와 동일)
+- hidden=512가 최적 (더 큰 모델이 복잡한 유량 패턴 학습에 유리)
+- WF 특성: Q_in 자체 lag/ewma만 선택 (기상 정보 기여 없음 - 유량은 자기회귀적)
+- wd=1e-3 금지 (FLOW에서만 일관되게 큰 성능 하락)
+
+---
+
+### PH 하이퍼파라미터 그리드 탐색
+
+- 기존 최고 R2: 0.8432 (노트북 탐색 결과)
+- window_size=48 고정, LC_SPLIT_RATIOS (80/10/10), stability_ratio=0.3
+- WF 특성 선택 결과: 10개 선택 (PH_VU lag/roll/diff/ewma, TA_541, TN_VU roll_std)
+
+**Phase 1: 핵심 파라미터 탐색 (18개 조합)**
+
+- hidden_size: [256, 384, 512]
+- num_layers: [1, 2]
+- learning_rate: [5e-4, 1e-3, 2e-3]
+- 고정: dropout=0.2, batch=2048, wd=0
+
+**Phase 1 결과**:
+- hidden=512, layers=1, lr=2e-3가 최고 (R2=0.8705) → 기존 최고(0.8432) 돌파! (+3.2%)
+- layers=1이 layers=2보다 우수 (TP/TOC와 동일 패턴)
+- lr=2e-3가 최적 (SS/TN과 동일, 높은 학습률 효과적)
+- hidden=512가 최적 (TN과 동일)
+
+**Phase 2: 보조 파라미터 미세 조정 (18개 조합)**
+
+- 기반: hidden=512, layers=1, lr=2e-3
+- dropout: [0.1, 0.15, 0.2]
+- batch_size: [1024, 2048]
+- weight_decay: [0, 1e-4, 1e-3]
+
+**Phase 2 결과**:
+- dropout=0.1, batch=1024, wd=0이 최적 (R2=0.8719) → 추가 향상!
+- batch=1024가 batch=2048보다 우수 (다른 지표와 반대 경향 - PH 특성)
+- dropout=0.1이 최적 (낮은 드롭아웃이 PH에 효과적, TP와 동일)
+- wd=0이 최적 (정규화 불필요)
+
+### PH 최적 레시피 (R2: 0.8432 → 0.8719, +3.4% 향상)
+
+|파라미터|기존(노트북)|실험 최적|
+|:---:|:---:|:---:|
+|hidden_size|512|512|
+|num_layers|4|1|
+|dropout|0.2|0.1|
+|learning_rate|2e-4|2e-3|
+|batch_size|2048|1024|
+|window_size|48|48|
+|weight_decay|0|0|
+|use_attention|False|False|
+
+**핵심 발견**:
+- layers=1이 layers=4보다 PH에서도 우수 (TP/TOC와 동일 패턴)
+- 높은 학습률(2e-3)이 최적 (SS/TN과 동일)
+- batch=1024가 최적 (다른 지표와 달리 작은 배치 선호 - PH만의 특성)
+- dropout=0.1이 최적 (낮은 드롭아웃이 효과적, TP와 동일)
+- WF 특성: PH_VU 자체 lag/ewma + 기온(TA_541) + TN_VU 변동성
+
+---
+
+### TN 하이퍼파라미터 그리드 탐색
+
+- 기존 최고 R2: 0.9011 (노트북 탐색 결과, 모든 지표 중 최고)
+- window_size=48 고정, LC_SPLIT_RATIOS (80/10/10), stability_ratio=0.3
+- WF 특성 선택 결과: 10개 선택 (TN_VU lag/roll/diff/ewma, PH_VU, 기상)
+
+**Phase 1: 핵심 파라미터 탐색 (18개 조합)**
+
+- hidden_size: [256, 384, 512]
+- num_layers: [1, 2]
+- learning_rate: [5e-4, 1e-3, 2e-3]
+- 고정: dropout=0.2, batch=2048, wd=0
+
+**Phase 1 결과**:
+- hidden=512, layers=2, lr=2e-3가 최고 (R2=0.9019) → 기존 최고(0.9011) 소폭 돌파!
+- 전체 R2 편차 매우 작음 (0.8920~0.9019) → TN이 이미 포화에 가까운 상태
+- layers=2가 약간 우수하나 layers=1과 차이 미미
+- 큰 모델(512)이 작은 모델보다 소폭 우수 (TP/TOC/SS와 반대)
+
+**Phase 2: 보조 파라미터 미세 조정 (18개 조합)**
+
+- 기반: hidden=512, layers=2, lr=2e-3
+- Phase 1 결과 유지 (dropout=0.2, batch=2048, wd=0) R2=0.9019
+- wd=1e-3 + dropout=0.15, batch=1024 조합도 R2=0.9008로 준수
+
+### TN 최적 레시피 (R2: 0.9011 → 0.9019, +0.1% 향상)
+
+|파라미터|기존(노트북)|실험 최적|
+|:---:|:---:|:---:|
+|hidden_size|512|512|
+|num_layers|4|2|
+|dropout|0.2|0.2|
+|learning_rate|2e-4|2e-3|
+|batch_size|2048|2048|
+|window_size|48|48|
+|weight_decay|0|0|
+|use_attention|False|False|
+
+**핵심 발견**:
+- TN은 R2 0.90 수준에서 거의 포화 → 개선 여지 매우 제한적
+- 전체 18개 조합 모두 R2 0.89~0.90 수렴 (지표 자체의 높은 예측 가능성)
+- lr=2e-3가 최적 (SS와 동일, 높은 lr이 효과적)
+- hidden=512가 약간 우수 (다른 지표와 반대 경향)
+- WF 특성: TN_VU 자체 lag/diff/ewma + PH_VU + 기온 변동성
+
+---
+
+### SS 하이퍼파라미터 그리드 탐색
+
+- 기존 최고 R2: 0.6712 (노트북 탐색 결과)
+- window_size=48 고정, LC_SPLIT_RATIOS (80/10/10), stability_ratio=0.3
+- WF 특성 선택 결과: 11개 선택 (SS_VU lag/roll/ewma/diff, PH_VU roll_std/IQR, doy_sin/cos)
+
+**Phase 1: 핵심 파라미터 탐색 (18개 조합)**
+
+- hidden_size: [256, 384, 512]
+- num_layers: [1, 2]
+- learning_rate: [5e-4, 1e-3, 2e-3]
+- 고정: dropout=0.2, batch=2048, wd=0
+
+**Phase 1 결과**:
+- hidden=256, layers=2, lr=2e-3가 최고 (R2=0.6905) → 기존 최고(0.6712) 돌파!
+- layers=2가 layers=1보다 우수 (FLUX와 동일 패턴, TP/TOC와 반대)
+- lr=2e-3가 최적 (높은 학습률이 SS에 효과적)
+- hidden=256이 최적 (더 작은 모델이 더 나음)
+- epochs=31 일관적 (MIN_EPOCHS에서 early stop)
+
+**Phase 2: 보조 파라미터 미세 조정 (18개 조합)**
+
+- 기반: hidden=256, layers=2, lr=2e-3
+- dropout: [0.1, 0.15, 0.2]
+- batch_size: [1024, 2048]
+- weight_decay: [0, 1e-4, 1e-3]
+
+**Phase 2 결과**:
+- Phase 1 결과 유지 (dropout=0.2, batch=2048, wd=0) R2=0.6905
+- batch_size=2048이 일관적으로 우수
+- wd=0이 최적 (정규화 불필요)
+- dropout=0.2가 최적 (Phase 1 기본값 그대로)
+
+### SS 최적 레시피 (R2: 0.6712 → 0.6905, +2.9% 향상)
+
+|파라미터|기존(노트북)|실험 최적|
+|:---:|:---:|:---:|
+|hidden_size|512|256|
+|num_layers|4|2|
+|dropout|0.2|0.2|
+|learning_rate|2e-4|2e-3|
+|batch_size|2048|2048|
+|window_size|48|48|
+|weight_decay|0|0|
+|use_attention|False|False|
+
+**핵심 발견**:
+- layers=2가 layers=1보다 SS에서 우수 (FLUX와 동일, TP/TOC와 반대)
+- 높은 학습률(2e-3)이 최적 (TP/TOC의 1e-3보다 더 높음)
+- 작은 모델(256, 2layer)이 큰 모델(512, 4layer)보다 성능 우수
+- WF 특성: SS_VU 자체 lag/ewma 특성 + PH_VU 변동성 + 계절성(doy)
+
+---
+
+### FLUX 하이퍼파라미터 그리드 탐색
+
+- 기존 최고 R2: 0.6296 (hidden=512, layers=4, attention=True)
+- window_size=48 고정, LC_SPLIT_RATIOS (80/10/10), stability_ratio=0.3
+- WF 특성 선택 결과: 11개 선택 (FLUX_VU lag/diff/ewma, SS/TOC roll_std, 기상)
+- TP/TOC 인사이트 반영: lr=2e-4 제외, layers=3~4 제외, attention 제외
+
+**Phase 1: 핵심 파라미터 탐색 (18개 조합)**
+
+- hidden_size: [256, 384, 512]
+- num_layers: [1, 2]
+- learning_rate: [5e-4, 1e-3, 2e-3]
+- 고정: dropout=0.2, batch=2048, wd=0
+
+**Phase 1 결과**:
+- hidden=256, layers=2, lr=5e-4가 최고 (R2=0.5981)
+- FLUX는 layers=2가 layers=1보다 약간 우수 (TP/TOC와 달리)
+- lr=5e-4가 최적 (더 느린 학습이 FLUX에 효과적)
+- hidden이 클수록 반드시 좋지 않음 (256 > 384 > 512 순서)
+
+**Phase 2: 보조 파라미터 미세 조정 (18개 조합)**
+
+- 기반: hidden=256, layers=2, lr=5e-4
+- dropout: [0.1, 0.15, 0.2]
+- batch_size: [1024, 2048]
+- weight_decay: [0, 1e-4, 1e-3]
+- attention: 제외 (TP/TOC에서 일관적으로 성능 하락)
+
+**Phase 2 결과**:
+- dropout=0.1, batch=2048, wd=1e-4가 최적 (R2=0.6062)
+- batch_size=2048이 일관적으로 1024보다 우수
+- wd=1e-4가 약간의 정규화 효과 제공
+- 기존 최고 R2(0.6296) 미달성
+
+### FLUX 실험 결론 및 분석
+
+**최적 레시피 (R2: 0.5981 → 0.6062, 개선 시도)**
+
+|파라미터|기존(노트북)|실험 최적|
+|:---:|:---:|:---:|
+|hidden_size|512|256|
+|num_layers|4|2|
+|dropout|0.2|0.1|
+|learning_rate|2e-4|5e-4|
+|batch_size|2048|2048|
+|window_size|48|48|
+|weight_decay|0|1e-4|
+|use_attention|True|False|
+
+**기존 최고(0.6296) 미달성 원인 분석**:
+- WF 특성 선택이 너무 공격적 (812개 → 11개, 99.3% 감소)
+- 기존 노트북 모델은 attention=True + 더 많은 특성 사용
+- FLUX는 다른 지표와 달리 더 많은 특성이 필요할 수 있음
+- 향후 개선 방향: stability_ratio를 더 낮추거나(0.1) 특성 수 최소 기준 확대
+
+### LSTM 02/23 최고 성능
+- FLOW: **0.8659** (02/23 그리드 탐색으로 개선)
+- TOC: 0.5762
+- SS: **0.6905** (02/23 그리드 탐색으로 개선)
+- TN: **0.9019** (02/23 그리드 탐색으로 개선)
+- TP: 0.6378
+- FLUX: 0.6296
+- PH: **0.8719** (02/23 그리드 탐색으로 개선)
+
+-> 같은 레시피로 재현하여도 위 성능을 내는 모델을 저장하지 못함
+
+- FLOW: 0.8425
+- TOC: 0.5574
+- SS: 0.6906
+- TN: 0.9011
+- TP: 0.6201
+- FLUX: 0.6241
+- PH: 0.8574
+
+### Streamlit 배포
+
+**구조**: `demo/` 폴더, 멀티페이지 앱 (`streamlit run demo/app.py`)
+
+| 페이지 | 파일 | 주요 기능 |
+|---|---|---|
+| 홈 | `app.py` | R² 성능 요약 바 차트, 시스템 구성 개요 |
+| 성능 대시보드 | `pages/1_성능_대시보드.py` | 최종 R² 비교, 단계별 성능 변화 꺾은선, 타겟별 학습 곡선·예측 그래프(PNG) |
+| 예측 분석 | `pages/2_예측_분석.py` | 인터랙티브 시계열(실측 vs 예측), 산점도, 오차 분포 히스토그램, R²/RMSE/MAE 표시 |
+| 모델 정보 | `pages/3_모델_정보.py` | 모델 구조 테이블(hidden/layers/attention/head), 추천 피처 목록, LSTM 다이어그램 |
+| 라이브 추론 | `pages/4_라이브_추론.py` | 실제 모델·스케일러 로드, CSV 업로드 or 수동 입력, 12시간 Autoregressive 예측 궤적 |
+
+**유틸리티** (`demo/utils/`):
+- `constants.py` — `FINAL_R2`, `STAGE_R2`, `TARGET_LABELS`, `TARGET_ORDER`
+- `data_loader.py` — PNG 경로 조회, 예측 결과 CSV 로드, 추천 피처 목록 로드
+- `metrics.py` — `compute_metrics` (R², RMSE, MAE)
+- `live_infer.py` — `load_runtime_artifacts`, `run_inference`, `validate_and_align_input`, `build_trajectory_df`
+
+**템플릿** (`demo/live_infer_templates/`):
+- 7개 타겟 기본 템플릿 CSV (48행 × n_features, 0으로 채움)
+- `real_segment/` — 실제 데이터 기반 템플릿 (날짜: 20250928)
+
+
+### ✅ 다음 할 일 (2026년 2월 24일)
+
+---
+
 ## 📅 2026년 2월 22일
 
 ### 📂 작업 파일
@@ -1505,6 +1828,9 @@ MAPE(%):   7445272.5
 #### 결론
 - ✅ Q_in: 어느 정도 성능이 나옴
 - ❌ TMS 지표: 기상 데이터만으로 6개의 종속변수를 예측하다보니 성능이 너무 낮음
+
+#### 문제점
+- 
 
 ### ✅ 다음 할 일 (2026/01/27)
 - [X] 시간 특성(feature): 1시간, 2시간, 24시간
