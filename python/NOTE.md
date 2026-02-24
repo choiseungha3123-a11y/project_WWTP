@@ -4,6 +4,119 @@
 
 ---
 
+## 📅 2026년 2월 24일
+
+### 📂 작업 파일
+```
+notebook/preprocess/raw_refactoring.ipynb
+notebook/DL/transformer_TMS.ipynb
+demo/pages/1_성능_대시보드.py
+demo/utils/constants.py
+```
+
+---
+
+### 추가 제공 데이터 전처리 (`raw_refactoring.ipynb`)
+
+신규 원천 데이터 3종을 전처리하여 모델 학습/추론에 활용 가능한 형태로 변환
+
+#### 1. FLOW_extended — Long → Wide 피벗
+
+- **원본**: `data/raw/유입성상, 송풍량, 약품투입량_25.11~26.02.csv`
+- **형식**: Long (1,984,455행 × 3컬럼: TAG_SN / DATA_SAVE_DT / LAST_VALUE)
+- **TAG_SN 15개**: 유량조정조A/B 유량, 교대반응조 송풍량1/2, 막분리조펌프A/B/C 주파수, 유량조정조 BOD/COD/PH/SS/TN/TOC/TP/수온
+- **피벗 결과**: 132,297행 × 16컬럼 (기간: 2025-11-22 ~ 2026-02-23, 1분 간격)
+- **저장**: `data/actual/FLOW_extended.csv`
+
+#### 2. 약품주입량 — 일별 → 30분 변환
+
+- **원본**: `medication1.csv` (24.08~10, 88일), `medication2.csv` (24.11~25.02, 80일)
+- **변환 공식**: `kg/30min = daily_kg / 48` (1일 48슬롯)
+- **결과**: 8,064행 × 2컬럼 (datetime, medication_kg_30min)
+- **공백 기간**: 2024-11-01 ~ 2024-11-24 (24일, 두 파일 사이 gap)
+- **검증**: 30분 값 × 48 = 원본 daily_kg 복원 확인 (✓)
+- **저장**: `data/processed/medication_30min.csv`
+
+#### 3. process1 + process2 병합
+
+- **process1** (124,544행): 2024-08-01 ~ 2024-10-31, 컬럼: flow_TankA/B, wind1/2
+- **process2** (114,371행): 2024-11-25 ~ 2025-02-14, 컬럼: flow_TankA/B, wind1/2, pumpA/C/D 추가
+- **병합 결과**: 238,915행 × 8컬럼 (pumpA/C/D는 p1 구간 NaN, 비율 52.1%)
+- **공백**: 2024-10-31 ~ 2024-11-25 (24일)
+- **저장**: `data/processed/process.csv`
+
+---
+
+### Transformer TMS 모델 구현 (`transformer_TMS.ipynb`)
+
+LSTM 대신 Transformer Encoder 기반 단일 타깃 회귀 모델 실험
+
+#### 모델 구조: `TransformerRegressor`
+
+```
+(batch, seq_len, n_features)
+  → Linear input_proj (n_features → d_model)
+  → PositionalEncoding (sinusoidal, 고정)
+  → TransformerEncoder (Pre-LayerNorm, batch_first=True)
+  → 마지막 타임스텝 추출: x[:, -1, :]
+  → FC Head → 출력
+```
+
+- **nhead**: 8 고정
+- **FFN dim**: d_model × 4 (표준 Transformer 비율)
+- **Pre-LayerNorm** (norm_first=True) 사용 → 학습 안정성
+- **FC Head**: d_model≥256 → 3-layer (d→d/2→d/4→out), d_model<256 → 2-layer
+
+#### MODE_CONFIGS (Transformer 실험 설정)
+
+| target | d_model | layers | dropout | lr | batch |
+|:------:|:-------:|:------:|:-------:|:--:|:-----:|
+| toc    | 512     | 1      | 0.2     | 1e-3 | 1024 |
+| ss     | 256     | 2      | 0.2     | 2e-3 | 1024 |
+| tn     | 512     | 2      | 0.2     | 2e-3 | 1024 |
+| tp     | 384     | 1      | 0.1     | 1e-3 | 1024 |
+| flux   | 512     | 4      | 0.2     | 2e-4 | 1024 |
+| ph     | 512     | 1      | 0.1     | 2e-3 | 1024 |
+
+- window_size=48, horizon=1 (전 타깃 공통)
+- 분할: LC타깃(flux/ss/tp) 80/10/10, 나머지 70/20/10
+
+#### Transformer 실험 결과 (PH 예시)
+
+- 전반적으로 LSTM 모델보다 성능이 떨어져 LSTM 모델을 선택
+
+### Streamlit 내용 업데이트 (`1_성능_대시보드.py`, `constants.py`)
+
+#### `demo/utils/constants.py` — STAGE_R2 개편
+
+- 기존 단계명(`베이스라인`, `Lag 피처`, `HP 최적화`, `최종`)을 ML/DL 구분 접두사 포함으로 변경
+- ML 베이스라인(V1) 및 V2 결과를 단계로 추가
+
+| 단계 키 | 설명 |
+|---------|------|
+| `ML_baseline` | ML V1 — dropna 방식, 5개 모델 중 최고 성능 기준 |
+| `ML_v2` | ML V2 — 도메인 피처 + 정규화 강화 후 최고 모델 기준 |
+| `DL` | LSTM 베이스라인 (기존 "베이스라인") |
+| `DL_Lag 피처` | Lag 피처 추가 후 (기존 "Lag 피처") |
+| `DL_HP 최적화` | 하이퍼파라미터 튜닝 후 (기존 "HP 최적화") |
+| `DL_최종` | LSTM 최종 모델 (기존 "최종") |
+
+#### `demo/pages/1_성능_대시보드.py` — ML 분석 섹션 추가
+
+기존 섹션 1~2 뒤에 ML 분석 결과 3개 섹션 삽입:
+
+| 섹션 | 내용 |
+|------|------|
+| **3) ML FLOW 예측 baseline vs V2** | HistGBR·Lasso·Ridge·XGBoost·RF 5개 모델의 R²·RMSE 묶음 막대 차트 |
+| **4) ML TMS 타겟별 baseline vs V2** | FLUX·PH·TOC·TN·SS·TP 6개 타겟 R² 비교 (R²=0 기준선 표시) |
+| **5) 데이터 사용률 개선** | FLOW·TMS 각각 V1 4.2% → V2 98.4%/90.4% 개선 현황 |
+| **expander: 분석 요약** | V1(baseline) 결과 및 V2 결과·V3 방향 텍스트 요약 |
+
+- 기존 LSTM 타겟별 상세 섹션은 `6) DL 타겟별 상세`로 번호 변경
+- 파란색(`#636EFA`) = baseline, 초록색(`#00CC96`) = V2 색상 규칙 통일
+
+---
+
 ## 📅 2026년 2월 23일
 
 ### 📂 작업 파일
@@ -324,6 +437,8 @@ demo
 
 
 ### ✅ 다음 할 일 (2026년 2월 24일)
+- 추가 제공 받은 데이터로 transformer 모델 학습
+- Streamlit 업데이트
 
 ---
 
