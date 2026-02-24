@@ -79,6 +79,7 @@ public class Oauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler{
 			
 			System.out.println("[Oauth2SuccessHandler] User Agent: " + userAgent);
 			System.out.println("[Oauth2SuccessHandler] Remote IP:PORT: " + remoteInfo);
+			System.out.println("[Oauth2SuccessHandler] token: " + token);
 			
 			//System.out.println("token : " + token);
 			// Cookie에 jwt 추가
