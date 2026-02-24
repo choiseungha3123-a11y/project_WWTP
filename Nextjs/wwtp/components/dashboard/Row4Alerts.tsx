@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { AlertTriangle, Activity, Droplets, DatabaseZap } from "lucide-react";
 
-export default function Row2Alerts() {
+export default function Row4Alerts() {
   const alerts = [
     { id: 1, title: "유입유량 기준초과", status: "danger", icon: <Activity className="w-4 h-4" /> },
     { id: 2, title: "조정조 수위 기준초과", status: "warning", icon: <Droplets className="w-4 h-4" /> },
