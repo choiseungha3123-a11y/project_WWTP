@@ -1,11 +1,11 @@
-# 하수 유입량 · 수질(TMS) 예측 및 이상 진단 AI 서비스
+# 하수 유입량 · 수질(TMS) 예측 AI 서비스
 
 ## 1. Overview
-본 프로젝트는 하수처리장의 **미래 유입량**과 **수질(TMS)** 을 사전에 예측하고,  
-운영 기준을 초과할 가능성이 있을 경우 **사전 경고 및 이상 진단**을 제공하는  
+본 프로젝트는 하수처리장의 **미래 유입량**과 **수질(TMS)** 을 사전에 예측하고,
+운영 기준을 초과할 가능성이 있을 경우 **사전 경고 및 이상 진단**을 제공하는
 AI 기반 의사결정 지원 웹 서비스이다.
 
-- **예측(Forecasting)**: 유입량, TMS 세부 지표
+- **예측(Forecasting)**: 유입량(Flow), TMS 세부 지표 (TOC, SS, TN, TP, FLUX, PH)
 - **분석(Analytics)**: 시간·계절 패턴 및 기상 변수 상관 분석
 - **진단(Diagnosis)**: 실시간 이상 여부 판정 및 알림
 
@@ -28,10 +28,9 @@ AI 기반 의사결정 지원 웹 서비스이다.
 
 ## 3. Features
 ### Forecasting
-- 유입량 시계열 예측
-- TMS 지표(TOC, PH, SS, FLUX, TN, TP) 예측
-- 예측 구간(신뢰 구간) 시각화
-- 기준값 초과 예상 시 사전 경고 표시
+- 유입량(Q_in) 시계열 예측 — 향후 12시간, 30분 단위
+- TMS 지표(TOC, SS, TN, TP, FLUX, PH) 예측 — 향후 12시간, 30분 단위
+- Autoregressive 방식 다중 시점 예측
 
 ### Analytics
 - KPI 대시보드
@@ -50,14 +49,14 @@ AI 기반 의사결정 지원 웹 서비스이다.
 
 ## 4. Data
 - **데이터 종류**
-  - 유입량 시계열 데이터
-  - TMS 수질 지표(TOC, PH, SS, FLUX, TN, TP)
-  - 기상 데이터(강우량, 기온, 습도)
+  - 유입량 시계열 데이터 (`FLOW_Actual.csv`)
+  - TMS 수질 지표 (`TMS_Actual.csv`) — TOC, PH, SS, FLUX, TN, TP
+  - 기상 데이터 — AWS 3개소 (368, 541, 569국)
 
 - **전처리**
-  - 결측치 보간 및 제거
-  - 이상치 사전 필터링
-  - 시간 기준 정렬 및 시차(feature lag) 생성
+  - 1분 단위 원시 데이터 → 30분 단위 리샘플링
+  - FLUX_VU: 누적값 → 30분 증분값 변환
+  - 결측치 ffill 후 0 대체
 
 - **데이터 분할**
   - 시간 순서 기준 Train / Validation / Test 분할
@@ -66,24 +65,18 @@ AI 기반 의사결정 지원 웹 서비스이다.
 ---
 
 ## 5. Models & Methods
-### Baseline
-- 다중 회귀 분석
-  - 과거 유입량, 기상 변수, 시간 특성 활용
-
-### Ensemble Models
-- Random Forest
-- XGBoost
-  - 비선형 관계 및 변수 상호작용 학습
-
-### Deep Learning
-- LSTM
+### Deep Learning (현재 운영)
+- **LSTM + Attention**
   - 시계열 장기 의존성 학습
-  - Sliding Window 기반 다중 시점 입력
+  - Sliding Window 48 스텝(24시간) 입력 → 30분 단위 예측
 
 ### Anomaly Detection
 - Isolation Forest
   - 정상 패턴 학습 후 이상 점수 기반 판별
   - 사용자 기준과 병행 적용
+
+### Legacy (archive/)
+- Random Forest, XGBoost 기반 ML 파이프라인 (현재 비운영)
 
 ---
 
@@ -103,33 +96,34 @@ AI 기반 의사결정 지원 웹 서비스이다.
 ---
 
 ## 7. System Architecture
-데이터 수집
+```
+데이터 수집 (1분 단위, 24시간 = 1440 records)
 ↓
-전처리 · 피처 생성
+전처리 · 피처 생성 (30분 리샘플링 + feature_engineering.py)
 ↓
-모델 학습 / 예측
+LSTM 모델 추론 (Autoregressive, 12h horizon)
 ↓
 이상 탐지
 ↓
 웹 대시보드 · 알림
+```
 
 ---
 
 ## 8. Getting Started
 ### Environment
-- Python **3.14**
-- PyTorch **2.10.0**
-- scikit-learn **1.8.0**, XGBoost **3.1.3**
-- fastAPI **0.128.0**, uvicorn **0.40.0**
+- Python **3.10+**
+- PyTorch **2.x**
+- scikit-learn, numpy, pandas, fastapi, uvicorn
 
 ### Installation
 ```bash
-conda create -n {venv name} python=3.14
-conda activate {venv name}
+conda create -n wwtp python=3.10
+conda activate wwtp
 
-pip install numpy pandas seaborn scikit-learn torch fastapi uvicorn
+pip install numpy pandas scikit-learn torch fastapi uvicorn optuna scipy matplotlib xgboost
 
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload(optional)
+uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### End Point
@@ -151,21 +145,45 @@ GET /ready
 Response (200 OK):
 {
   "ok": true,
-  "model_loaded": true, 
-  "model_version": "0.1.0"
+  "model_version": "0.3.0",
+  "models_loaded": {
+    "flow": { "n_features": <int> },
+    "tms": {
+      "toc": { "n_features": <int>, "use_attention": false },
+      "ss":  { "n_features": <int>, "use_attention": true  },
+      ...
+    }
+  },
+  "window_size": 48,
+  "horizon_unit": "30min"
 }
 ```
 
-모델 추론 1회 수행(요청당 1회)
+유입량(Flow) 예측 — 향후 12시간
 ```
-POST /predict
+POST /predict/flow
 Content-Type: application/json
 
 Request Body:
 {
   "request_id": "test-001",
-  "input": {
-    "text": "hello"
+  "in": {
+    "dataList": [
+      {
+        "SYS_TIME": "2024-01-01 00:00:00",
+        "flow_TankA": 0.0,
+        "flow_TankB": 0.0,
+        "level_TankA": 0.0,
+        "level_TankB": 0.0,
+        "Q_in": 0.0
+      }
+      // ... 총 1440개 (1분 단위, 24시간)
+    ],
+    "awsList": {
+      "stn_368": [ { "SYS_TIME": "...", "TA": 0.0, "RN_15m": 0.0, ... } ],
+      "stn_541": [ ... ],
+      "stn_569": [ ... ]
+    }
   }
 }
 
@@ -174,11 +192,66 @@ Response (200 OK):
   "request_id": "test-001",
   "ok": true,
   "output": {
-    "echo": {
-      "text": "hello"
-    }
+    "predictions": {
+      "0.5h": 1234.5, "1.0h": 1240.0, ... , "12.0h": 1200.0
+    },
+    "trajectories": { "12h": [ ... ] },
+    "metadata": { "window_size": 48, "n_features": <int>, ... }
   },
-  "latency_ms": 0,
+  "latency_ms": 320,
+  "error": null
+}
+```
+
+수질(TMS) 예측 — 향후 12시간 (TOC, SS, TN, TP, FLUX, PH 동시 예측)
+```
+POST /predict/tms
+Content-Type: application/json
+
+Request Body:
+{
+  "request_id": "test-002",
+  "in": {
+    "dataList": [
+      {
+        "SYS_TIME": "2024-01-01 00:00:00",
+        "TOC_VU": 0.0,
+        "PH_VU":  0.0,
+        "SS_VU":  0.0,
+        "FLUX_VU": 0.0,
+        "TN_VU":  0.0,
+        "TP_VU":  0.0
+      }
+      // ... 총 1440개 (1분 단위, 24시간)
+    ],
+    "awsList": {
+      "stn_368": [ ... ],
+      "stn_541": [ ... ],
+      "stn_569": [ ... ]
+    }
+  }
+}
+
+Response (200 OK):
+{
+  "request_id": "test-002",
+  "ok": true,
+  "output": {
+    "predictions": {
+      "toc":  { "0.5h": 12.3, "1.0h": 12.5, ... },
+      "ss":   { "0.5h": 30.1, ... },
+      "tn":   { ... },
+      "tp":   { ... },
+      "flux": { ... },
+      "ph":   { ... }
+    },
+    "trajectories": {
+      "toc": { "12h": [ ... ] },
+      ...
+    },
+    "metadata": { "window_size": 48, "targets": ["toc","ss","tn","tp","flux","ph"], ... }
+  },
+  "latency_ms": 520,
   "error": null
 }
 ```
@@ -187,93 +260,59 @@ Response (200 OK):
 
 ## 9. Repository Structure
 ```
-├── data/                     # 원천 및 전처리 데이터
-│   ├── actual/              # 실측 데이터
-│   ├── processed/           # 전처리된 데이터
-│   └── pred/                # 예측 결과
-├── model/                    # 학습된 모델
-├── notebook/                 # EDA 및 분석 노트북
-│   ├── ML/                  # 머신러닝 모델
-│   │   ├── primary/         # 기본 베이스라인
-│   │   └── improved/        # 개선 모델
-│   ├── DL/                  # 딥러닝 모델 (LSTM)
-│   ├── collect/             # 데이터 수집
-│   ├── preprocess/          # 전처리
-│   └── feature/             # 피처 엔지니어링
-├── src/                      # 파이프라인 모듈
-│   ├── io.py                # 데이터 로드
-│   ├── preprocess.py        # 전처리
-│   ├── features.py          # 피처 생성
-│   ├── split.py             # 데이터 분할
-│   ├── models.py            # 모델 정의
-│   ├── metrics.py           # 평가 지표
-│   └── pipeline.py          # 파이프라인 실행
-├── scripts/                  # 실행 스크립트
-│   └── train.py             # CLI 학습 스크립트
-├── results/                  # 실험 결과
-├── requirements.txt          # 의존성 패키지
-├── QUICK_START.md           # 빠른 시작 가이드
+├── data/
+│   ├── raw/                         # 원천 데이터 (AWS 원시, FLOW/TMS xlsx)
+│   ├── actual/                      # 실측 데이터
+│   │   ├── FLOW_Actual.csv
+│   │   ├── TMS_Actual.csv
+│   │   ├── Weather.csv              # AWS 통합 기상 데이터
+│   │   └── AWS_{368,541,569}.csv    # AWS 기상 관측소별 데이터
+│   ├── recommand_features/          # 타겟별 추천 특성 목록
+│   │   └── save/                    # {target}_recommended_features.csv (7개 타겟)
+│   ├── output/                      # 예측 출력
+│   │   └── save/                    # {target}_predictions.csv (7개 타겟)
+│   └── pred/                        # 예측 결과 (FLOW_Pred.csv, TMS_Pred.csv)
+├── model/
+│   └── save/                        # 학습된 모델 체크포인트 및 스케일러 (운영용)
+│       ├── {target}_lstm_model.pth
+│       ├── X_scaler_{target}.pkl
+│       └── y_scaler_{target}.pkl
+├── notebook/
+│   ├── DL/                          # LSTM 모델 학습 노트북
+│   │   ├── LSTM_TMS.ipynb           # TMS 6개 타겟 학습
+│   │   ├── LSTM_FLOW.ipynb          # 유입량 모델 학습
+│   │   ├── analyze_predictions.py   # 예측 결과 분석 및 시각화
+│   │   ├── diagnosis.py             # 이상 진단
+│   │   ├── ensemble_predict.py      # 앙상블 예측
+│   │   └── postprocess_correction.py
+│   ├── feature/                     # 피처 엔지니어링 모듈
+│   │   ├── feature_engineering.py   # 특성 생성 파이프라인
+│   │   └── WF_feature_selection.py  # Walk-Forward 특성 선택
+│   ├── EDA/                         # 탐색적 데이터 분석
+│   │   └── flow_tms_periodicity_eda.ipynb
+│   ├── preprocess/                  # 전처리 노트북
+│   │   ├── preprocess.ipynb         # 전처리 파이프라인
+│   │   ├── show.ipynb               # 데이터 시각화
+│   │   ├── correlation.ipynb        # 상관관계 분석
+│   │   └── split_distribution.ipynb # 분할 분포 확인
+│   └── ML/                          # 머신러닝 모델 (레거시)
+│       └── primary/baseline.ipynb
+├── results/
+│   ├── DL/                          # 딥러닝 학습곡선 및 예측 분석
+│   ├── ML/                          # 머신러닝 실험 결과 (v1, v2, improved)
+│   ├── preprocess/                  # 전처리 전후 비교
+│   ├── correlation/                 # 상관관계 분석 결과
+│   ├── boxplot/                     # 변수별 박스플롯
+│   ├── distribution/                # 분포 분석
+│   └── timeseries/                  # 시계열 시각화
+├── src/
+│   └── main.py                      # FastAPI 백엔드 (예측 API 서버)
+├── archive/                         # 구버전 코드 및 데이터
+├── improved_preprocessing_strategy.md
+├── requirements.txt
+├── NOTE.md                          # 개발 일지
+├── TODO.md
 └── README.md
 ```
 
 ---
-
-## 10. ML Pipeline 사용법
-
-### CLI로 학습 실행
-
-```bash
-# FLOW 모드 (유량 예측)
-python scripts/train.py --mode flow --data-root data/actual
-
-# TMS 모드 (수질 예측)
-python scripts/train.py --mode tms --data-root data/actual
-
-# 전체 모드 (유량 + 수질)
-python scripts/train.py --mode all --data-root data/actual --plot
-
-# 커스텀 설정
-python scripts/train.py \
-  --mode flow \
-  --data-root data/actual \
-  --resample 5min \
-  --train-ratio 0.7 \
-  --valid-ratio 0.15 \
-  --test-ratio 0.15 \
-  --random-state 42
-```
-
-### Python 코드에서 사용
-
-```python
-from src.io import load_csvs, prep_flow, prep_aws
-from src.pipeline import run_pipeline
-from src.features import FeatureConfig
-from src.split import SplitConfig
-
-# 데이터 로드
-df_flow, df_tms, df_aws_368, df_aws_541, df_aws_569 = load_csvs("data/actual")
-df_flow = prep_flow(df_flow)
-df_aws = prep_aws(df_aws_368, df_aws_541, df_aws_569)
-
-dfs = {"flow": df_flow, "tms": df_tms, "aws": df_aws}
-time_col_map = {"flow": "SYS_TIME", "tms": "SYS_TIME", "aws": "datetime"}
-
-# 파이프라인 실행
-result = run_pipeline(
-    dfs,
-    mode="flow",
-    time_col_map=time_col_map,
-    resample_rule="1h",
-    resample_agg="mean",
-    random_state=42
-)
-
-# 결과 확인
-print(result["metric_table"])
-```
-
-자세한 사용법은 `QUICK_START.md`를 참고하세요.
-
----
-
