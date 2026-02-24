@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Info, ChevronDown, ChevronUp } from "lucide-react";
 
-export default function Row4RiskDetail() {
+export default function Row2RiskDetail() {
   const [isExpanded, setIsExpanded] = useState(false);
   const riskScore = 72;
   

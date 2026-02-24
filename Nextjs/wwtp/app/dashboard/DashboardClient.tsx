@@ -5,12 +5,11 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import useSWR from "swr";
 
-// 분리한 컴포넌트들
-import Row1Status from "@/components/dashboard/Row1Status";      
-import Row2Charts from "@/components/dashboard/Row2Charts";      
-import Row3RiskDetail from "@/components/dashboard/Row3RiskDetail"; 
-import Row4Alerts from "@/components/dashboard/Row4Alerts";      
-import Row5ActionPanel from "@/components/dashboard/Row5ActionPanel"; 
+// 분리한 컴포넌트들  
+import Row1Charts from "@/components/dashboard/Row1Charts";      
+import Row2RiskDetail from "@/components/dashboard/Row2RiskDetail"; 
+import Row3Alerts from "@/components/dashboard/Row3Alerts";      
+import Row4ActionPanel from "@/components/dashboard/Row4ActionPanel"; 
 
 import EditProfileModal from "../options/EditProfileModal";
 
@@ -215,23 +214,20 @@ export default function DashboardPage() {
       {/* --- 대시보드 메인 콘텐츠 --- */}
       <main className="flex-1 grid grid-cols-10 gap-6 lg:overflow-hidden min-h-0">
         <section className="col-span-12 lg:col-span-6 flex flex-col gap-6 min-h-0">
-          <div id="row1-container" className="flex-none drop-shadow-sm">
-            <Row1Status />
-          </div>
           <div className="flex-1 lg:min-h-0 bg-white/2 border border-white/5 rounded-4xl overflow-hidden shadow-inner">
-            <Row2Charts />
+            <Row1Charts />
           </div>
         </section>
 
         <section className="col-span-12 lg:col-span-4 flex flex-col gap-6 min-h-0">
           <div className="flex-none bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
-            <Row3RiskDetail />
+            <Row2RiskDetail />
           </div>
           <div className="flex-none bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
-            <Row4Alerts />
+            <Row3Alerts />
           </div>
           <div className="flex-1 lg:min-h-0 bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
-            <Row5ActionPanel />
+            <Row4ActionPanel />
           </div>
         </section>
       </main>
