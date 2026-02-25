@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { Send, AlertCircle, CheckCircle2, Trash2, User, Edit2, X, Save, Paperclip, ImageIcon, Download } from "lucide-react";
 
+// ----------------------------------------------------------------------
+// 1. 인터페이스 정의
+// ----------------------------------------------------------------------
 interface Memo {
   memoNo: number;
   content: string;
@@ -16,12 +19,25 @@ interface Memo {
   };
 }
 
+// Row3Alerts로부터 오는 커스텀 이벤트 타입 정의
+interface SetMemoInputEvent extends CustomEvent {
+  detail: {
+    text: string;
+  };
+}
+
+// ----------------------------------------------------------------------
+// 2. 메인 컴포넌트
+// ----------------------------------------------------------------------
 export default function Row4ActionPanel() {
   // --- States ---
   const [memoInput, setMemoInput] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Row3Alerts 연동을 위한 Ref
+  const inputRef = useRef<HTMLInputElement>(null);
   
   const [memos, setMemos] = useState<Memo[]>([]);
   const [loading, setLoading] = useState(false);
@@ -36,9 +52,28 @@ export default function Row4ActionPanel() {
   // 이미지 확대 모달 State
   const [zoomedMemo, setZoomedMemo] = useState<{url: string, name: string} | null>(null);
 
+  // --- Row3Alerts 커스텀 이벤트 수신부 ---
+  useEffect(() => {
+    // e: Event로 받고 내부에서 타입 단언을 통해 detail에 접근
+    const handleSetInput = (e: Event) => {
+      const customEvent = e as SetMemoInputEvent;
+      const newText = customEvent.detail.text;
+
+      setMemoInput(newText);
+      
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    };
+
+    window.addEventListener("setMemoInput", handleSetInput);
+    return () => window.removeEventListener("setMemoInput", handleSetInput);
+  }, []);
+
   // --- Auth & Fetching ---
   const getAuthHeaders = useCallback((isFormData = false): HeadersInit => {
-    const token = localStorage.getItem("accessToken");
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     const headers: Record<string, string> = {};
     if (!isFormData) headers["Content-Type"] = "application/json";
     if (token) {
@@ -214,10 +249,11 @@ export default function Row4ActionPanel() {
         </div>
       </div>
 
-      {/* 등록 입력부 - 모바일 최적화 버튼 */}
+      {/* 등록 입력부 */}
       <div className="shrink-0 space-y-3 mb-6">
         <div className="flex gap-2">
           <input 
+            ref={inputRef}
             type="text"
             value={memoInput}
             onChange={(e) => setMemoInput(e.target.value)}
@@ -238,7 +274,7 @@ export default function Row4ActionPanel() {
             className="shrink-0 bg-blue-600 hover:bg-blue-500 px-4 sm:px-6 rounded-2xl font-bold text-sm text-white flex items-center gap-2 shadow-lg disabled:opacity-50 transition-all"
           >
             <Send className="w-4 h-4" /> 
-            <span className="hidden sm:inline">등록</span> {/* 모바일에서 텍스트 숨김 */}
+            <span className="hidden sm:inline">등록</span>
           </button>
         </div>
 
@@ -378,7 +414,6 @@ export default function Row4ActionPanel() {
             className="relative max-w-5xl w-full sm:w-[80vw] md:w-1/2 overflow-hidden rounded-3xl border border-white/10 shadow-2xl bg-slate-900 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* 상단바: 이미지 이름 + 다운로드 버튼 + 닫기 버튼 */}
             <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-white/5 bg-slate-800/50">
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <ImageIcon className="w-5 h-5 text-blue-400 shrink-0" />
@@ -403,7 +438,6 @@ export default function Row4ActionPanel() {
               </div>
             </div>
             
-            {/* 이미지 영역 */}
             <div className="relative w-full h-[50vh] sm:h-[60vh] p-4 sm:p-6 bg-black/20 flex items-center justify-center">
                <Image 
                 src={zoomedMemo.url} 
@@ -414,7 +448,6 @@ export default function Row4ActionPanel() {
               />
             </div>
 
-            {/* 하단바 */}
             <div className="px-6 py-3 flex justify-center bg-slate-800/30 border-t border-white/5">
               <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium tracking-tight text-center">
                 PREVIEW MODE — USE THE DOWNLOAD BUTTON TO SAVE

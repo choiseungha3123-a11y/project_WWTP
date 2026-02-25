@@ -52,7 +52,7 @@ const formatDisplayTime = (timeStr: string) => {
 // ----------------------------------------------------------------------
 // 3. 메인 컴포넌트
 // ----------------------------------------------------------------------
-export default function Row1Charts() {
+export default function RowCharts() {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
   const [isClient, setIsClient] = useState(false);
 
@@ -108,9 +108,9 @@ export default function Row1Charts() {
 
   // 개별 항목 렌더링 함수
   const renderRow = (title: string, color: string, keys: { actual: string; predict: string }, latestVal: number | undefined, unit: string = "") => (
-    <div className="flex w-full items-stretch mb-4 last:mb-0 h-[100px]">
+    <div className="flex w-full items-stretch mb-4 last:mb-0 h-25">
       {/* 왼쪽: 최신 데이터 카드 */}
-      <div className="w-[100px] bg-slate-800/60 rounded-l-xl border-y border-l border-white/10 flex flex-col justify-center items-center p-2 shrink-0">
+      <div className="w-25 bg-slate-800/60 rounded-l-xl border-y border-l border-white/10 flex flex-col justify-center items-center p-2 shrink-0">
         <span className="text-[10px] text-slate-400 font-bold mb-1">{title}</span>
         <span className="text-[16px] font-black" style={{ color }}>
           {latestVal !== undefined ? latestVal.toFixed(2) : "-"}
@@ -119,7 +119,7 @@ export default function Row1Charts() {
       </div>
 
       {/* 오른쪽: 그래프 (5px 간격) */}
-      <div className="flex-1 ml-[5px] bg-slate-800/30 rounded-r-xl border border-white/5 p-2 overflow-hidden">
+      <div className="flex-1 ml-1.25 bg-slate-800/30 rounded-r-xl border border-white/5 p-2 overflow-hidden">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 5, right: 5, left: -35, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
