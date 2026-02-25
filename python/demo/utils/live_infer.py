@@ -58,7 +58,7 @@ def _target_config(target: str) -> dict:
 
 @st.cache_resource(show_spinner=False)
 def load_runtime_artifacts(target: str) -> dict:
-    feature_path = ROOT_DIR / "data" / "recommand_features" / "save" / f"{target}_recommended_features.csv"
+    feature_path = ROOT_DIR / "data" / "features" / "save" / f"{target}_recommended_features.csv"
     feat_df = pd.read_csv(feature_path)
     feature_names = feat_df["feature_name"].dropna().astype(str).tolist()
 

@@ -8,6 +8,11 @@ def compute_metrics(actual, predicted) -> dict[str, float]:
     actual_np = np.asarray(actual, dtype=float)
     predicted_np = np.asarray(predicted, dtype=float)
 
+    # NaN 행 제거
+    valid = ~(np.isnan(actual_np) | np.isnan(predicted_np))
+    actual_np = actual_np[valid]
+    predicted_np = predicted_np[valid]
+
     # MAPE: 실제값이 0인 샘플은 제외
     nonzero = actual_np != 0
     mape = float(np.mean(np.abs((actual_np[nonzero] - predicted_np[nonzero]) / actual_np[nonzero])) * 100) if nonzero.any() else float("nan")
@@ -56,7 +61,7 @@ def compute_operational_metrics(
     threshold_used = thr
 
     if kind == "percentile":
-        threshold_used = float(np.percentile(actual_np, 95))
+        threshold_used = float(np.percentile(actual_np, 90))
         actual_event   = actual_np    > threshold_used
         pred_event     = predicted_np > threshold_used
         kind = "upper"

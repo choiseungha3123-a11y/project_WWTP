@@ -235,7 +235,7 @@ if all_op_metrics:
         elif op["kind"] == "upper":
             thr_str = f">{thr_val:.2f}"
         else:
-            thr_str = f"p95={thr_val:.2f}"
+            thr_str = f"p90={thr_val:.2f}"
 
         op_rows.append({
             "Tier":             f"T{tid}",
@@ -362,81 +362,6 @@ if all_op_metrics:
     st.dataframe(styled_op, use_container_width=True, hide_index=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
-
-    # ── FPR vs Recall 산점도 (탐지 성능 공간) ──────────────────────────────────
-    st.markdown(
-        f'<div style="font-weight:700;font-size:0.95rem;color:{TEXT_PRIMARY};margin-bottom:4px">'
-        f'탐지 성능 공간 (FPR vs Recall)'
-        f'</div>'
-        f'<div style="font-size:0.82rem;color:{TEXT_MUTED};margin-bottom:12px">'
-        f'이상 영역: 상단 좌측 (재현율 높음 · 오경보 낮음)</div>',
-        unsafe_allow_html=True,
-    )
-
-    fig_roc = go.Figure()
-
-    # 이상 영역 (Recall ≥ 0.80, FPR ≤ 0.10)
-    fig_roc.add_shape(
-        type="rect", x0=0, y0=0.80, x1=0.10, y1=1.0,
-        fillcolor=f"rgba(22,163,74,0.08)", line_width=0, layer="below",
-    )
-    fig_roc.add_annotation(
-        x=0.05, y=0.90,
-        text="이상<br>영역",
-        showarrow=False,
-        font=dict(size=9, color=SUCCESS),
-        align="center",
-    )
-
-    for _, row in op_df.iterrows():
-        t_key  = next((t for t in TARGET_ORDER if TARGET_LABELS[t] == row["타겟"]), None)
-        color  = TIER_COLORS.get(target_tier.get(t_key, 1), PRIMARY)
-        recall = row["재현율 (Recall)"]
-        fpr    = row["오경보율 (FPR)"]
-
-        if np.isnan(recall) or np.isnan(fpr):
-            continue
-
-        abbr = row["타겟"].split("(")[1][:-1] if "(" in row["타겟"] else row["타겟"]
-        fig_roc.add_trace(go.Scatter(
-            x=[fpr],
-            y=[recall],
-            mode="markers+text",
-            marker=dict(size=16, color=color, line=dict(width=2, color="white"),
-                        symbol="circle"),
-            text=[abbr],
-            textposition="top center",
-            textfont=dict(size=11, color=TEXT_PRIMARY, family="Inter, system-ui, sans-serif"),
-            name=row["타겟"],
-            hovertemplate=(
-                f"<b>{row['타겟']}</b><br>"
-                f"재현율: <b>%{{y:.3f}}</b><br>"
-                f"오경보율: <b>%{{x:.3f}}</b>"
-                f"<extra></extra>"
-            ),
-        ))
-
-    roc_layout = dict(**PLOTLY_BASE)
-    roc_layout.update(
-        height=440,
-        xaxis=dict(
-            title="오경보율 (FPR, 낮을수록 좋음 →)",
-            range=[-0.03, 1.03],
-            gridcolor="#EAECF0",
-            linecolor=BORDER,
-            zerolinecolor=BORDER,
-        ),
-        yaxis=dict(
-            title="재현율 / 탐지율 (Recall, 높을수록 좋음 ↑)",
-            range=[-0.03, 1.08],
-            gridcolor="#EAECF0",
-            linecolor=BORDER,
-            zerolinecolor=BORDER,
-        ),
-        showlegend=False,
-    )
-    fig_roc.update_layout(**roc_layout)
-    st.plotly_chart(fig_roc, use_container_width=True)
 
     # ── TP/FP/FN/TN 혼동 행렬 요약 ────────────────────────────────────────────
     st.markdown(section_header("혼동 행렬 요약", "이벤트 탐지 결과 분류"), unsafe_allow_html=True)

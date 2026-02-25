@@ -103,7 +103,7 @@ pillars = [
             "ML baseline → ML v2 → DL 단계별 R² 추이 비교",
             "실측 vs 예측 시계열 · 오차 분포 시각화",
             "피처 엔지니어링 파이프라인 9단계 가시화",
-            "하이퍼파라미터 탐색 실험 결과 분석",
+            "LSTM vs 업체 모델 R² · 오차 병렬 비교 · 우세 모델 자동 판별",
         ],
     ),
     (
@@ -135,14 +135,14 @@ with goal_left:
         f'text-transform:uppercase;letter-spacing:0.07em;margin-bottom:12px">예측 정확도 목표</div>'
 
         f'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">'
-        f'<span style="font-size:2rem;font-weight:800;color:{PRIMARY}">95%</span>'
+        f'<span style="font-size:2rem;font-weight:800;color:{PRIMARY}">90%</span>'
         f'<span style="font-size:0.85rem;color:{TEXT_MUTED}">유입유량 (Flow)</span>'
         f'</div>'
         f'<div style="font-size:0.78rem;color:{TEXT_MUTED};margin-bottom:14px">'
         f'MAE·RMSE·MAPE 기준 — |실측 − 예측| / 실측 ≤ 5% 비율</div>'
 
         f'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">'
-        f'<span style="font-size:2rem;font-weight:800;color:{SUCCESS}">90%</span>'
+        f'<span style="font-size:2rem;font-weight:800;color:{SUCCESS}">80%</span>'
         f'<span style="font-size:0.85rem;color:{TEXT_MUTED}">TMS 수질 지표 6개</span>'
         f'</div>'
         f'<div style="font-size:0.78rem;color:{TEXT_MUTED}">'
@@ -224,6 +224,7 @@ nav_items = [
     ("🧠", "3. 모델 정보",    "LSTM 아키텍처 · 피처 엔지니어링 파이프라인"),
     ("🎯", "4. 운영 KPI",     "Tier 등급 · 탐지 정확도 · 리드타임 분석"),
     ("⚡", "5. 라이브 추론",  "CSV 업로드 후 즉시 추론 결과 확인"),
+    ("⚖️", "6. 업체모델 비교",  "LSTM vs 업체 모델 예측 성능 비교 · 실측 대비 오차 분석"),
 ]
 
 nav_html = "".join(

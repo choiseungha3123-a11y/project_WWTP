@@ -10,7 +10,7 @@ sys.path.insert(0, str(BASE_DIR))
 MODEL_DIR = BASE_DIR / "model"
 SAVE_DIR = MODEL_DIR / "save"
 DATA_DIR = BASE_DIR / "data"
-FEATURE_DIR = DATA_DIR / "recommand_features" / "save"
+FEATURE_DIR = DATA_DIR / "features" / "save"
 
 # ====== 디바이스 설정 ======
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

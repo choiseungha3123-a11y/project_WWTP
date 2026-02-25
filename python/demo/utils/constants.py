@@ -17,7 +17,7 @@ FINAL_R2 = {
     "toc": 0.5574,
     "ss": 0.6906,
     "tn": 0.9011,
-    "tp": 0.6201,
+    "tp": 0.6281,
     "flux": 0.6241,
     "ph": 0.8574,
 }
@@ -122,11 +122,11 @@ OPERATIONAL_THRESHOLDS: dict[str, float | tuple | None] = {
 }
 
 OPERATIONAL_THRESHOLD_LABELS: dict[str, str] = {
-    "flow": "p95 (m³/h, 데이터 기반)",
+    "flow": "p90 (m³/h, 데이터 기반)",
     "toc":  "15 mg/L",
     "ss":   "10 mg/L",
     "tn":   "10 mg/L",
     "tp":   "0.5 mg/L",
-    "flux": "p95 (m³/h, 데이터 기반)",
+    "flux": "p90 (m³/h, 데이터 기반)",
     "ph":   "pH 5.8 ~ 8.6",
 }

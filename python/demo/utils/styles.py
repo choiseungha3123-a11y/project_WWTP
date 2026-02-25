@@ -162,12 +162,15 @@ def kpi_card(label: str, value: str, accent: str = PRIMARY, delta: str = "") -> 
             f'<div style="margin-top:6px;font-size:0.78rem;font-weight:600;color:{color}">'
             f'{arrow} {delta}</div>'
         )
+    val_len = len(value)
+    val_font = "1.7rem" if val_len <= 8 else ("1.25rem" if val_len <= 12 else "0.95rem")
     return (
         f'<div style="background:{CARD_BG};border:1px solid {BORDER};border-top:3px solid {accent};'
         f'border-radius:10px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">'
         f'<div style="font-size:0.67rem;font-weight:700;color:{TEXT_MUTED};text-transform:uppercase;'
         f'letter-spacing:0.07em;margin-bottom:8px">{label}</div>'
-        f'<div style="font-size:1.7rem;font-weight:800;color:{TEXT_PRIMARY};line-height:1.1">{value}</div>'
+        f'<div style="font-size:{val_font};font-weight:800;color:{TEXT_PRIMARY};line-height:1.1;'
+        f'word-break:break-all;overflow-wrap:anywhere">{value}</div>'
         f'{delta_html}'
         f'</div>'
     )
