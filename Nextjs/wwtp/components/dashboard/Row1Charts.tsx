@@ -10,6 +10,7 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  ReferenceLine,
 } from "recharts";
 
 // ----------------------------------------------------------------------
@@ -29,14 +30,11 @@ interface TmsRecord {
 interface FlowRecord {
   SYS_TIME: string;
   Q_in: number;
-  flow_TankA?: number;
-  flow_TankB?: number;
-  level_TankA?: number;
-  level_TankB?: number;
 }
 
 interface MergedData {
   displayTime: string;
+  fullTime: string; // 정렬 및 비교를 위한 전체 시간 값
   toc_A?: number; ph_A?: number; ss_A?: number;
   flux_A?: number; tn_A?: number; tp_A?: number;
   Q_in_A?: number;
@@ -70,11 +68,18 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
+// X축 표시용 (HH:mm)
 const formatDisplayTime = (timeStr: string) => {
   if (!timeStr) return "";
   if (timeStr.includes("T")) return timeStr.split("T")[1].substring(0, 5);
   if (timeStr.length >= 12) return `${timeStr.substring(8, 10)}:${timeStr.substring(10, 12)}`;
   return timeStr;
+};
+
+// 정렬용 (YYYYMMDDHHmm)
+const formatFullTime = (timeStr: string) => {
+  if (!timeStr) return "";
+  return timeStr.replace(/[-T:]/g, "").substring(0, 12);
 };
 
 // ----------------------------------------------------------------------
@@ -101,39 +106,37 @@ export default function Row1Charts() {
     const [actualTms, predictTms, actualFlow, predictFlow] = rawData.dataList;
     const mergedMap = new Map<string, MergedData>();
 
-    actualTms.forEach((item) => {
-      const displayTime = formatDisplayTime(item.SYS_TIME);
-      mergedMap.set(displayTime, {
-        displayTime,
-        toc_A: item.TOC_VU, ph_A: item.PH_VU, ss_A: item.SS_VU,
-        flux_A: item.FLUX_VU, tn_A: item.TN_VU, tp_A: item.TP_VU,
+    // 데이터 병합 함수
+    const processItems = (items: any[], type: 'tms' | 'flow', isActual: boolean) => {
+      items.forEach((item) => {
+        const fullTime = formatFullTime(item.SYS_TIME);
+        const displayTime = formatDisplayTime(item.SYS_TIME);
+        const existing = mergedMap.get(fullTime) || { displayTime, fullTime };
+
+        if (type === 'tms') {
+          if (isActual) {
+            existing.toc_A = item.TOC_VU; existing.ph_A = item.PH_VU; existing.ss_A = item.SS_VU;
+            existing.flux_A = item.FLUX_VU; existing.tn_A = item.TN_VU; existing.tp_A = item.TP_VU;
+          } else {
+            existing.toc_P = item.TOC_VU; existing.ph_P = item.PH_VU; existing.ss_P = item.SS_VU;
+            existing.flux_P = item.FLUX_VU; existing.tn_P = item.TN_VU; existing.tp_P = item.TP_VU;
+          }
+        } else {
+          if (isActual) existing.Q_in_A = item.Q_in;
+          else existing.Q_in_P = item.Q_in;
+        }
+        mergedMap.set(fullTime, existing);
       });
-    });
+    };
 
-    actualFlow.forEach((item) => {
-      const displayTime = formatDisplayTime(item.SYS_TIME);
-      const existing = mergedMap.get(displayTime) || { displayTime };
-      mergedMap.set(displayTime, { ...existing, Q_in_A: item.Q_in });
-    });
+    processItems(actualTms, 'tms', true);
+    processItems(predictTms, 'tms', false);
+    processItems(actualFlow, 'flow', true);
+    processItems(predictFlow, 'flow', false);
 
-    predictTms.forEach((item) => {
-      const displayTime = formatDisplayTime(item.SYS_TIME);
-      const existing = mergedMap.get(displayTime) || { displayTime };
-      mergedMap.set(displayTime, {
-        ...existing,
-        toc_P: item.TOC_VU, ph_P: item.PH_VU, ss_P: item.SS_VU,
-        flux_P: item.FLUX_VU, tn_P: item.TN_VU, tp_P: item.TP_VU,
-      });
-    });
-
-    predictFlow.forEach((item) => {
-      const displayTime = formatDisplayTime(item.SYS_TIME);
-      const existing = mergedMap.get(displayTime) || { displayTime };
-      mergedMap.set(displayTime, { ...existing, Q_in_P: item.Q_in });
-    });
-
+    // fullTime(날짜+시간) 기준으로 정렬하여 24시간 흐름 유지
     const sortedData = Array.from(mergedMap.values()).sort((a, b) => 
-      a.displayTime.localeCompare(b.displayTime)
+      a.fullTime.localeCompare(b.fullTime)
     );
     
     const lastTms = actualTms.length > 0 ? actualTms[actualTms.length - 1] : null;
@@ -157,30 +160,36 @@ export default function Row1Charts() {
     latestVal: number | undefined, 
     unit: string = ""
   ) => (
-    <div className="flex w-full items-stretch mb-5 last:mb-0 h-28">
-      {/* 왼쪽 카드: 배경을 slate-700으로 밝게 조정하고 테두리 강조 추가 */}
+    <div className="flex w-full items-stretch mb-5 last:mb-0 h-24">
       <div 
         className="w-32 bg-slate-700/80 rounded-l-2xl border-y border-l border-white/20 flex flex-col justify-center items-center p-3 shrink-0 shadow-lg"
-        style={{ borderLeft: `4px solid ${color}` }} // 항목별 고유 색상으로 왼쪽 포인트 강조
+        style={{ borderLeft: `4px solid ${color}` }}
       >
-        <span className="text-xs text-slate-200 font-bold mb-1.5 uppercase tracking-wider">{title}</span>
-        <span className="text-2xl font-black tracking-tighter drop-shadow-md" style={{ color }}>
+        <span className="text-xl text-slate-200 font-bold mb-1 uppercase tracking-wider">{title}</span>
+        <span className="text-xl font-black tracking-tighter drop-shadow-md" style={{ color }}>
           {latestVal !== undefined && latestVal !== null ? latestVal.toFixed(2) : "-"}
         </span>
         {unit && <span className="text-[10px] text-slate-300 mt-1 font-semibold">{unit}</span>}
       </div>
 
-      {/* 오른쪽 그래프 영역 */}
       <div className="flex-1 ml-1 bg-slate-800/40 rounded-r-2xl border border-white/10 p-2 overflow-hidden shadow-sm">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 5, right: 10, left: -30, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
-            <XAxis dataKey="displayTime" tick={{ fontSize: 9, fill: '#94a3b8' }} stroke="#475569" interval="preserveStartEnd" />
+            <XAxis 
+              dataKey="displayTime" 
+              tick={{ fontSize: 9, fill: '#94a3b8' }} 
+              stroke="#475569" 
+              interval={5} // 모든 시간을 다 그리면 복잡하므로 3시간 단위(6개 간격) 등으로 조정 가능
+            />
             <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} stroke="#475569" domain={['auto', 'auto']} />
             <Tooltip 
               contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', fontSize: '11px', borderRadius: '8px', color: '#f8fafc' }} 
               itemStyle={{ fontWeight: 'bold' }}
             />
+            {/* 현재 시점(가장 최신 실측 데이터 위치)에 세로선 표시 (선택 사항) */}
+            <ReferenceLine x={chartData[chartData.length - 1]?.displayTime} stroke="#ffffff50" strokeDasharray="3 3" />
+            
             <Line type="monotone" dataKey={keys.actual} stroke={color} strokeWidth={3} dot={false} connectNulls isAnimationActive={false} />
             <Line type="monotone" dataKey={keys.predict} stroke={color} strokeWidth={2} strokeDasharray="4 4" dot={false} connectNulls isAnimationActive={false} />
           </LineChart>
