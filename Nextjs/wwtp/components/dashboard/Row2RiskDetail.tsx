@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Info, ChevronDown, ChevronUp } from "lucide-react";
+import { motion } from "framer-motion";
+import { Info } from "lucide-react";
 
 export default function Row2RiskDetail() {
-  const [isExpanded, setIsExpanded] = useState(false);
   const riskScore = 72;
   
   const riskFactors = [
@@ -17,10 +15,7 @@ export default function Row2RiskDetail() {
   ];
 
   return (
-    <div 
-      onClick={() => setIsExpanded(!isExpanded)}
-      className="bg-slate-800/40 p-5 rounded-3xl border border-white/10 shadow-xl cursor-pointer hover:bg-slate-800/60 transition-all select-none"
-    >
+    <div className="bg-slate-800/40 p-5 rounded-3xl border border-white/10 shadow-xl select-none">
       <div className="flex justify-between items-center mb-4">
         <div>
           <h3 className="text-md font-bold text-white flex items-center gap-2">
@@ -28,10 +23,9 @@ export default function Row2RiskDetail() {
           </h3>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-2xl font-black text-orange-500">{riskScore}<span className="text-xs text-slate-500 font-normal ml-0.5">/ 100</span></span>
-          <div className="p-1 rounded-full bg-white/5">
-            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </div>
+          <span className="text-2xl font-black text-orange-500">
+            {riskScore}<span className="text-xs text-slate-500 font-normal ml-0.5">/ 100</span>
+          </span>
         </div>
       </div>
 
@@ -45,35 +39,25 @@ export default function Row2RiskDetail() {
         />
       </div>
 
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="pt-6 space-y-4 mt-4 border-t border-white/5">
-              {riskFactors.map((factor, i) => (
-                <div key={i} className="space-y-1.5">
-                  <div className="flex justify-between text-[11px] font-medium">
-                    <span className="text-slate-400">{factor.label}</span>
-                    <span className="text-slate-200">{factor.value}%</span>
-                  </div>
-                  <div className="h-1 bg-slate-900 rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${factor.value}%` }}
-                      transition={{ delay: i * 0.1 }}
-                      className={`h-full ${factor.color}`}
-                    />
-                  </div>
-                </div>
-              ))}
+      {/* 리스크 상세 리스트 (항상 노출) */}
+      <div className="pt-6 space-y-4 mt-4 border-t border-white/5">
+        {riskFactors.map((factor, i) => (
+          <div key={i} className="space-y-1.5">
+            <div className="flex justify-between text-[11px] font-medium">
+              <span className="text-slate-400">{factor.label}</span>
+              <span className="text-slate-200">{factor.value}%</span>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <div className="h-1 bg-slate-900 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${factor.value}%` }}
+                transition={{ delay: i * 0.1 }}
+                className={`h-full ${factor.color}`}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -122,10 +122,10 @@ export default function LandingPage() {
 
           {/* 공정 흐름도 이미지 섹션 */}
           <div className="mt-12 p-4 bg-white/5 rounded-2xl border border-white/10 shadow-2xl">
-            <h3 className="text-2xl mb-6 font-semibold text-center">Sewage Treatment Process Flow</h3>
+            <h3 className="text-2xl mb-6 font-semibold text-center">스마트하수도 관리체계</h3>
             <div className="relative w-full overflow-hidden rounded-lg">
               <Image
-                src="/img/하수처리장.jpg"
+                src="/img/한국환경공단 하수처리장.jpg"
                 alt="하수처리 공정 흐름도" 
                 width={1000}
                 height={600}
@@ -133,7 +133,7 @@ export default function LandingPage() {
               />
             </div>
             <p className="mt-4 text-center text-sm text-white/50">
-              [ 이미지: 하수처리장의 주요 공정 단계별 흐름도 ]
+              [출처:한국환경공단]
             </p>
           </div>
 
