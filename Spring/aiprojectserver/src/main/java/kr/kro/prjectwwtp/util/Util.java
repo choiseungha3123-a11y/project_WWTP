@@ -86,7 +86,6 @@ public class Util {
 		return userNo;
 	}
 
-
 	// parse helpers that treat empty string as null (explicit)
 	public static Double parseDoubleOrNullEmptyOk(String s) {
 		if (s == null) return null;

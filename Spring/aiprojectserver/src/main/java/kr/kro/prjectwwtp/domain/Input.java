@@ -2,7 +2,6 @@ package kr.kro.prjectwwtp.domain;
 
 import java.util.List;
 
-import kr.kro.prjectwwtp.controller.WeatherController.WeatherDTO;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;

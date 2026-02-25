@@ -343,7 +343,7 @@ public class MemberController {
 	
 	boolean bSendEmail = true;
 	@Scheduled(cron = "${scheduler.report.cron}", zone="${spring.timezone}")
-	@GetMapping("/mailtest")
+	//@GetMapping("/mailtest")
 	public void makeReportMessage()
 	{
 		if(!enableReport) return;

@@ -93,7 +93,7 @@ public class SecurityConfig {
 			.requestMatchers("/api/member/delete").authenticated()
 			
 			// OAuth2 관련
-			.requestMatchers("/api/oauth2/**").authenticated()
+			.requestMatchers("/api/oauth2/**").permitAll()
 			
 			// 날씨 수집 관련
 			.requestMatchers("/api/weather/list").permitAll()
@@ -112,7 +112,7 @@ public class SecurityConfig {
 		// OAuth2 인증 추가
 		http.oauth2Login(oauth2->oauth2
 				.authorizationEndpoint(endpoint -> endpoint.baseUri("/api/oauth2/authorization"))
-				.redirectionEndpoint(endpoint -> endpoint.baseUri("/api/oauth2/code/*"))
+				.redirectionEndpoint(endpoint -> endpoint.baseUri("/api/login/oauth2/code/*"))
 				.failureHandler(oauth2FailurHandler)
 				.successHandler(oauth2SuccessHandler));
 		

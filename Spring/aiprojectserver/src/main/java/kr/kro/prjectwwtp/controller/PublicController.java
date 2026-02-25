@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +24,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MultipartFile;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.kro.prjectwwtp.config.PasswordEncoder;
@@ -41,7 +44,7 @@ import lombok.Setter;
 @RestControllerAdvice
 @RequestMapping("/api/public")
 @RequiredArgsConstructor
-@Tag(name="PublicController", description = "대중에 공개되어도 되는 내용들")
+@Tag(name="PublicController", description = "OAuth2 로그인 유저들을 위한 API")
 public class PublicController {
 	private final PublicRepository repo;
 	private PasswordEncoder encoder = new PasswordEncoder();
@@ -73,18 +76,10 @@ public class PublicController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@GetMapping("test")
-	public ResponseEntity<Object> getTest(
-			@RequestParam String a, @RequestParam String b) {
-		responseDTO res = responseDTO.builder()
-				.success(false)
-				.build();
-		res.addData("a 파라메터 : " + a);
-		res.addData("b 파라메터 : " + b);
-		return ResponseEntity.ok().body(res);
-	}
-	
 	@GetMapping("get")
+	@Operation(summary="OAuth2 이용자들의 글 조회")
+	@Parameter(name = "page", description= "조회할 페이지수", example = "0")
+	@Parameter(name = "count", description= "페이지 별로 보여줄 메모의 수", example = "10")
 	public ResponseEntity<Object> get(
 			HttpServletRequest request,
 			@RequestParam int page,
@@ -95,8 +90,11 @@ public class PublicController {
 		Pageable pageable = PageRequest.of(page, size);
 		
 		Page<PublicDTO> data = repo.findByDeleteTimeIsNull(pageable);
-		for(PublicDTO dto : data.getContent())
+		for(PublicDTO dto : data.getContent()) {
+			if(dto.getMember() != null && dto.getMember().getUserName() != null)
+				dto.setUserName(dto.getMember().getUserName());
 			res.addData(dto);
+		}
 		return ResponseEntity.ok().body(res);
 	}
 	
@@ -111,8 +109,10 @@ public class PublicController {
 	}
 	
 	@PutMapping("put")
+	@Operation(summary="OAuth2 이용자들의 글 등록")
 	public ResponseEntity<Object> put(
 			HttpServletRequest request,
+			@CookieValue(name="jwtToken", required = true) String jwtToken,
 			@ModelAttribute insertDTO insert) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
@@ -124,7 +124,7 @@ public class PublicController {
 				res.setErrorMsg("정보가 올바르지 않습니다.");
 				return ResponseEntity.ok().body(res);
 			}
-			Member member = JWTUtil.parseToken(request);
+			Member member = JWTUtil.parseToken(jwtToken);
 			String userAgent = request.getHeader("User-Agent");
 			if (userAgent == null) {
 				userAgent = "Unknown";
@@ -164,8 +164,10 @@ public class PublicController {
 		MultipartFile file;
 	}
 	@PatchMapping("patch")
+	@Operation(summary="OAuth2 이용자들의 글 수정")
 	public ResponseEntity<Object> patch(
 			HttpServletRequest request,
+			@CookieValue(name="jwtToken", required = true) String jwtToken,
 			@ModelAttribute modifyDTO modify) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
@@ -187,6 +189,13 @@ public class PublicController {
 			if(!encoder.matches(modify.password, dto.getPassword())) {
 				res.setSuccess(false);
 				res.setErrorMsg("비밀번호가 올바르지 않습니다.");
+				return ResponseEntity.ok().body(res);
+			}
+			Member member = JWTUtil.parseToken(jwtToken);
+			if(member.getUserNo() != dto.getMember().getUserNo() 
+					&& member.getRole() != kr.kro.prjectwwtp.domain.Role.ROLE_ADMIN) {
+				res.setSuccess(false);
+				res.setErrorMsg("권한이 없습니다.");
 				return ResponseEntity.ok().body(res);
 			}
 			String userAgent = request.getHeader("User-Agent");
@@ -226,8 +235,10 @@ public class PublicController {
 		String password;
 	}
 	@DeleteMapping("delete")
+	@Operation(summary="OAuth2 이용자들의 글 삭제")
 	public ResponseEntity<Object> delete(
 			HttpServletRequest request,
+			@CookieValue(name="jwtToken", required = true) String jwtToken,
 			@RequestBody deleteDTO delete) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
@@ -249,6 +260,13 @@ public class PublicController {
 			if(!encoder.matches(delete.password, dto.getPassword())) {
 				res.setSuccess(false);
 				res.setErrorMsg("비밀번호가 올바르지 않습니다.");
+				return ResponseEntity.ok().body(res);
+			}
+			Member member = JWTUtil.parseToken(jwtToken);
+			if(member.getUserNo() != dto.getMember().getUserNo() 
+					&& member.getRole() != kr.kro.prjectwwtp.domain.Role.ROLE_ADMIN) {
+				res.setSuccess(false);
+				res.setErrorMsg("권한이 없습니다.");
 				return ResponseEntity.ok().body(res);
 			}
 			dto.setDeleteTime(LocalDateTime.now());

@@ -100,6 +100,19 @@ public class JWTUtil {
 		String token = "none";
 		try {
 			token = request.getHeader("Authorization");
+			return parseToken(token);
+		}
+		catch(Exception e)
+		{
+			//e.printStackTrace();
+			System.out.println("token : " + token);
+			System.out.println("쿠키 오류");
+			return null;
+		}
+	}
+	
+	public static Member parseToken(String token) {
+		try {
 			if(isExpired(token))
 				return null;
 			Long userno = Long.parseLong(JWTUtil.getClaim(token, JWTUtil.usernoClaim));

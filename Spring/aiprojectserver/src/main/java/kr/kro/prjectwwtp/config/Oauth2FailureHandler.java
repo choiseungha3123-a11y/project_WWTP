@@ -45,8 +45,9 @@ public class Oauth2FailureHandler extends SimpleUrlAuthenticationFailureHandler 
 			int remotePort = request.getRemotePort();
 			remoteInfo = remoteAddr + ":" + remotePort;
 			
-			System.out.println("[Oauth2SuccessHandler] User Agent: " + userAgent);
-			System.out.println("[Oauth2SuccessHandler] Remote IP:PORT: " + remoteInfo);
+			System.out.println("[Oauth2FailureHandler] User Agent: " + userAgent);
+			System.out.println("[Oauth2FailureHandler] Remote IP:PORT: " + remoteInfo);
+			System.out.println("[Oauth2FailureHandler] error: " + exception.getMessage());
 			
 			response.sendRedirect(redirectURI);
 		}catch(IOException e) {

@@ -90,13 +90,15 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 			System.out.println("[JWTAuthorizationFilter] Authentication set for: " + userid);
 			System.out.println("========== [JWTAuthorizationFilter] END (SUCCESS) ==========\n");
 		} catch (Exception e) {
-			System.out.println("[JWTAuthorizationFilter] Error during token validation: " + e.getMessage());
-			System.out.println("========== [JWTAuthorizationFilter] END (ERROR) ==========\n");
-			logService.addErrorLog("JWTAuthorizationFilter.java", "doFilterInternal()", e.getMessage());
 			errorMsg = e.getMessage();
+			System.out.println("[JWTAuthorizationFilter] Error during token validation: " + errorMsg);
+			System.out.println("========== [JWTAuthorizationFilter] END (ERROR) ==========\n");
+			if(!errorMsg.startsWith("The Token has expired"))
+				logService.addErrorLog("JWTAuthorizationFilter.java", "doFilterInternal()", errorMsg);
 			//e.printStackTrace();
 		}finally {
-			if(!requestPath.endsWith("/health"))
+			if(!requestPath.endsWith("/health")
+					&&  (errorMsg != null && !errorMsg.startsWith("The Token has expired")))
 				logService.addAccessLog(member, userAgent, remoteInfo, method, requestPath, errorMsg);
 		}
 		

@@ -29,7 +29,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import kr.kro.prjectwwtp.controller.WeatherController.WeatherDTO;
 import kr.kro.prjectwwtp.domain.FlowImputate;
 import kr.kro.prjectwwtp.domain.FlowPredict;
 import kr.kro.prjectwwtp.domain.Member;
@@ -38,6 +37,7 @@ import kr.kro.prjectwwtp.domain.PageDTO;
 import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.TmsImputate;
 import kr.kro.prjectwwtp.domain.TmsPredict;
+import kr.kro.prjectwwtp.domain.WeatherDTO;
 import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.service.FlowService;
 import kr.kro.prjectwwtp.service.LogService;
@@ -90,6 +90,7 @@ public class DashBoardController {
 	}
 	
 	@GetMapping("/health")
+	@Operation(summary="서버의 동작 상태를 체크")
 	public ResponseEntity<Object> healthCheck() {
 		responseDTO res = responseDTO.builder()
 				.success(true)
@@ -100,7 +101,6 @@ public class DashBoardController {
 	
 	@GetMapping("/memo/list")
 	@Operation(summary="메모 데이터 조회", description = "다른 이용자들에게 보여줄 메모 데이터를 조회합니다.")
-	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
 	@Parameter(name = "page", description= "조회할 페이지수", example = "0")
 	@Parameter(name = "count", description= "페이지 별로 보여줄 메모의 수", example = "10")
 	@ApiResponses({

@@ -17,6 +17,7 @@ import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
+import jakarta.persistence.Transient;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -42,6 +43,8 @@ public class PublicDTO {
 	Member member;
 	@Column(name="userNo", insertable = false, updatable = false)
 	private Long userNo;
+	@Transient
+	private String userName;
 	@JsonIgnore
 	private String userAgent;
 	@JsonIgnore

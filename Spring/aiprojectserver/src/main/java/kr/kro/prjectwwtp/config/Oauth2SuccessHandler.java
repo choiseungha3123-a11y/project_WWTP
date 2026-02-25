@@ -126,6 +126,6 @@ public class Oauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler{
 			email = "unknown";
 		}
 		//System.out.println("[OAuth2SuccessHandler]email: " + email);
-		return Map.of("provider", provider, "name", name);
+		return Map.of("provider", provider, "name", name, "email", email);
 	}
 }

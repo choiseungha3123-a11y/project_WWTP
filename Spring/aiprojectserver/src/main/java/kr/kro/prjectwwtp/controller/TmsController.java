@@ -30,7 +30,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import kr.kro.prjectwwtp.controller.WeatherController.WeatherDTO;
 import kr.kro.prjectwwtp.domain.FlowImputate;
 import kr.kro.prjectwwtp.domain.Input;
 import kr.kro.prjectwwtp.domain.Member;
@@ -38,6 +37,7 @@ import kr.kro.prjectwwtp.domain.Role;
 import kr.kro.prjectwwtp.domain.TmsImputate;
 import kr.kro.prjectwwtp.domain.TmsOrigin;
 import kr.kro.prjectwwtp.domain.TmsPredict;
+import kr.kro.prjectwwtp.domain.WeatherDTO;
 import kr.kro.prjectwwtp.domain.fastApiResponseDTO;
 import kr.kro.prjectwwtp.domain.predictIn;
 import kr.kro.prjectwwtp.domain.responseDTO;
@@ -192,7 +192,7 @@ public class TmsController {
 	}
 	
 	@Scheduled(cron = "${scheduler.fakeday.cron}", zone="${spring.timezone}")
-	@GetMapping("/makeFakeNow")
+	//@GetMapping("/makeFakeNow")
 	public void makeFakeDate() {
 		try {
 			System.out.println("makeFakeDate");
@@ -232,7 +232,7 @@ public class TmsController {
 		}
 	}
 	
-	@GetMapping("/test")
+	//@GetMapping("/test")
 	@Scheduled(cron = "${scheduler.predict.cron}", zone="${spring.timezone}")
 	public void getTmsPredict() {
 		if(!enablePredict) return;

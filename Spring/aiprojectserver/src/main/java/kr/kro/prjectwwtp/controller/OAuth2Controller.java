@@ -5,6 +5,8 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,7 +26,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RestControllerAdvice
-@RequestMapping("/api/oauth2")
+@RequestMapping("/api/login/oauth2")
 @RequiredArgsConstructor
 @Tag(name="OAuth2Controller", description = "소셜 로그인 콜백처리 API")
 public class OAuth2Controller {
@@ -56,12 +58,13 @@ public class OAuth2Controller {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	@PostMapping("/jwtcallback")
+	@GetMapping("/code/{provider}")
 	@Operation(summary="OAuth2 Callback 처리", description = "JWT 토큰에 대한 처리를 합니다.")
 	@Parameter(name = "Content-Type", description= "application/json", schema = @Schema(implementation = String.class))
 	@ApiResponse(description = "결과 설명", content = @Content(mediaType = "application/json", schema = @Schema(implementation = responseDTO.class)))
 	public ResponseEntity<Object> postJwtCallback(HttpServletRequest request,
 			HttpServletResponse response,
+			@PathVariable String provider,
 			@CookieValue String jwtToken) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
@@ -70,6 +73,7 @@ public class OAuth2Controller {
 		
 		System.out.println("[OAuth2Controller] JWT Token Callback 처리 : " + request);
 		System.out.println("[OAuth2Controller] JWT Token Callback 처리 : " + response);
+		System.out.println("[OAuth2Controller] JWT Token Callback 처리 : " + provider);
 		System.out.println("[OAuth2Controller] JWT Token Callback 처리 : " + jwtToken);
 
 		return ResponseEntity.ok().body(res);

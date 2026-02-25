@@ -1,4 +1,4 @@
-package kr.kro.prjectwwtp.service;
+package kr.kro.prjectwwtp.util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,7 +15,7 @@ import java.util.List;
  * - OutlierDetector: 이상치 탐지 (도메인 기반, 통계 기반)
  * - OutlierHandler: 이상치 처리 (EWMA로 대체)
  */
-public class TmsImputateService {
+public class ImputateUtil {
 
 	// ==================== 설정 클래스 ====================
 

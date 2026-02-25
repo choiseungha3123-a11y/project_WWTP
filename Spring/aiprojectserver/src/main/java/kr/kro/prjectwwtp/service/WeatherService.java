@@ -1,6 +1,5 @@
 package kr.kro.prjectwwtp.service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -12,12 +11,11 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
-import kr.kro.prjectwwtp.controller.WeatherController.WeatherDTO;
-import kr.kro.prjectwwtp.domain.FlowImputate;
-import kr.kro.prjectwwtp.domain.FlowOrigin;
 import kr.kro.prjectwwtp.domain.Weather;
+import kr.kro.prjectwwtp.domain.WeatherDTO;
 import kr.kro.prjectwwtp.persistence.WeatherRepository;
-import kr.kro.prjectwwtp.service.TmsImputateService.ImputationConfig;
+import kr.kro.prjectwwtp.util.ImputateUtil;
+import kr.kro.prjectwwtp.util.ImputateUtil.ImputationConfig;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -125,13 +123,13 @@ public class WeatherService {
 		
 		// 2) 결측치 보간
 		ImputationConfig impConfig = new ImputationConfig();
-		ta = TmsImputateService.imputeMissingWithStrategy(ta, impConfig);
-		rn15m = TmsImputateService.imputeMissingWithStrategy(rn15m, impConfig);
-		rn60m = TmsImputateService.imputeMissingWithStrategy(rn60m, impConfig);
-		rn12h = TmsImputateService.imputeMissingWithStrategy(rn12h, impConfig);
-		rnday = TmsImputateService.imputeMissingWithStrategy(rnday, impConfig);
-		hm = TmsImputateService.imputeMissingWithStrategy(hm, impConfig);
-		td = TmsImputateService.imputeMissingWithStrategy(td, impConfig);
+		ta = ImputateUtil.imputeMissingWithStrategy(ta, impConfig);
+		rn15m = ImputateUtil.imputeMissingWithStrategy(rn15m, impConfig);
+		rn60m = ImputateUtil.imputeMissingWithStrategy(rn60m, impConfig);
+		rn12h = ImputateUtil.imputeMissingWithStrategy(rn12h, impConfig);
+		rnday = ImputateUtil.imputeMissingWithStrategy(rnday, impConfig);
+		hm = ImputateUtil.imputeMissingWithStrategy(hm, impConfig);
+		td = ImputateUtil.imputeMissingWithStrategy(td, impConfig);
 		
 		System.out.println("[imputate] 데이터 별로 결측치 보간");
 		

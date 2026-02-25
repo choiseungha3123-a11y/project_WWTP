@@ -32,9 +32,10 @@ import kr.kro.prjectwwtp.persistence.FlowInsertRepository;
 import kr.kro.prjectwwtp.persistence.FlowOriginRepository;
 import kr.kro.prjectwwtp.persistence.FlowPredictRepository;
 import kr.kro.prjectwwtp.persistence.FlowSummaryRepository;
-import kr.kro.prjectwwtp.service.TmsImputateService.ImputationConfig;
-import kr.kro.prjectwwtp.service.TmsImputateService.OutlierConfig;
+import kr.kro.prjectwwtp.util.ImputateUtil;
 import kr.kro.prjectwwtp.util.Util;
+import kr.kro.prjectwwtp.util.ImputateUtil.ImputationConfig;
+import kr.kro.prjectwwtp.util.ImputateUtil.OutlierConfig;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -218,19 +219,19 @@ public class FlowService {
 		
 		// 2) 결측치 보간
 		ImputationConfig impConfig = new ImputationConfig();
-		flowA = TmsImputateService.imputeMissingWithStrategy(flowA, impConfig);
-		flowB = TmsImputateService.imputeMissingWithStrategy(flowB, impConfig);
-		levelA = TmsImputateService.imputeMissingWithStrategy(levelA, impConfig);
-		levelB = TmsImputateService.imputeMissingWithStrategy(levelB, impConfig);
+		flowA = ImputateUtil.imputeMissingWithStrategy(flowA, impConfig);
+		flowB = ImputateUtil.imputeMissingWithStrategy(flowB, impConfig);
+		levelA = ImputateUtil.imputeMissingWithStrategy(levelA, impConfig);
+		levelB = ImputateUtil.imputeMissingWithStrategy(levelB, impConfig);
 		
 		System.out.println("[imputate] 데이터 별로 결측치 보간");
 		
 		// 3) 이상치 탐지 및 처리
 		OutlierConfig outConfig = new OutlierConfig();
-		flowA = TmsImputateService.detectAndHandleOutliers(flowA, "flowA", outConfig);
-		flowB = TmsImputateService.detectAndHandleOutliers(flowB, "flowB", outConfig);
-		levelA = TmsImputateService.detectAndHandleOutliers(levelA, "levelA", outConfig);
-		levelB = TmsImputateService.detectAndHandleOutliers(levelB, "levelB", outConfig);
+		flowA = ImputateUtil.detectAndHandleOutliers(flowA, "flowA", outConfig);
+		flowB = ImputateUtil.detectAndHandleOutliers(flowB, "flowB", outConfig);
+		levelA = ImputateUtil.detectAndHandleOutliers(levelA, "levelA", outConfig);
+		levelB = ImputateUtil.detectAndHandleOutliers(levelB, "levelB", outConfig);
 		
 		System.out.println("[imputate] 이상치 처리");
 		
@@ -524,41 +525,6 @@ public class FlowService {
 		
 		return result;
 	}
-	
-//	public List<FlowPredict> findPredictList(LocalDateTime now, LocalDateTime end) {
-//		LocalDateTime start = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
-//		List<FlowPredict> allList = flowPredictRepo.findByFlowTimeBetweenOrderByFlowTimeAscFlowNoDesc(start, end);
-//		
-//		// 중복된 flowTime에 대해 flow_no가 가장 큰 1개의 값만 유지
-//		Map<LocalDateTime, FlowPredict> uniqueMap = new HashMap<>();
-//		for (FlowPredict predict : allList) {
-//			LocalDateTime flowTime = predict.getFlowTime().withSecond(0).withNano(0);
-//			// 첫 번째 것이 flow_no가 가장 크므로(DESC 정렬됨) 그것만 유지
-//			if (!uniqueMap.containsKey(flowTime)) {
-//				uniqueMap.put(flowTime, predict);
-//			}
-//		}
-//		
-//		// Map의 값을 List로 변환하고 flowTime 기준 오름차순 정렬
-//		List<FlowPredict> result = new ArrayList<>(uniqueMap.values());
-//		result.sort((a, b) -> a.getFlowTime().compareTo(b.getFlowTime()));
-//		
-//		// 누적값으로 전환
-//		double acc = 0;
-//		for(FlowPredict predict : result) {
-//			if(predict.getFlowTime().getDayOfMonth() != start.getDayOfMonth())
-//				acc = 0;
-//			acc += predict.getFlowValue();
-//			predict.setFlowValue(acc);
-//		}
-//		
-//		System.out.println("필터 전 : " + result.size());
-//		// now 보다 이전은 제거
-//		result = result.stream().filter(p -> p.getFlowTime().isAfter(now)).collect(Collectors.toList());
-//		System.out.println("필터 후 : " + result.size());
-//		
-//		return result;
-//	}
 	
 	public void savePredictList(FlowPredict[] array) {
 		flowPredictRepo.saveAll(Arrays.asList(array));

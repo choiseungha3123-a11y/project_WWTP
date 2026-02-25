@@ -37,9 +37,10 @@ import kr.kro.prjectwwtp.persistence.TmsInsertRepository;
 import kr.kro.prjectwwtp.persistence.TmsOriginRepository;
 import kr.kro.prjectwwtp.persistence.TmsPredictRepository;
 import kr.kro.prjectwwtp.persistence.TmsSummaryRepository;
-import kr.kro.prjectwwtp.service.TmsImputateService.ImputationConfig;
-import kr.kro.prjectwwtp.service.TmsImputateService.OutlierConfig;
+import kr.kro.prjectwwtp.util.ImputateUtil;
 import kr.kro.prjectwwtp.util.Util;
+import kr.kro.prjectwwtp.util.ImputateUtil.ImputationConfig;
+import kr.kro.prjectwwtp.util.ImputateUtil.OutlierConfig;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -232,23 +233,23 @@ public class TmsService {
 		
 		// 2) 결측치 보간
 		ImputationConfig impConfig = new ImputationConfig();
-		toc = TmsImputateService.imputeMissingWithStrategy(toc, impConfig);
-		ph = TmsImputateService.imputeMissingWithStrategy(ph, impConfig);
-		ss = TmsImputateService.imputeMissingWithStrategy(ss, impConfig);
-		flux = TmsImputateService.imputeMissingWithStrategy(flux, impConfig);
-		tn = TmsImputateService.imputeMissingWithStrategy(tn, impConfig);
-		tp = TmsImputateService.imputeMissingWithStrategy(tp, impConfig);
+		toc = ImputateUtil.imputeMissingWithStrategy(toc, impConfig);
+		ph = ImputateUtil.imputeMissingWithStrategy(ph, impConfig);
+		ss = ImputateUtil.imputeMissingWithStrategy(ss, impConfig);
+		flux = ImputateUtil.imputeMissingWithStrategy(flux, impConfig);
+		tn = ImputateUtil.imputeMissingWithStrategy(tn, impConfig);
+		tp = ImputateUtil.imputeMissingWithStrategy(tp, impConfig);
 		
 		System.out.println("[imputate] 데이터 별로 결측치 보간");
 		
 		// 3) 이상치 탐지 및 처리
 		OutlierConfig outConfig = new OutlierConfig();
-		toc = TmsImputateService.detectAndHandleOutliers(toc, "toc", outConfig);
-		ph = TmsImputateService.detectAndHandleOutliers(ph, "ph", outConfig);
-		ss = TmsImputateService.detectAndHandleOutliers(ss, "ss", outConfig);
-		flux = TmsImputateService.detectAndHandleOutliers(flux, "flux", outConfig);
-		tn = TmsImputateService.detectAndHandleOutliers(tn, "tn", outConfig);
-		tp = TmsImputateService.detectAndHandleOutliers(tp, "tp", outConfig);
+		toc = ImputateUtil.detectAndHandleOutliers(toc, "toc", outConfig);
+		ph = ImputateUtil.detectAndHandleOutliers(ph, "ph", outConfig);
+		ss = ImputateUtil.detectAndHandleOutliers(ss, "ss", outConfig);
+		flux = ImputateUtil.detectAndHandleOutliers(flux, "flux", outConfig);
+		tn = ImputateUtil.detectAndHandleOutliers(tn, "tn", outConfig);
+		tp = ImputateUtil.detectAndHandleOutliers(tp, "tp", outConfig);
 		
 		System.out.println("[imputate] 이상치 처리");
 		
@@ -610,9 +611,12 @@ public class TmsService {
 		
 		// 누적값으로 전환
 		double accFlux = 0;
+		boolean init = false;
 		for(TmsPredict predict : result) {
-			if(predict.getTmsTime().getDayOfMonth() != start.getDayOfMonth())
+			if(!init && predict.getTmsTime().getDayOfMonth() != start.getDayOfMonth()) {
 				accFlux = 0;
+				init = true;
+			}
 			accFlux += predict.getFlux();
 			predict.setFlux(accFlux);
 		}
