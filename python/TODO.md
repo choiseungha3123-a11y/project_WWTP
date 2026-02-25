@@ -47,12 +47,12 @@
     - [X] Early stop 기능 구현
     - [X] 이상치 처리 수정 (배출허용기준 2배)
     - [X] FLUX 차분 처리 (누적값 → 차분)
-    - [X] TN (R2: 0.9011) — 그리드 탐색 완료, hidden=512, layers=2, lr=2e-3
+    - [X] TN (R2: 0.9011) — 그리드 탐색 완료, hidden=512, layers=4, lr=2e-3
     - [X] PH (R2: 0.8574) — 그리드 탐색 완료, hidden=512, layers=1, lr=2e-3, dropout=0.1
     - [X] SS (R2: 0.6906) — 그리드 탐색 완료, hidden=256, layers=2, lr=2e-3
-    - [X] TOC (R2: 0.5574) — 그리드 탐색 완료, hidden=384, layers=1, window=72, wd=1e-3
+    - [X] TOC (R2: 0.5574) — 그리드 탐색 완료, hidden=512, layers=1, window=48, wd=0.2
     - [X] FLUX (R2: 0.6241) — 그리드 탐색 완료, 기존 최고(0.6296) 미달 (WF 특성 수 부족)
-    - [X] TP (R2: 0.6201) — 그리드 탐색 완료, hidden=384, layers=1, lr=1e-3, dropout=0.1
+    - [X] TP (R2: 0.6281) — 그리드 탐색 완료, hidden=384, layers=1, lr=1e-3, dropout=0.1
 
 - [X] Transformer_TMS (`transformer_TMS.ipynb`)
     - [X] TransformerRegressor 구현 (Pre-LayerNorm, nhead=8, sinusoidal PE)
@@ -70,11 +70,6 @@
     - [X] 멀티페이지 앱 구성 (홈/성능대시보드/예측분석/모델정보/라이브추론)
     - [X] 성능 대시보드 ML 섹션 추가 (ML baseline vs V2, 데이터 사용률 개선)
     - [X] `constants.py` STAGE_R2 ML/DL 구분 개편
-
-# 5. 향후 개선 사항
-- [ ] FLUX WF stability_ratio 완화로 특성 수 확대 재실험
-- [ ] 자동 재학습 파이프라인
-- [ ] 앙상블 모델
-- [ ] 계절성 분석
-
-# 6. 보고서
+    - [X] 운영 KPI 페이지 추가 (`4_운영_KPI.py`)
+    - [X] 업체모델 비교 페이지 추가 (`6_업체모델_비교.py`) — FLOW_Pred/TMS_Pred vs LSTM
+    - [X] Hugging Face Spaces 배포 (별도 레포지토리, app.py + requirements.txt 구조)

@@ -4,6 +4,35 @@
 
 ---
 
+## 📅 2026년 2월 25일
+
+### 📂 작업 파일
+```
+demo/pages/6_업체모델_비교.py
+```
+
+### 업체 모델의 예측값과 LSTM 모델의 예측값 비교
+
+- 학습 종료 후 생성된 data/output/save/{mode}_predictions.csv에 time 컬럼 추가
+- data/pred/FLOW_Pred.csv와 data/pred/TMS_Pred.csv의 일부를 활용
+- 1시간 리샘플링(업체 모델의 예측 단위)
+- flux 차분 계산
+
+**결과**:
+- 전체적으로 프로젝트를 통해 학습한 LSTM 모델이 더 높은 성능을 보임
+
+### streamlit hugging face에 배포
+- HF_Space github repository 생성
+- hugging face에서 요구하는 구조 변경
+  - app.py
+  - requirements.txt
+  - 폴더 구조 개선
+- git을 사용하여 배포
+
+### 전반적인 디렉토리 정리
+
+---
+
 ## 📅 2026년 2월 24일
 
 ### 📂 작업 파일

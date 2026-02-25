@@ -45,7 +45,7 @@ RANDOM_SEED = 42
 DATA_DIR = PROJECT_DIR / "data"
 MODEL_DIR = PROJECT_DIR / "model"
 RESULTS_DIR = PROJECT_DIR / "results" / "DL"
-FEATURE_DIR = DATA_DIR / "recommand_features"
+FEATURE_DIR = DATA_DIR / "features"
 
 # 타겟 정의
 FLOW_TARGET = "Q_in"

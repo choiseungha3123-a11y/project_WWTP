@@ -1,1 +1,0 @@
-﻿"""Demo app utility package."""

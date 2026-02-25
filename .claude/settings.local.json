@@ -13,7 +13,11 @@
       "Bash(dir:*)",
       "Bash(/c/Users/kimuc/miniconda3/python.exe -c:*)",
       "Bash(/c/Users/kimuc/miniconda3/envs/AIproject/python.exe:*)",
-      "Bash(sort:*)"
+      "Bash(sort:*)",
+      "Bash(git -C \"c:/project_WWTP/python\" log --oneline -10)",
+      "Bash(git -C \"c:/project_WWTP/python\" status --short)",
+      "Bash(grep:*)",
+      "Bash(find:*)"
     ]
   }
 }

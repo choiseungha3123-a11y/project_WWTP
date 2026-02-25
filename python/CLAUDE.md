@@ -11,9 +11,6 @@ pip install -r requirements.txt
 # Run FastAPI backend (from python/)
 uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 
-# Run Streamlit demo dashboard (from python/)
-streamlit run demo/app.py
-
 # Run notebooks
 jupyter notebook
 ```
@@ -30,7 +27,6 @@ data/actual/      → notebook/preprocess/   → data/processed/
                   → notebook/DL/           (LSTM training)
                   → model/save/            (artifacts)
                   → src/                   (FastAPI inference)
-                  → demo/                  (Streamlit dashboard)
 ```
 
 ### `src/` — Production Inference
@@ -83,7 +79,7 @@ Response (`PredictOut`):
 
 1. `merge_input_data()` — merges flow/TMS + 3 AWS lists, resamples 1-min → 30-min
 2. `apply_tms_feature_engineering()` / `apply_flow_feature_engineering()` — applies the full feature pipeline per target (see MEMORY.md for order)
-3. Scale with `X_scaler_{target}.pkl`, trim to recommended features from `data/recommand_features/save/`
+3. Scale with `X_scaler_{target}.pkl`, trim to recommended features from `data/features/save/`
 4. `autoregressive_predict()` — uses the last 48 rows as initial window; predicts 1 step at a time for 24 steps, updating the target-lag feature in the window each iteration
 
 ### `notebook/` — Training & Research
@@ -93,13 +89,9 @@ Response (`PredictOut`):
 - `notebook/feature/feature_engineering.py` — **shared module** imported by both notebooks and `src/preprocess.py`
 - `notebook/DL/transformer_TMS.ipynb` — Transformer experiments (underperformed LSTM, not deployed)
 
-### `demo/` — Streamlit Dashboard
-
-Multi-page portfolio app with live inference, prediction analysis, performance comparison (ML baseline vs DL stages), and model architecture info. Utils in `demo/utils/`: `constants.py` (R² values), `data_loader.py`, `metrics.py`, `live_infer.py`.
-
 ## Key Conventions
 
 - **`src/config.py` is the source of truth** for production model configs. MEMORY.md may have stale values — always check `config.py` when debugging model architecture mismatches.
 - `FLUX_VU` is handled as a difference (diff) column during resampling in `merge_input_data()`, unlike other TMS columns which are averaged.
 - Flow's autoregressive loop does **not** update target lags (uses `flow_TankA/B` lags instead of `Q_in` lags) — `flow_target_idx=None` is passed to `autoregressive_predict()`.
-- Feature recommendation CSVs live at `data/recommand_features/save/` (note: "recommand" is the project's spelling).
+- Feature recommendation CSVs live at `data/features/save/` (was previously `data/recommand_features/save/`; directory was renamed).

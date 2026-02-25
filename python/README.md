@@ -103,7 +103,7 @@ AI 기반 의사결정 지원 웹 서비스이다.
 | 총유기탄소 (TOC) | 0.5574 |
 | 부유물질 (SS) | 0.6906 |
 | 총질소 (TN) | 0.9011 |
-| 총인 (TP) | 0.6201 |
+| 총인 (TP) | 0.6281 |
 | 방류유량 (FLUX) | 0.6241 |
 | 수소이온농도 (pH) | 0.8574 |
 
@@ -125,8 +125,6 @@ LSTM 모델 추론 (Autoregressive, 12h horizon)
 이상 탐지
 ↓
 FastAPI 서버 (src/main.py) ← REST API
-↓
-Streamlit 데모 대시보드 (demo/app.py)
 ```
 
 ---
@@ -135,7 +133,7 @@ Streamlit 데모 대시보드 (demo/app.py)
 ### Environment
 - Python **3.10+**
 - PyTorch **2.x**
-- scikit-learn, numpy, pandas, fastapi, uvicorn, plotly, streamlit
+- scikit-learn, numpy, pandas, fastapi, uvicorn
 
 ### Installation
 ```bash
@@ -149,10 +147,6 @@ pip install -r requirements.txt
 
 # FastAPI 백엔드 실행 (python/ 디렉토리에서)
 uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
-
-# Streamlit 데모 대시보드 실행 (python/ 디렉토리에서)
-streamlit run demo/app.py
-```
 
 ### API Endpoints
 
@@ -286,68 +280,68 @@ Response (200 OK):
 
 ## 9. Demo Dashboard (Streamlit)
 
-`streamlit run demo/app.py` 로 실행하는 멀티페이지 인터랙티브 대시보드.
+`streamlit run demo/app.py` 로 실행하는 멀티페이지 인터랙티브 대시보드. **Hugging Face Spaces**에 별도 레포지토리로 배포됨.
 
 | 페이지 | 내용 |
 |--------|------|
 | 홈 | 7개 지표 R² 요약 바 차트, 시스템 구성 개요 |
-| 1. 성능 대시보드 | ML baseline → DL 단계별 R² 비교, 학습곡선 |
+| 1. 성능 대시보드 | ML baseline(V1/V2) → DL 단계별 R² 비교, 학습곡선 |
 | 2. 예측 분석 | 예측 결과 시각화, 잔차 분석 |
 | 3. 모델 정보 | LSTM 아키텍처, 피처 엔지니어링 파이프라인 |
-| 4. 라이브 추론 | CSV 업로드 → FastAPI 호출 → 실시간 예측 결과 |
+| 4. 운영 KPI | 운영 지표 KPI 대시보드 |
+| 5. 라이브 추론 | CSV 업로드 → FastAPI 호출 → 실시간 예측 결과 |
+| 6. 업체모델 비교 | 업체 예측값(FLOW_Pred/TMS_Pred) vs LSTM 예측값 성능 비교 |
 
 ---
 
 ## 10. Repository Structure
 ```
 ├── data/
+│   ├── metadata.xlsx                # 데이터 메타정보
+│   ├── weatherAPI.txt               # 기상청 API 키 정보
 │   ├── raw/                         # 원천 데이터 (AWS 원시, FLOW/TMS xlsx)
+│   │   ├── AWS_{368,541,569}.csv
+│   │   └── 유입유량-TMS 데이터(예측, 실측)_1203.xlsx
 │   ├── actual/                      # 실측 데이터
 │   │   ├── FLOW_Actual.csv
-│   │   ├── FLOW_extended.csv        # 확장 실측 유입량
 │   │   ├── TMS_Actual.csv
-│   │   ├── TMS_extended.csv         # 확장 실측 수질
 │   │   ├── Weather.csv              # AWS 통합 기상 데이터
 │   │   └── AWS_{368,541,569}.csv    # AWS 기상 관측소별 데이터
-│   ├── processed/                   # 전처리 완료 데이터
-│   │   ├── tms1.csv, tms2.csv
-│   │   ├── process.csv, process1.csv, process2.csv
-│   │   ├── medication1.csv, medication2.csv
-│   │   └── medication_30min.csv
-│   ├── recommand_features/          # 타겟별 추천 특성 목록
+│   ├── features/                    # 타겟별 추천 특성 목록
 │   │   └── save/                    # {target}_recommended_features.csv (7개 타겟)
 │   ├── output/                      # 예측 출력
 │   │   └── save/                    # {target}_predictions.csv (7개 타겟)
-│   └── pred/                        # 예측 결과
+│   └── pred/                        # 업체 예측 결과
 │       ├── FLOW_Pred.csv
 │       └── TMS_Pred.csv
 ├── model/
 │   └── save/                        # 학습된 모델 체크포인트 및 스케일러
-│       ├── {target}_lstm_model.pth
-│       ├── X_scaler_{target}.pkl
-│       └── y_scaler_{target}.pkl
+│       ├── {target}_lstm_model.pth  # (7개 타겟)
+│       ├── X_scaler_{target}.pkl    # (7개 타겟)
+│       └── y_scaler_{target}.pkl    # (7개 타겟)
 ├── notebook/
-│   ├── DL/                          # LSTM 모델 학습 노트북
-│   │   ├── LSTM_TMS.ipynb           # TMS 6개 타겟 학습
-│   │   ├── LSTM_FLOW.ipynb          # 유입량 모델 학습
-│   │   ├── transformer_TMS.ipynb    # Transformer 실험 (비배포)
-│   │   ├── analyze_predictions.py   # 예측 결과 분석 및 시각화
-│   │   ├── diagnosis.py             # 이상 진단
-│   │   ├── ensemble_predict.py      # 앙상블 예측
-│   │   └── postprocess_correction.py
+│   ├── EDA/                         # 탐색적 데이터 분석
+│   │   └── flow_tms_periodicity_eda.ipynb
 │   ├── feature/                     # 피처 엔지니어링 모듈
 │   │   ├── feature_engineering.py   # 특성 생성 파이프라인 (공유 모듈)
 │   │   └── WF_feature_selection.py  # Walk-Forward 특성 선택
-│   ├── EDA/                         # 탐색적 데이터 분석
-│   │   └── flow_tms_periodicity_eda.ipynb
 │   ├── preprocess/                  # 전처리 노트북
 │   │   ├── preprocess.ipynb
 │   │   ├── raw_refactoring.ipynb
 │   │   ├── show.ipynb
 │   │   ├── correlation.ipynb
 │   │   └── split_distribution.ipynb
-│   └── ML/                          # 머신러닝 모델 (레거시)
-│       └── primary/baseline.ipynb
+│   └── training/                    # 모델 학습 노트북 및 스크립트
+│       ├── LSTM_FLOW.ipynb          # 유입량 모델 학습
+│       ├── LSTM_TMS.ipynb           # TMS 6개 타겟 학습
+│       ├── experiments/             # 타겟별 하이퍼파라미터 실험
+│       │   └── {target}_experiment.py  # (7개 타겟)
+│       ├── scripts/                 # 분석 유틸 스크립트
+│       │   ├── analyze_predictions.py  # 예측 결과 분석 및 시각화
+│       │   └── diagnosis.py            # 이상 진단
+│       └── ML/                      # 머신러닝 베이스라인 (레거시)
+│           ├── v1/                  # 1차 ML 베이스라인
+│           └── v2/                  # 2차 ML 베이스라인
 ├── src/                             # FastAPI 추론 서버
 │   ├── config.py                    # 7개 타겟 모델 하이퍼파라미터 (단일 진실 출처)
 │   ├── loader.py                    # 모델·스케일러·피처 CSV 로드
@@ -356,32 +350,34 @@ Response (200 OK):
 │   ├── preprocess.py                # 입력 파이프라인 (리샘플링 + 피처 엔지니어링)
 │   ├── predict.py                   # autoregressive_predict()
 │   └── main.py                      # FastAPI 라우터 (/health, /ready, /predict/*)
-├── demo/                            # Streamlit 데모 대시보드
-│   ├── app.py                       # 메인 앱 (홈 페이지)
-│   ├── pages/
-│   │   ├── 1_성능_대시보드.py
-│   │   ├── 2_예측_분석.py
-│   │   ├── 3_모델_정보.py
-│   │   └── 4_라이브_추론.py
-│   ├── utils/
-│   │   ├── constants.py             # R² 성능 수치, 타겟 레이블
-│   │   ├── data_loader.py           # 예측 결과 CSV 로드
-│   │   ├── metrics.py               # 평가 지표 계산
-│   │   └── live_infer.py            # FastAPI 라이브 추론 호출
-│   └── live_infer_templates/        # 라이브 추론용 CSV 템플릿 (7개 타겟)
-│       └── real_segment/            # 실제 데이터 세그먼트 샘플
 ├── results/
-│   ├── DL/                          # 딥러닝 학습곡선 및 예측 분석
-│   ├── ML/                          # 머신러닝 실험 결과 (v1, v2, improved)
+│   ├── DL/                          # 딥러닝 실험 결과
+│   │   ├── {target}_experiment_results.csv  # 하이퍼파라미터 실험 요약 (7개 타겟)
+│   │   └── save/                    # 학습곡선·진단·예측 분석 이미지
+│   │       ├── {target}_learning_curve.png
+│   │       ├── {target}_diagnosis.png
+│   │       └── prediction_analysis_{target}.png
+│   ├── ML/                          # 머신러닝 실험 결과
+│   │   ├── improved/                # 최종 개선 모델 결과
+│   │   ├── v1/                      # 1차 베이스라인 결과
+│   │   └── v2/                      # 2차 베이스라인 결과
 │   ├── preprocess/                  # 전처리 전후 비교
 │   ├── correlation/                 # 상관관계 분석 결과
 │   ├── boxplot/                     # 변수별 박스플롯
 │   ├── distribution/                # 분포 분석
 │   └── timeseries/                  # 시계열 시각화
 ├── archive/                         # 구버전 코드 및 데이터
+│   ├── old_DL_versions/             # 구버전 DL 소스
+│   ├── old_ML_versions/             # 구버전 ML 소스
+│   ├── old_model/                   # 구버전 모델 체크포인트
+│   ├── old_notebooks/               # 구버전 노트북
+│   ├── old_results/                 # 구버전 결과
+│   ├── old_scripts/                 # 구버전 학습 스크립트
+│   └── old_src/                     # 구버전 src 모듈 (DL/ML)
 ├── requirements.txt
 ├── NOTE.md                          # 개발 일지
 ├── TODO.md
+├── PORTFOLIO.md
 └── README.md
 ```
 
