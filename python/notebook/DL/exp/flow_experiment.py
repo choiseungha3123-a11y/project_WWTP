@@ -1,14 +1,17 @@
 """
-TOC 하이퍼파라미터 그리드 탐색 실험
+FLOW 하이퍼파라미터 그리드 탐색 실험
 ====================================
-현재 최고 R2: 0.4731 (hidden=256, layers=2, lr=1e-3)
-교수님 조언: TOC는 작은 모델이 더 적합할 수 있음
+타겟: Q_in (유입유량, 30분 평균)
+DATA_LEAKAGE_CONFIG: safe_process_features = [level_TankA, level_TankB]
+(TMS 지표 전체 미사용 - 유입 단계 예측이므로 출구 지표는 누수)
 
 실험 전략:
-  - 작은/중간 모델 중심 탐색 (hidden 128~384)
-  - 레이어 수 1~3
-  - 학습률 5e-4 ~ 2e-3
-  - 데이터 전처리(WF 특성 선택)는 한 번만 수행 후 재사용
+  - Phase 1: 핵심 파라미터 탐색 (hidden 256~512, layers 1~2, lr 5e-4~2e-3) - 18 조합
+  - Phase 2: 최적 핵심 파라미터 기반 보조 파라미터 미세 조정 - 18 조합
+  - window_size=48 고정 (24시간)
+  - LC_SPLIT_RATIOS (80/10/10) 사용 (유량 데이터 기간이 짧아 훈련 데이터 최대화)
+  - 특성 선택: stability_ratio=0.3
+  - 누적 인사이트: layers=1이 대체로 우수, attention 제외, batch=2048 선호
 """
 import sys
 import os
@@ -19,7 +22,7 @@ from pathlib import Path
 from datetime import datetime
 
 # ====== 프로젝트 경로 설정 ======
-PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
+PROJECT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_DIR))
 
 import numpy as np
@@ -36,10 +39,11 @@ import notebook.feature.WF_feature_selection as wf_fs
 import notebook.feature.feature_engineering as feat_eng
 
 # ====== 글로벌 설정 ======
-MODE = "toc"
+MODE = "flow"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 TIME_COL = "SYS_TIME"
 RANDOM_SEED = 42
+CURRENT_BEST_R2 = 0.8166  # 현재 최고 (노트북 탐색 결과)
 
 # 경로 설정
 DATA_DIR = PROJECT_DIR / "data"
@@ -59,40 +63,29 @@ PH_TARGET = "PH_VU"
 SPLIT_RATIOS = {"train": 0.7, "val": 0.2, "test": 0.1}
 LC_SPLIT_RATIOS = {"train": 0.8, "val": 0.1, "test": 0.1}
 
-# ====== 실험할 하이퍼파라미터 그리드 ======
-EXPERIMENT_GRID = {
-    "hidden_size": [128, 192, 256, 384],
-    "num_layers": [1, 2, 3],
-    "learning_rate": [5e-4, 1e-3, 2e-3],
-    "dropout": [0.1, 0.2, 0.3],
-    "batch_size": [1024, 2048],
-    "window_size": [48],
-    "use_attention": [False],
-    "weight_decay": [0, 1e-4],
-    "split_type": ["normal"],  # normal=70/20/10
-    "shuffle": [True],
-}
-
-# ====== 빠른 탐색을 위한 축소 그리드 (Phase 1) ======
-# 먼저 핵심 파라미터(hidden, layers, lr)를 탐색하고,
-# 그 후 보조 파라미터(dropout, batch, weight_decay)를 미세 조정
+# ====== Phase 1: 핵심 파라미터 탐색 ======
+# 누적 인사이트:
+#   - TP/TOC/PH: layers=1이 압도적, FLUX/SS: layers=2가 약간 우수
+#   - lr=2e-4는 너무 느려 제외, 5e-4~2e-3 탐색
+#   - hidden=128 성능 한계 -> 256~512 탐색
+# 총 18 조합
 PHASE1_GRID = {
-    "hidden_size": [128, 192, 256, 384],
-    "num_layers": [1, 2, 3],
+    "hidden_size": [256, 384, 512],
+    "num_layers": [1, 2],
     "learning_rate": [5e-4, 1e-3, 2e-3],
     # 고정
     "dropout": [0.2],
     "batch_size": [2048],
     "window_size": [48],
     "use_attention": [False],
-    "weight_decay": [1e-4],
-    "split_type": ["normal"],
+    "weight_decay": [0],
+    "split_type": ["lc"],  # FLOW도 LC_SPLIT_RATIOS (80/10/10) - 데이터 기간이 짧아 훈련 최대화
     "shuffle": [True],
 }
 
 
 # ======================================================================
-# 데이터 로드 및 전처리 함수들 (노트북에서 추출)
+# 데이터 로드 및 전처리 함수들
 # ======================================================================
 
 def load_data(data_dir):
@@ -326,10 +319,10 @@ def resample_data(df, freq="30min"):
 
 
 def preprocess_data(dfs):
-    """전처리 + 특성 선택 (WF) → X, y 반환"""
+    """전처리 + 특성 선택 (WF) -> X, y 반환"""
     aligned_dfs = align_data(dfs)
 
-    # FLUX 차분 처리
+    # FLUX_VU 차분 처리 (tms 데이터에만 적용, flow 모드에서는 source로 사용하지 않음)
     if 'tms' in aligned_dfs and 'FLUX_VU' in aligned_dfs['tms'].columns:
         flux = aligned_dfs['tms']['FLUX_VU'].copy()
         flux_diff = flux.diff()
@@ -421,14 +414,17 @@ def preprocess_data(dfs):
     )
     results = wf_selector.run(model_type="rf", verbose=True)
 
-    sr = 0.4
+    # FLOW: stability_ratio=0.3
+    sr = 0.3
     recommended_idx = wf_selector.get_recommended_features(stability_ratio=sr)
+    print(f"\nFLOW 모드: stability_ratio={sr}")
 
     MIN_FEATURES = 10
     if len(recommended_idx) < MIN_FEATURES:
         importance_mean = np.mean(wf_selector.feature_importance_folds, axis=0)
         top_idx = np.argsort(importance_mean)[::-1][:MIN_FEATURES]
         recommended_idx = np.sort(np.unique(np.concatenate([recommended_idx, top_idx])))
+        print(f"  -> 특성 수 부족 -> 중요도 상위 {MIN_FEATURES}개 보충 -> 총 {len(recommended_idx)}개")
 
     recommended_names = [feature_names_all[i] for i in recommended_idx]
     X = X_all[:, recommended_idx]
@@ -504,7 +500,6 @@ class LSTMRegressor(nn.Module):
             self.layer_norm2 = nn.LayerNorm(lstm_out_size)
 
         # Prediction Head (hidden_size에 따라 자동 결정)
-        # MODE == "toc"이므로 hidden_size >= 256이면 4-layer head 사용
         if hidden_size >= 256:
             self.head = nn.Sequential(
                 nn.Linear(lstm_out_size, lstm_out_size // 2), nn.ReLU(), nn.Dropout(dropout),
@@ -572,30 +567,16 @@ def ensure_2d_y(y):
 
 
 # ======================================================================
-# 학습 & 평가 (간소화 버전 - 실험용)
+# 학습 & 평가
 # ======================================================================
 
 def train_and_evaluate(X, y, config, verbose=False):
-    """
-    주어진 config로 모델을 학습하고 R2를 반환.
-
-    Args:
-        X: 전처리된 특성 (numpy array)
-        y: 타겟 (pandas DataFrame)
-        config: dict with keys: hidden_size, num_layers, learning_rate,
-                dropout, batch_size, window_size, use_attention,
-                weight_decay, split_type, shuffle
-        verbose: 출력 여부
-
-    Returns:
-        dict: {r2, val_rmse, epochs_trained, time_seconds, ...}
-    """
     torch.manual_seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(RANDOM_SEED)
 
-    # 분할
+    # 분할 - FLOW는 LC_SPLIT_RATIOS 사용 (데이터 기간이 짧아 훈련 데이터 최대화)
     ratio = LC_SPLIT_RATIOS if config["split_type"] == "lc" else SPLIT_RATIOS
     X_train, y_train, X_val, y_val, X_test, y_test = split_timewise(X, y, ratio)
 
@@ -807,6 +788,8 @@ def train_and_evaluate(X, y, config, verbose=False):
 # 메인 실험 루프
 # ======================================================================
 
+RESULTS_FILE = "flow_experiment_results.csv"
+
 def run_experiments(X, y, grid, top_n=5):
     """그리드의 모든 조합을 실행하고 결과를 정리"""
     keys = sorted(grid.keys())
@@ -815,10 +798,13 @@ def run_experiments(X, y, grid, top_n=5):
 
     total = len(combinations)
     print(f"\n{'='*70}")
-    print(f"TOC 하이퍼파라미터 실험 시작")
+    print(f"FLOW 하이퍼파라미터 실험 시작")
     print(f"{'='*70}")
     print(f"총 실험 수: {total}")
-    print(f"현재 최고 R2: 0.4731")
+    if CURRENT_BEST_R2 is not None:
+        print(f"현재 최고 R2: {CURRENT_BEST_R2}")
+    else:
+        print(f"현재 최고 R2: 미탐색 (첫 실험)")
     print(f"GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'}")
     print(f"{'='*70}\n")
 
@@ -827,9 +813,6 @@ def run_experiments(X, y, grid, top_n=5):
 
     for i, combo in enumerate(combinations, 1):
         config = dict(zip(keys, combo))
-
-        # 레이어 1개인데 dropout > 0이면 의미 없으므로 패스
-        # (LSTM에서 num_layers=1이면 dropout 무시됨)
 
         print(f"\n[{i}/{total}] hidden={config['hidden_size']}, layers={config['num_layers']}, "
               f"lr={config['learning_rate']}, dropout={config['dropout']}, "
@@ -853,15 +836,15 @@ def run_experiments(X, y, grid, top_n=5):
             marker = ""
             if r2 is not None and r2 > best_r2:
                 best_r2 = r2
-                marker = " ★ NEW BEST!"
+                marker = " * NEW BEST!"
 
-            print(f"  → R2={r2:.4f}, RMSE={result['test_rmse']:.4f}, "
+            print(f"  -> R2={r2:.4f}, RMSE={result['test_rmse']:.4f}, "
                   f"epochs={result['epochs_trained']}, time={result['time_seconds']:.0f}s{marker}")
 
             # 중간 결과 저장 (매 실험마다)
             df_results = pd.DataFrame(results)
             df_results = df_results.sort_values("r2", ascending=False)
-            save_path = RESULTS_DIR / "toc_experiment_results.csv"
+            save_path = RESULTS_DIR / RESULTS_FILE
             RESULTS_DIR.mkdir(parents=True, exist_ok=True)
             df_results.to_csv(save_path, index=False)
 
@@ -870,7 +853,7 @@ def run_experiments(X, y, grid, top_n=5):
             torch.cuda.empty_cache()
 
         except Exception as e:
-            print(f"  → ERROR: {e}")
+            print(f"  -> ERROR: {e}")
             results.append({**config, "r2": None, "error": str(e)})
 
     # 최종 결과 정리
@@ -891,13 +874,16 @@ def run_experiments(X, y, grid, top_n=5):
               f"batch={row['batch_size']}, wd={row['weight_decay']}, "
               f"epochs={row.get('epochs', 'N/A')}, time={row.get('time_sec', 'N/A')}s")
 
-    print(f"\n기존 최고 R2: 0.4731")
-    if best_r2 > 0.4731:
-        print(f"★ 새로운 최고 R2: {best_r2:.4f} (개선: +{(best_r2 - 0.4731):.4f})")
+    if CURRENT_BEST_R2 is not None:
+        print(f"\n기존 최고 R2: {CURRENT_BEST_R2}")
+        if best_r2 > CURRENT_BEST_R2:
+            print(f"* 새로운 최고 R2: {best_r2:.4f} (개선: +{(best_r2 - CURRENT_BEST_R2):.4f})")
+        else:
+            print(f"현재 실험 최고 R2: {best_r2:.4f}")
     else:
-        print(f"현재 실험 최고 R2: {best_r2:.4f}")
+        print(f"\n이번 실험 최고 R2: {best_r2:.4f}")
 
-    save_path = RESULTS_DIR / "toc_experiment_results.csv"
+    save_path = RESULTS_DIR / RESULTS_FILE
     df_results.to_csv(save_path, index=False)
     print(f"\n결과 저장: {save_path}")
 
@@ -912,21 +898,19 @@ def run_phase2(X, y, best_config, top_n=10):
           f"layers={best_config['num_layers']}, lr={best_config['learning_rate']}")
     print(f"{'='*70}")
 
-    # Phase 1 결과 기반:
-    # - layers=1이 압도적으로 우수 → 고정
-    # - hidden=384, lr=0.001이 최고 → 근방 탐색
-    # 총 조합: 5 dropout × 3 batch × 3 window × 2 attn × 3 wd × 2 shuffle = 540
-    # → 더 축소: 핵심 파라미터만 조합
+    # window_size=48 고정 (사용자 요청)
+    # attention=True는 이 데이터셋에서 일관적으로 성능 하락 -> False만 사용
+    # 3 dropout x 2 batch x 3 wd = 18 조합
     phase2_grid = {
         "hidden_size": [best_config["hidden_size"]],
         "num_layers": [best_config["num_layers"]],
         "learning_rate": [best_config["learning_rate"]],
-        "dropout": [0.1, 0.15, 0.2, 0.3],
+        "dropout": [0.1, 0.15, 0.2],
         "batch_size": [1024, 2048],
-        "window_size": [24, 48, 72],
-        "use_attention": [False, True],
+        "window_size": [48],  # 고정
+        "use_attention": [False],  # attention은 이 데이터셋에서 일관적으로 성능 하락
         "weight_decay": [0, 1e-4, 1e-3],
-        "split_type": ["normal"],
+        "split_type": ["lc"],  # FLOW는 LC_SPLIT_RATIOS
         "shuffle": [True],
     }
 
@@ -939,16 +923,16 @@ def run_phase2(X, y, best_config, top_n=10):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="TOC Hyperparameter Search")
+    parser = argparse.ArgumentParser(description="FLOW Hyperparameter Search")
     parser.add_argument("--phase", type=int, default=1, choices=[1, 2],
                        help="Phase 1: 핵심 파라미터 탐색, Phase 2: 미세 조정")
-    parser.add_argument("--best-hidden", type=int, default=256)
-    parser.add_argument("--best-layers", type=int, default=2)
+    parser.add_argument("--best-hidden", type=int, default=384)
+    parser.add_argument("--best-layers", type=int, default=1)
     parser.add_argument("--best-lr", type=float, default=1e-3)
     args = parser.parse_args()
 
     print("=" * 70)
-    print("TOC 하이퍼파라미터 그리드 탐색")
+    print("FLOW 하이퍼파라미터 그리드 탐색")
     print(f"Phase: {args.phase}")
     print(f"Device: {DEVICE}")
     print("=" * 70)
@@ -960,7 +944,7 @@ if __name__ == "__main__":
     print(f"전처리 완료: X shape = {X.shape}")
 
     if args.phase == 1:
-        # Phase 1: 핵심 파라미터 탐색 (hidden, layers, lr)
+        # Phase 1: 핵심 파라미터 탐색
         results = run_experiments(X, y, PHASE1_GRID, top_n=10)
     else:
         # Phase 2: 보조 파라미터 미세 조정

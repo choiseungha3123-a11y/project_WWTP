@@ -2,6 +2,10 @@
 - [X] 데이터 수집
     - [X] 업체 데이터 (TMS_Actual.csv, FLOW_Actual.csv)
     - [X] 기상청 데이터 (기온, 습도, 강수량, 이슬점 온도)
+    - [X] 신규 원천 데이터 3종 전처리 (`raw_refactoring.ipynb`)
+        - [X] FLOW_extended Long→Wide 피벗 (TAG_SN 15개, 132,297행, `data/actual/FLOW_extended.csv`)
+        - [X] 약품주입량 일별→30분 변환 (`medication1/2.csv`, `data/processed/medication_30min.csv`)
+        - [X] process1 + process2 병합 (238,915행 × 8컬럼, `data/processed/process.csv`)
 
 - [X] 데이터 전처리
     - [X] 결측치 처리 (ffill/중기 EWMA/장기 EWMA 전략)
@@ -31,11 +35,11 @@
     - [X] Learning Curve 시각화
 
 # 3. 딥러닝
-- [X] LSTM_FLOW (R2: 0.7899)
+- [X] LSTM_FLOW (R2: 0.8425)
     - [X] 30분 리샘플링
-    - [X] Multi-head Attention (8 heads)
     - [X] Target lag 피처 추가
     - [X] 시간 특성 추가 (hour×weekday, weekday, iso_week)
+    - [X] 하이퍼파라미터 그리드 탐색 (hidden=512, layers=2, lr=2e-3, R2: 0.8166→0.8659)
     - [X] 모델 저장 및 평가
 
 - [X] LSTM_TMS
@@ -43,13 +47,17 @@
     - [X] Early stop 기능 구현
     - [X] 이상치 처리 수정 (배출허용기준 2배)
     - [X] FLUX 차분 처리 (누적값 → 차분)
-    - [X] TN (R2: 0.8062)
-    - [X] PH (R2: 0.7490)
-    - [X] SS (R2: 0.3548)
-    - [X] TOC (R2: 0.2759)
-    - [X] FLUX (R2: 0.2251)
-    - [ ] TP 성능 개선 (현재 R2: -0.0601)
-    - [ ] TOC/SS/FLUX early stop 제거 재학습
+    - [X] TN (R2: 0.9011) — 그리드 탐색 완료, hidden=512, layers=2, lr=2e-3
+    - [X] PH (R2: 0.8574) — 그리드 탐색 완료, hidden=512, layers=1, lr=2e-3, dropout=0.1
+    - [X] SS (R2: 0.6906) — 그리드 탐색 완료, hidden=256, layers=2, lr=2e-3
+    - [X] TOC (R2: 0.5574) — 그리드 탐색 완료, hidden=384, layers=1, window=72, wd=1e-3
+    - [X] FLUX (R2: 0.6241) — 그리드 탐색 완료, 기존 최고(0.6296) 미달 (WF 특성 수 부족)
+    - [X] TP (R2: 0.6201) — 그리드 탐색 완료, hidden=384, layers=1, lr=1e-3, dropout=0.1
+
+- [X] Transformer_TMS (`transformer_TMS.ipynb`)
+    - [X] TransformerRegressor 구현 (Pre-LayerNorm, nhead=8, sinusoidal PE)
+    - [X] 전 타깃 실험 (toc/ss/tn/tp/flux/ph)
+    - [X] LSTM 대비 성능 열위 확인 → LSTM 모델 유지 결정
 
 # 4. 프로젝트 관리
 - [X] 의존성 관리 (requirements.txt)
@@ -58,11 +66,13 @@
     - [X] 전처리 파이프라인 노트북과 통일
     - [X] 예측 시간해상도 30분 수정
     - [X] WebClient HTTP/1.1 호환
+- [X] Streamlit 대시보드 (`demo/`)
+    - [X] 멀티페이지 앱 구성 (홈/성능대시보드/예측분석/모델정보/라이브추론)
+    - [X] 성능 대시보드 ML 섹션 추가 (ML baseline vs V2, 데이터 사용률 개선)
+    - [X] `constants.py` STAGE_R2 ML/DL 구분 개편
 
 # 5. 향후 개선 사항
-- [ ] TP 성능 향상
-- [ ] TOC/SS/FLUX early stop 없이 재학습
-- [ ] 모니터링 대시보드
+- [ ] FLUX WF stability_ratio 완화로 특성 수 확대 재실험
 - [ ] 자동 재학습 파이프라인
 - [ ] 앙상블 모델
 - [ ] 계절성 분석

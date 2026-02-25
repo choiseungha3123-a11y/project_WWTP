@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
-mode = "flow" # flow, toc, ss, tn, tp, ph, flux
+mode = "ss" # flow, toc, ss, tn, tp, ph, flux
 
 # 한글 폰트 설정
 plt.rcParams['font.family'] = 'Malgun Gothic'
@@ -65,8 +65,15 @@ print(f"예측값 표준편차: {df['predicted'].std():.2f} m³/h")
 # 분위수별 에러
 print(f"\n5. 실제값 구간별 성능")
 print("-"*70)
-df['actual_quartile'] = pd.qcut(df['actual'], q=4, labels=['Q1(낮음)', 'Q2(중하)', 'Q3(중상)', 'Q4(높음)'])
-quartile_performance = df.groupby('actual_quartile').agg({
+# 실제값 중복이 많으면 qcut 경계가 중복될 수 있어 duplicates='drop'으로 처리
+quartile_binned = pd.qcut(df['actual'], q=4, duplicates='drop')
+n_bins = len(quartile_binned.cat.categories)
+
+quartile_label_pool = ['Q1(낮음)', 'Q2(중하)', 'Q3(중상)', 'Q4(높음)']
+quartile_labels = quartile_label_pool[:n_bins]
+df['actual_quartile'] = quartile_binned.cat.rename_categories(quartile_labels)
+
+quartile_performance = df.groupby('actual_quartile', observed=False).agg({
     'actual': ['mean', 'count'],
     'abs_error': 'mean',
     'pct_error': 'mean'
@@ -139,7 +146,7 @@ plt.suptitle('')  # 기본 제목 제거
 
 plt.tight_layout()
 plt.savefig(RESULTS_DIR / f"{mode}_diagnosis.png", dpi=300, bbox_inches='tight')
-print(f"\n✓ 진단 플롯 저장: {RESULTS_DIR / f'{mode}_diagnosis.png'}")
+print(f"\n[OK] 진단 플롯 저장: {RESULTS_DIR / f'{mode}_diagnosis.png'}")
 
 # 문제점 식별
 print("\n" + "="*70)
@@ -150,29 +157,30 @@ issues = []
 
 # 1. R² 낮음
 if r2 < 0.7:
-    issues.append(f"• R²={r2:.4f} < 0.7: 모델이 분산의 {r2*100:.1f}%만 설명")
+    issues.append(f"- R²={r2:.4f} < 0.7: 모델이 분산의 {r2*100:.1f}%만 설명")
 
 # 2. Bias 확인
 if abs(df['error'].mean()) > df['actual'].std() * 0.1:
     if df['error'].mean() > 0:
-        issues.append(f"• 과대예측 편향: 평균 {df['error'].mean():.2f} m³/h 높게 예측")
+        issues.append(f"- 과대예측 편향: 평균 {df['error'].mean():.2f} m³/h 높게 예측")
     else:
-        issues.append(f"• 과소예측 편향: 평균 {abs(df['error'].mean()):.2f} m³/h 낮게 예측")
+        issues.append(f"- 과소예측 편향: 평균 {abs(df['error'].mean()):.2f} m³/h 낮게 예측")
 
 # 3. 예측 범위 축소
 actual_range = df['actual'].max() - df['actual'].min()
 pred_range = df['predicted'].max() - df['predicted'].min()
 if pred_range < actual_range * 0.7:
-    issues.append(f"• 예측 범위 축소: 예측값이 실제값 변동의 {pred_range/actual_range*100:.1f}%만 포착")
+    issues.append(f"- 예측 범위 축소: 예측값이 실제값 변동의 {pred_range/actual_range*100:.1f}%만 포착")
 
 # 4. MAPE 높음
 if mape > 20:
-    issues.append(f"• MAPE={mape:.1f}% > 20%: 평균적으로 {mape:.1f}% 오차 발생")
+    issues.append(f"- MAPE={mape:.1f}% > 20%: 평균적으로 {mape:.1f}% 오차 발생")
 
 # 5. 구간별 성능 차이
-quartile_errors = df.groupby('actual_quartile')['abs_error'].mean()
-if quartile_errors.max() / quartile_errors.min() > 2:
-    issues.append(f"• 구간별 성능 불균형: 특정 구간에서 에러가 {quartile_errors.max() / quartile_errors.min():.1f}배 높음")
+quartile_errors = df.groupby('actual_quartile', observed=False)['abs_error'].mean()
+quartile_min = quartile_errors.min()
+if quartile_min > 0 and quartile_errors.max() / quartile_min > 2:
+    issues.append(f"- 구간별 성능 불균형: 특정 구간에서 에러가 {quartile_errors.max() / quartile_min:.1f}배 높음")
 
 if issues:
     print("\n발견된 문제점:")
