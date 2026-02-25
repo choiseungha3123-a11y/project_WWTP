@@ -200,13 +200,13 @@ export default function Row1Charts() {
 
   return (
     <div className="flex flex-col w-full h-full bg-slate-900/40 p-4 overflow-y-auto">
-      {renderRow("유입유량", "#10b981", { actual: "Q_in_A", predict: "Q_in_P" }, latestValues?.Q_in, "m³/hr")}
-      {renderRow("TOC", "#ef4444", { actual: "toc_A", predict: "toc_P" }, latestValues?.TOC_VU, "mg/L")}
-      {renderRow("pH", "#3b82f6", { actual: "ph_A", predict: "ph_P" }, latestValues?.PH_VU)}
-      {renderRow("SS", "#f59e0b", { actual: "ss_A", predict: "ss_P" }, latestValues?.SS_VU, "mg/L")}
-      {renderRow("FLUX", "#ec4899", { actual: "flux_A", predict: "flux_P" }, latestValues?.FLUX_VU, "m³/hr")}
-      {renderRow("T-N", "#8b5cf6", { actual: "tn_A", predict: "tn_P" }, latestValues?.TN_VU, "mg/L")}
-      {renderRow("T-P", "#f97316", { actual: "tp_A", predict: "tp_P" }, latestValues?.TP_VU, "mg/L")}
+      {renderRow("유입유량", "#ef4444", { actual: "Q_in_A", predict: "Q_in_P" }, latestValues?.Q_in, "m³/hr")}
+      {renderRow("TOC", "#f97316", { actual: "toc_A", predict: "toc_P" }, latestValues?.TOC_VU, "mg/L")}
+      {renderRow("pH", "#facc15", { actual: "ph_A", predict: "ph_P" }, latestValues?.PH_VU)}
+      {renderRow("SS", "#10b981", { actual: "ss_A", predict: "ss_P" }, latestValues?.SS_VU, "mg/L")}
+      {renderRow("FLUX", "#3b82f6", { actual: "flux_A", predict: "flux_P" }, latestValues?.FLUX_VU, "m³/hr")}
+      {renderRow("T-N", "#6366f1", { actual: "tn_A", predict: "tn_P" }, latestValues?.TN_VU, "mg/L")}
+      {renderRow("T-P", "#a855f7", { actual: "tp_A", predict: "tp_P" }, latestValues?.TP_VU, "mg/L")}
     </div>
   );
 }
