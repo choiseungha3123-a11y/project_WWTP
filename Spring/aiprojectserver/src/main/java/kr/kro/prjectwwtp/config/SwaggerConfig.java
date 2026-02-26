@@ -38,14 +38,14 @@ public class SwaggerConfig {
 				.version("1.0.0");	// 버전
 	}
 	
-	public WebMvcConfigurer corsConfigurer() {
-	    return new WebMvcConfigurer() {
-	        @Override
-	        public void addCorsMappings(CorsRegistry registry) {
-	            registry.addMapping("/v3/api-docs/**").allowedOrigins("*");
-	            registry.addMapping("/swagger-ui/**").allowedOrigins("*");
-	        }
-	    };
-	}
+//	public WebMvcConfigurer corsConfigurer() {
+//	    return new WebMvcConfigurer() {
+//	        @Override
+//	        public void addCorsMappings(CorsRegistry registry) {
+//	            registry.addMapping("/v3/api-docs/**").allowedOrigins("*");
+//	            registry.addMapping("/swagger-ui/**").allowedOrigins("*");
+//	        }
+//	    };
+//	}
 
 }

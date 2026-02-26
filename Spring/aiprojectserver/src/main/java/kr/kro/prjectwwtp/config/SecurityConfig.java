@@ -53,11 +53,11 @@ public class SecurityConfig {
 		// 접근 권한 설정
 		http.authorizeHttpRequests(auth -> auth
 			// 공개 접근 가능 (필터 적용 안 함)
-			.requestMatchers("/v3/api-docs/**").permitAll()
-			.requestMatchers("/swagger-ui/**").permitAll()
-			.requestMatchers("/swagger-ui.html").permitAll()
-			.requestMatchers("/swagger-resources/**").permitAll()
-			.requestMatchers("/static/**").permitAll()
+			.requestMatchers("/api/v3/api-docs/**").permitAll()
+			.requestMatchers("/api/swagger-ui/**").permitAll()
+			.requestMatchers("/api/swagger-ui.html").permitAll()
+			.requestMatchers("/api/swagger-resources/**").permitAll()
+			.requestMatchers("/api/static/**").permitAll()
 			
 			// 대시보드 컨트롤
 			.requestMatchers("/api/board/health").permitAll()
