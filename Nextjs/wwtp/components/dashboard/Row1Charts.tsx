@@ -14,7 +14,7 @@ import {
 } from "recharts";
 
 // ----------------------------------------------------------------------
-// 1. 인터페이스 정의
+// 1. 인터페이스 정의 (any 제거)
 // ----------------------------------------------------------------------
 
 interface TmsRecord {
@@ -32,9 +32,10 @@ interface FlowRecord {
   Q_in: number;
 }
 
+// 병합된 차트 데이터 타입
 interface MergedData {
   displayTime: string;
-  fullTime: string; // 정렬 및 비교를 위한 전체 시간 값
+  fullTime: string; 
   toc_A?: number; ph_A?: number; ss_A?: number;
   flux_A?: number; tn_A?: number; tp_A?: number;
   Q_in_A?: number;
@@ -56,7 +57,7 @@ interface BoardViewResponse {
 // 2. 유틸리티 함수
 // ----------------------------------------------------------------------
 
-const fetcher = async (url: string) => {
+const fetcher = async (url: string): Promise<BoardViewResponse> => {
   const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
   const res = await fetch(url, {
     headers: {
@@ -68,16 +69,14 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-// X축 표시용 (HH:mm)
-const formatDisplayTime = (timeStr: string) => {
+const formatDisplayTime = (timeStr: string): string => {
   if (!timeStr) return "";
   if (timeStr.includes("T")) return timeStr.split("T")[1].substring(0, 5);
   if (timeStr.length >= 12) return `${timeStr.substring(8, 10)}:${timeStr.substring(10, 12)}`;
   return timeStr;
 };
 
-// 정렬용 (YYYYMMDDHHmm)
-const formatFullTime = (timeStr: string) => {
+const formatFullTime = (timeStr: string): string => {
   if (!timeStr) return "";
   return timeStr.replace(/[-T:]/g, "").substring(0, 12);
 };
@@ -106,35 +105,43 @@ export default function Row1Charts() {
     const [actualTms, predictTms, actualFlow, predictFlow] = rawData.dataList;
     const mergedMap = new Map<string, MergedData>();
 
-    // 데이터 병합 함수
-    const processItems = (items: any[], type: 'tms' | 'flow', isActual: boolean) => {
+    // TMS 데이터 처리 (Actual & Predict)
+    const processTmsItems = (items: TmsRecord[], isActual: boolean) => {
       items.forEach((item) => {
         const fullTime = formatFullTime(item.SYS_TIME);
         const displayTime = formatDisplayTime(item.SYS_TIME);
         const existing = mergedMap.get(fullTime) || { displayTime, fullTime };
 
-        if (type === 'tms') {
-          if (isActual) {
-            existing.toc_A = item.TOC_VU; existing.ph_A = item.PH_VU; existing.ss_A = item.SS_VU;
-            existing.flux_A = item.FLUX_VU; existing.tn_A = item.TN_VU; existing.tp_A = item.TP_VU;
-          } else {
-            existing.toc_P = item.TOC_VU; existing.ph_P = item.PH_VU; existing.ss_P = item.SS_VU;
-            existing.flux_P = item.FLUX_VU; existing.tn_P = item.TN_VU; existing.tp_P = item.TP_VU;
-          }
+        if (isActual) {
+          existing.toc_A = item.TOC_VU; existing.ph_A = item.PH_VU; existing.ss_A = item.SS_VU;
+          existing.flux_A = item.FLUX_VU; existing.tn_A = item.TN_VU; existing.tp_A = item.TP_VU;
         } else {
-          if (isActual) existing.Q_in_A = item.Q_in;
-          else existing.Q_in_P = item.Q_in;
+          existing.toc_P = item.TOC_VU; existing.ph_P = item.PH_VU; existing.ss_P = item.SS_VU;
+          existing.flux_P = item.FLUX_VU; existing.tn_P = item.TN_VU; existing.tp_P = item.TP_VU;
         }
         mergedMap.set(fullTime, existing);
       });
     };
 
-    processItems(actualTms, 'tms', true);
-    processItems(predictTms, 'tms', false);
-    processItems(actualFlow, 'flow', true);
-    processItems(predictFlow, 'flow', false);
+    // Flow 데이터 처리 (Actual & Predict)
+    const processFlowItems = (items: FlowRecord[], isActual: boolean) => {
+      items.forEach((item) => {
+        const fullTime = formatFullTime(item.SYS_TIME);
+        const displayTime = formatDisplayTime(item.SYS_TIME);
+        const existing = mergedMap.get(fullTime) || { displayTime, fullTime };
 
-    // fullTime(날짜+시간) 기준으로 정렬하여 24시간 흐름 유지
+        if (isActual) existing.Q_in_A = item.Q_in;
+        else existing.Q_in_P = item.Q_in;
+
+        mergedMap.set(fullTime, existing);
+      });
+    };
+
+    processTmsItems(actualTms, true);
+    processTmsItems(predictTms, false);
+    processFlowItems(actualFlow, true);
+    processFlowItems(predictFlow, false);
+
     const sortedData = Array.from(mergedMap.values()).sort((a, b) => 
       a.fullTime.localeCompare(b.fullTime)
     );
@@ -180,14 +187,13 @@ export default function Row1Charts() {
               dataKey="displayTime" 
               tick={{ fontSize: 9, fill: '#94a3b8' }} 
               stroke="#475569" 
-              interval={5} // 모든 시간을 다 그리면 복잡하므로 3시간 단위(6개 간격) 등으로 조정 가능
+              interval={5} 
             />
             <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} stroke="#475569" domain={['auto', 'auto']} />
             <Tooltip 
               contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', fontSize: '11px', borderRadius: '8px', color: '#f8fafc' }} 
               itemStyle={{ fontWeight: 'bold' }}
             />
-            {/* 현재 시점(가장 최신 실측 데이터 위치)에 세로선 표시 (선택 사항) */}
             <ReferenceLine x={chartData[chartData.length - 1]?.displayTime} stroke="#ffffff50" strokeDasharray="3 3" />
             
             <Line type="monotone" dataKey={keys.actual} stroke={color} strokeWidth={3} dot={false} connectNulls isAnimationActive={false} />
@@ -200,12 +206,19 @@ export default function Row1Charts() {
 
   return (
     <div className="flex flex-col w-full h-full bg-slate-900/40 p-4 overflow-y-auto">
+      {/* 1. 빨강: 유입유량 */}
       {renderRow("유입유량", "#ef4444", { actual: "Q_in_A", predict: "Q_in_P" }, latestValues?.Q_in, "m³/hr")}
-      {renderRow("TOC", "#f97316", { actual: "toc_A", predict: "toc_P" }, latestValues?.TOC_VU, "mg/L")}
+      {/* 2. 주황: FLUX */}
+      {renderRow("FLUX", "#f97316", { actual: "flux_A", predict: "flux_P" }, latestValues?.FLUX_VU, "m³/hr")}
+      {/* 3. 노랑: pH */}
       {renderRow("pH", "#facc15", { actual: "ph_A", predict: "ph_P" }, latestValues?.PH_VU)}
+      {/* 4. 초록: SS */}
       {renderRow("SS", "#10b981", { actual: "ss_A", predict: "ss_P" }, latestValues?.SS_VU, "mg/L")}
-      {renderRow("FLUX", "#3b82f6", { actual: "flux_A", predict: "flux_P" }, latestValues?.FLUX_VU, "m³/hr")}
+      {/* 5. 파랑: TOC */}
+      {renderRow("TOC", "#3b82f6", { actual: "toc_A", predict: "toc_P" }, latestValues?.TOC_VU, "mg/L")}
+      {/* 6. 남색: T-N */}
       {renderRow("T-N", "#6366f1", { actual: "tn_A", predict: "tn_P" }, latestValues?.TN_VU, "mg/L")}
+      {/* 7. 보라: T-P */}
       {renderRow("T-P", "#a855f7", { actual: "tp_A", predict: "tp_P" }, latestValues?.TP_VU, "mg/L")}
     </div>
   );
