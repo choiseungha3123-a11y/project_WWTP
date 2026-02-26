@@ -53,16 +53,22 @@ public class Oauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler{
 			userId = name + "@" + provider;
 			socialAuth = name + "@" + provider + "@" + email;
 			
-			System.out.println("OAuth2 인증 : " + socialAuth);
+			//System.out.println("OAuth2 인증 provider: " + provider);
+			//System.out.println("OAuth2 인증 name: " + name);
+			//System.out.println("OAuth2 인증 email: " + email);
+			//System.out.println("OAuth2 인증 userId: " + userId);
+			System.out.println("OAuth2 인증 socialAuth: " + socialAuth);
 			
 			
 			member = memberService.findBySocialAuth(socialAuth);
 			
 			if(member != null) {
 				// 기존 로그인 유저
+				//System.out.println("OAuth2 인증 기존유저 member: " + member);
 			} else {
 				// 신규 가입
 				member = memberService.addSocialMember(socialAuth, userId, name);
+				//System.out.println("OAuth2 인증 신규유저 member: " + member);
 			}
 			
 			// JWT 생성
@@ -79,9 +85,8 @@ public class Oauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler{
 			
 			System.out.println("[Oauth2SuccessHandler] User Agent: " + userAgent);
 			System.out.println("[Oauth2SuccessHandler] Remote IP:PORT: " + remoteInfo);
-			System.out.println("[Oauth2SuccessHandler] token: " + token);
+			//System.out.println("[Oauth2SuccessHandler] token: " + token);
 			
-			//System.out.println("token : " + token);
 			// Cookie에 jwt 추가
 			Cookie cookie = new Cookie("jwtToken", token.replaceAll(JWTUtil.prefix, ""));
 			cookie.setHttpOnly(true);	// JS에서 접근 못 하게

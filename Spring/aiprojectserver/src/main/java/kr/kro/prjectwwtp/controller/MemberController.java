@@ -377,6 +377,79 @@ public class MemberController {
 		
 	}
 	
+	@Getter
+	@Setter
+	@ToString
+	static public class SendToDTO {
+		@Schema(name = "userNo", description = "메일을 받을 사원의 고유번호", example = "1~")
+		private String userNo;
+	}
+	
+	@PostMapping("/sendReportTo")
+	@Operation(summary="보고서 메일 발송", description = "현재 시점 이후 12시간의 예측 보고서를 등록한 메일로 발송.")
+	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
+	public ResponseEntity<Object> postSendReportTo(
+			HttpServletRequest request,
+			@RequestBody SendToDTO req) {
+		String errorMsg = null;
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		// 토큰 추출 및 검증
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			errorMsg = "로그인이 필요합니다.";
+			res.setErrorMsg(errorMsg);
+			return ResponseEntity.ok().body(res);
+		}
+		if(member.getRole() == Role.ROLE_VIEWER) {
+			res.setSuccess(false);
+			errorMsg = "권한이 올바르지 않습니다.";
+			res.setErrorMsg(errorMsg);
+			return ResponseEntity.ok().body(res);
+		}
+		if(member.getUserEmail() == null || !member.isValidateEmail()) {
+			res.setSuccess(false);
+			errorMsg = "인증된 메일 정보가 없습니다.";
+			res.setErrorMsg(errorMsg);
+			return ResponseEntity.ok().body(res);
+		}
+		try {
+			try {
+				LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
+				LocalDateTime end = now.plusDays(1).minusMinutes(1);
+				List<TmsPredict> tmsList = tmsService.findPredictList(now, end);
+				List<FlowPredict> flowList = flowService.findPredictList(now, end);
+
+				String html = mailService.reportChart(tmsList, flowList);
+				String fileName = "chart" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".html";
+				
+				String subject = "Report From FlowWater";
+				String body = mailService.reportBody(member);
+				
+				mailService.sendEmailWithAttachment(member, subject, body, html, fileName);
+			}catch(Exception e) {
+				e.printStackTrace();
+				logService.addErrorLog("MemberController.java", "makeReportMessage()", e.getMessage());
+			}
+		}
+		catch(Exception e) {
+			res.setSuccess(false);
+			res.setErrorMsg(e.getMessage());
+			logService.addErrorLog("DashBoardController.java", "postMemoModify()", e.getMessage());
+		}
+		
+		
+		return ResponseEntity.ok().body(res);
+	}
 	private void saveChartFile(String body, String filepath) throws Exception {
 		try {
 			File file = Util.resolveFilePath(filepath);
@@ -395,7 +468,7 @@ public class MemberController {
 				throw new Exception("디렉토리 쓰기 권한 없음: " + parentDir.getAbsolutePath());
 			}
 			
-			// UTF-8 인코딩으로 CSV 파일 작성
+			// UTF-8 인코딩으로 파일 작성
 			try (BufferedWriter bw = new BufferedWriter(
 					new OutputStreamWriter(new FileOutputStream(file.getAbsolutePath()), "UTF-8"))) {
 				bw.write(body);

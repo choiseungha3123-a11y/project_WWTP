@@ -148,6 +148,11 @@ public class TmsService {
 	
 	public List<TmsImputate> getTmsImputateListByDate(LocalDateTime end) {
 		LocalDateTime start = end.minusDays(1).plusMinutes(1);
+		return getTmsImputateListBetwwen(start, end);
+		
+	}
+	
+	public List<TmsImputate> getTmsImputateListBetwwen(LocalDateTime start, LocalDateTime end) {
 		List<TmsImputate> list = tmsImputateRepo.findByTmsTimeBetweenOrderByTmsTime(start, end);
 		for(TmsImputate tms : list) {
 			String time = tms.getTmsTime().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
