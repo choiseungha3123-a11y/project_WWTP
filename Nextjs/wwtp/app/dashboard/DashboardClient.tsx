@@ -199,9 +199,6 @@ export default function DashboardPage() {
                       <button onClick={() => { router.push("/admin/member"); setIsProfileOpen(false); }} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-slate-300 font-medium text-left">
                         <span className="text-lg">⚙️</span> 이용자 관리
                       </button>
-                      <button onClick={() => { router.push("/admin/memo-history"); setIsProfileOpen(false); }} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-slate-300 font-medium text-left">
-                        <span className="text-lg">📜</span> 조치 이력 기록
-                      </button>
                     </>
                   )}
                   <div className="my-1 border-t border-white/5" />
