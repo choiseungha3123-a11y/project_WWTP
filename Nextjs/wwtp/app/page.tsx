@@ -118,7 +118,7 @@ export default function LandingPage() {
           className="absolute bottom-10 text-white/30 text-sm flex flex-col items-center"
         >
           <span className="mb-2">SCROLL DOWN</span>
-          <div className="w-[1px] h-12 bg-white/20" />
+          <div className="w-px h-12 bg-white/20" />
         </motion.div>
       </section>
 
