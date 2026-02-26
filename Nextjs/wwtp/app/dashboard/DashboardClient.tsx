@@ -227,10 +227,10 @@ export default function DashboardPage() {
           <div className="flex-none bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
             <Row2RiskDetail />
           </div>
-          <div className="flex-none bg-white/2 border border-white/5 rounded-4xl overflow-hidden h-60">
+          <div className="flex-none bg-white/2 border border-white/5 rounded-4xl overflow-hidden ">
             <Row3Alerts latestValues={latestTms} latestWeather={latestWeather} />
           </div>
-          <div className="flex-1 bg-white/2 border border-white/5 rounded-4xl overflow-hidden">
+          <div className="bg-white/2 border border-white/5 rounded-4xl overflow-hidden h-28">
             <Row4ActionPanel />
           </div>
         </section>
