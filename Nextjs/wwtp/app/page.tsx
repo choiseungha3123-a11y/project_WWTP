@@ -40,7 +40,6 @@ export default function LandingPage() {
         }),
       });
 
-      // 서버 응답 상태 확인
       if (response.status === 404) {
         alert('서버를 찾을 수 없습니다. (404 Error: Spring 서버가 실행 중인지 확인해주세요.)');
         return;
@@ -70,11 +69,9 @@ export default function LandingPage() {
           router.push('/dashboard');
         }
       } else {
-        // 404 외의 다른 에러 응답 (500 등) 처리
         alert(`서버 점검 중입니다. 잠시 후 다시 시도해주세요. (Error Code: ${response.status})`);
       }
     } catch (error) {
-      // 서버가 꺼져있어서 fetch 자체가 실패하는 경우 (Network Error)
       console.error('Error during login:', error);
       alert('서버와 통신할 수 없습니다. Spring 서버가 실행 중인지, 혹은 네트워크 설정을 확인해주세요.');
     }
@@ -91,15 +88,38 @@ export default function LandingPage() {
       </div>
 
       {/* 메인 히어로 섹션 */}
-      <section className="relative z-10 h-screen flex items-center justify-center">
-        <div className="text-center">
+      <section className="relative z-10 h-screen flex flex-col items-center justify-center">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1 }}
+          className="text-center"
+        >
+          {/* 추가된 타이틀 영역 */}
+          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight">
+            더 <span className="text-blue-400">안전하게</span>, 더 <span className="text-blue-400">효율적으로</span>
+          </h1>
+          <p className="text-xl md:text-2xl text-white/70 mb-12 font-light tracking-[0.2em]">
+            365일 중단 없는 스마트 하수도 관리 체계
+          </p>
+
           <button
             onClick={() => setIsLoginOpen(true)}
-            className="px-12 py-4 bg-white/20 hover:bg-white/40 text-white border border-white/50 backdrop-blur-md rounded-full text-xl font-light tracking-widest transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
+            className="px-12 py-4 bg-white/10 hover:bg-white/30 text-white border border-white/40 backdrop-blur-md rounded-full text-xl font-light tracking-widest transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-2xl"
           >
             로그인
           </button>
-        </div>
+        </motion.div>
+        
+        {/* 스크롤 유도 아이콘 (선택 사항) */}
+        <motion.div 
+          animate={{ y: [0, 10, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="absolute bottom-10 text-white/30 text-sm flex flex-col items-center"
+        >
+          <span className="mb-2">SCROLL DOWN</span>
+          <div className="w-[1px] h-12 bg-white/20" />
+        </motion.div>
       </section>
 
       {/* 시스템 소개 섹션 */}

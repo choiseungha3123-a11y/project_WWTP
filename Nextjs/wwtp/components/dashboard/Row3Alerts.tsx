@@ -9,6 +9,7 @@ interface TmsRecord {
   TOC_VU: number;
   TN_VU: number;
   TP_VU: number;
+  SS_VU: number;
 }
 
 interface WeatherData {
@@ -23,16 +24,18 @@ interface AlertProps {
 export default function Row3Alerts({ latestValues, latestWeather }: AlertProps) {
   // 1. pH 이상관측 로직 (6.0 이하 또는 8.0 이상)
   const phValue = latestValues?.PH_VU ?? 7.0;
-  const isPhDanger = phValue <= 6.0 || phValue >= 8.0;
+  const isPhDanger = phValue <= 5.8 || phValue >= 8.5;
 
   // 2. TOC/T-N/T-P 로직
   const tocValue = latestValues?.TOC_VU ?? 0;
   const tnValue = latestValues?.TN_VU ?? 0;
   const tpValue = latestValues?.TP_VU ?? 0;
+  const ssValue = latestValues ?.SS_VU ?? 0;
 
   const isTocDanger = tocValue >= 15;
   const isTnDanger = tnValue >= 20;
-  const isTpDanger = tpValue >= 0.2;
+  const isTpDanger = tpValue >= 0.5;
+  const isSSDanger = ssValue >= 10;
   const isTmsDanger = isTocDanger || isTnDanger || isTpDanger;
 
   // 3. 강우량 로직 (10mm 이상)
@@ -49,11 +52,12 @@ export default function Row3Alerts({ latestValues, latestWeather }: AlertProps) 
     },
     { 
       id: 2, 
-      title: "방류수질 기준 (TOC/TN/TP)", 
+      title: "방류수질 기준 (TOC/TN/TP/SS)", 
       details: [
         { name: "TOC", danger: isTocDanger, val: tocValue, limit: 15 },
         { name: "T-N", danger: isTnDanger, val: tnValue, limit: 20 },
-        { name: "T-P", danger: isTpDanger, val: tpValue, limit: 0.2 }
+        { name: "T-P", danger: isTpDanger, val: tpValue, limit: 0.5 },
+        { name: "SS", danger: isSSDanger, val: ssValue, limit: 10 }
       ],
       status: isTmsDanger ? "danger" : "normal", 
       icon: <AlertTriangle className="w-4 h-4" /> 
