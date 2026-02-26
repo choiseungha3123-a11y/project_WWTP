@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import useSWR from "swr";
 import {
   ResponsiveContainer,
@@ -14,7 +14,7 @@ import {
 } from "recharts";
 
 // ----------------------------------------------------------------------
-// 1. 인터페이스 정의 (any 제거)
+// 1. 인터페이스 정의
 // ----------------------------------------------------------------------
 
 interface TmsRecord {
@@ -32,7 +32,6 @@ interface FlowRecord {
   Q_in: number;
 }
 
-// 병합된 차트 데이터 타입
 interface MergedData {
   displayTime: string;
   fullTime: string; 
@@ -54,7 +53,7 @@ interface BoardViewResponse {
 }
 
 // ----------------------------------------------------------------------
-// 2. 유틸리티 함수
+// 2. 유틸리티 함수 및 스토어 설정
 // ----------------------------------------------------------------------
 
 const fetcher = async (url: string): Promise<BoardViewResponse> => {
@@ -81,15 +80,20 @@ const formatFullTime = (timeStr: string): string => {
   return timeStr.replace(/[-T:]/g, "").substring(0, 12);
 };
 
+// Hydration 방지를 위한 스토어 구성요소
+const subscribe = () => () => {}; 
+const getSnapshot = () => true;   
+const getServerSnapshot = () => false;
+
 // ----------------------------------------------------------------------
 // 3. 메인 컴포넌트
 // ----------------------------------------------------------------------
 
 export default function Row1Charts() {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-  const [isClient, setIsClient] = useState(false);
 
-  useEffect(() => { setIsClient(true); }, []);
+  // [수정] useState + useEffect 대신 useSyncExternalStore 사용
+  const isClient = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const { data: rawData, error, isLoading } = useSWR<BoardViewResponse>(
     isClient ? `${API_BASE_URL}/api/board/boardView` : null,
@@ -105,7 +109,6 @@ export default function Row1Charts() {
     const [actualTms, predictTms, actualFlow, predictFlow] = rawData.dataList;
     const mergedMap = new Map<string, MergedData>();
 
-    // TMS 데이터 처리 (Actual & Predict)
     const processTmsItems = (items: TmsRecord[], isActual: boolean) => {
       items.forEach((item) => {
         const fullTime = formatFullTime(item.SYS_TIME);
@@ -123,7 +126,6 @@ export default function Row1Charts() {
       });
     };
 
-    // Flow 데이터 처리 (Actual & Predict)
     const processFlowItems = (items: FlowRecord[], isActual: boolean) => {
       items.forEach((item) => {
         const fullTime = formatFullTime(item.SYS_TIME);
@@ -180,7 +182,8 @@ export default function Row1Charts() {
       </div>
 
       <div className="flex-1 ml-1 bg-slate-800/40 rounded-r-2xl border border-white/10 p-2 overflow-hidden shadow-sm">
-        <ResponsiveContainer width="100%" height="100%">
+        {/* [수정] height={100} 숫자로 표기하여 "100" 관련 타입 오류 해결 */}
+        <ResponsiveContainer width="100%" height={100}>
           <LineChart data={chartData} margin={{ top: 5, right: 10, left: -30, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
             <XAxis 
@@ -206,19 +209,12 @@ export default function Row1Charts() {
 
   return (
     <div className="flex flex-col w-full h-full bg-slate-900/40 p-4 overflow-y-auto">
-      {/* 1. 빨강: 유입유량 */}
       {renderRow("유입유량", "#ef4444", { actual: "Q_in_A", predict: "Q_in_P" }, latestValues?.Q_in, "m³/hr")}
-      {/* 2. 주황: FLUX */}
       {renderRow("FLUX", "#f97316", { actual: "flux_A", predict: "flux_P" }, latestValues?.FLUX_VU, "m³/hr")}
-      {/* 3. 노랑: pH */}
       {renderRow("pH", "#facc15", { actual: "ph_A", predict: "ph_P" }, latestValues?.PH_VU)}
-      {/* 4. 초록: SS */}
       {renderRow("SS", "#10b981", { actual: "ss_A", predict: "ss_P" }, latestValues?.SS_VU, "mg/L")}
-      {/* 5. 파랑: TOC */}
       {renderRow("TOC", "#3b82f6", { actual: "toc_A", predict: "toc_P" }, latestValues?.TOC_VU, "mg/L")}
-      {/* 6. 남색: T-N */}
       {renderRow("T-N", "#6366f1", { actual: "tn_A", predict: "tn_P" }, latestValues?.TN_VU, "mg/L")}
-      {/* 7. 보라: T-P */}
       {renderRow("T-P", "#a855f7", { actual: "tp_A", predict: "tp_P" }, latestValues?.TP_VU, "mg/L")}
     </div>
   );

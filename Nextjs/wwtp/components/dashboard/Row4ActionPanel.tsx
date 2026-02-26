@@ -1,259 +1,304 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import { 
-  ListChecks, 
-  History, 
-  MessageSquare, 
-  X, 
-  User, 
-  Clock, 
-  Trash2, 
-  CheckCircle2, 
-  FileText, 
-  Loader2 
+  CheckCircle2, Trash2, PencilLine, ImageIcon, 
+  Loader2, User, Clock, X, Download, ListChecks, History
 } from "lucide-react";
 
-// --- 인터페이스 정의 ---
-interface Memo {
+// --- 타입 정의 ---
+interface MemoItem {
   memoNo: number;
   content: string;
+  fileName: string | null;
   createTime: string;
   createMember: {
-    userId: string;
     userName: string;
   };
 }
 
-export default function Row4ActionPanel() {
-  const [activeModal, setActiveModal] = useState<"pending" | "completed" | "post" | null>(null);
+// 2. 백엔드에서 내려주는 "dataList": [ { items: [...] } ] 구조를 위한 타입
+interface MemoListData {
+  items: MemoItem[];
+  totalCount?: number;
+}
+
+// 3. 공통 API 응답 (제네릭 T를 dataList의 '요소' 타입으로 사용)
+interface ApiResponse<T> {
+  success: boolean;
+  dataList: T[]; // T 타입의 요소들이 담긴 배열
+  errorMsg?: string;
+}
+
+// --- 이미지 컴포넌트 ---
+function MemoImage({ memoNo, fileName }: { memoNo: number; fileName: string }) {
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
+
+  useEffect(() => {
+    const loadImg = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/board/memo/image?memo_no=${memoNo}`, {
+          headers: { "Authorization": `Bearer ${localStorage.getItem("accessToken")}` }
+        });
+        const result: ApiResponse<string | null> = await res.json();
+        // dataList[1]은 contentType, dataList[2]는 base64 데이터
+        if (result.success && result.dataList?.[2]) {
+          setImgUrl(`data:${result.dataList[1]};base64,${result.dataList[2]}`);
+        }
+      } catch (e) {
+        console.error("Image load error:", e);
+      }
+    };
+    loadImg();
+  }, [memoNo]);
+
+  if (!imgUrl) return null;
 
   return (
-    <div className="p-3 h-full flex flex-col justify-center">
-      {/* 대시보드 하단 버튼 3개 */}
-      <div className="grid grid-cols-3 gap-3 h-full">
-        <ActionButton 
-          title="조치 예정 목록" 
-          icon={<ListChecks className="w-5 h-5" />} 
-          active={activeModal === "pending"}
-          onClick={() => setActiveModal("pending")} 
-        />
-        <ActionButton 
-          title="조치 완료 이력" 
-          icon={<History className="w-5 h-5" />} 
-          active={activeModal === "completed"}
-          onClick={() => setActiveModal("completed")} 
-        />
-        <ActionButton 
-          title="이용자 게시글" 
-          icon={<MessageSquare className="w-5 h-5" />} 
-          active={activeModal === "post"}
-          onClick={() => setActiveModal("post")} 
-        />
+    <>
+      {/* 썸네일 영역 */}
+      <div className="mt-3 relative group w-fit cursor-zoom-in" onClick={() => setShowDetail(true)}>
+        <div className="relative w-32 h-24 overflow-hidden rounded-xl border border-white/10 shadow-lg">
+          <Image 
+            src={imgUrl} 
+            alt={fileName} 
+            fill 
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            unoptimized // Base64는 별도 최적화가 필요 없으므로 unoptimized 적용
+          />
+        </div>
+        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
+          <ImageIcon className="w-5 h-5 text-white" />
+        </div>
       </div>
 
-      {/* 중앙 모달 레이어 */}
-      <AnimatePresence>
-        {activeModal && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 lg:p-10"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="bg-[#0a0f1d] border border-white/10 w-full max-w-5xl max-h-[85vh] rounded-[2.5rem] overflow-hidden flex flex-col shadow-2xl"
-            >
-              {/* 모달 헤더 */}
-              <div className="flex justify-between items-center p-6 border-b border-white/5 bg-slate-800/50">
-                <div>
-                  <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                    {activeModal === "pending" && "📋 조치 예정 목록"}
-                    {activeModal === "completed" && "📜 조치 완료 기록 시트"}
-                    {activeModal === "post" && "💬 이용자 게시글"}
-                  </h3>
-                </div>
-                <button 
-                  onClick={() => setActiveModal(null)} 
-                  className="p-3 hover:bg-white/10 rounded-full text-slate-400 transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              {/* 모달 본문 컨텐츠 */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-[#0a0f1d]">
-                {activeModal === "pending" && (
-                  <PendingMemoList />
-                )}
-                
-                {activeModal === "completed" && (
-                  <CompletedHistoryTable />
-                )}
-
-                {activeModal === "post" && (
-                  <div className="py-20 text-center text-slate-500 font-bold">
-                    이용자 게시글 서비스 준비 중입니다.
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// --- 1. [조치 예정 목록] 컴포넌트 (기존 로직) ---
-function PendingMemoList() {
-  const [data, setData] = useState<Memo[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchItems = useCallback(async () => {
-    try {
-      const token = localStorage.getItem("accessToken");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/board/memo/list?page=0&count=20`, {
-        headers: { "Authorization": `Bearer ${token?.replace("Bearer ", "")}` }
-      });
-      const result = await res.json();
-      if (result.success) setData(result.dataList?.[0]?.items || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchItems(); }, [fetchItems]);
-
-  if (loading) return <div className="text-center py-20 text-slate-500">불러오는 중...</div>;
-
-  return (
-    <div className="space-y-4">
-      {data.length === 0 ? (
-        <div className="py-20 text-center text-slate-600 italic">표시할 데이터가 없습니다.</div>
-      ) : (
-        data.map((item) => (
-          <div key={item.memoNo} className="bg-white/5 p-5 rounded-2xl border border-white/5 flex justify-between items-center group hover:bg-white/10 transition-all">
-            <div className="flex flex-col gap-1">
-              <p className="text-slate-200 font-medium leading-relaxed">{item.content}</p>
-              <div className="flex gap-4 mt-2">
-                <span className="text-[11px] text-slate-500 flex items-center gap-1">
-                  <User className="w-3 h-3"/> {item.createMember.userName}
-                </span>
-                <span className="text-[11px] text-slate-500 flex items-center gap-1">
-                  <Clock className="w-3 h-3"/> {new Date(item.createTime).toLocaleString()}
-                </span>
+      {/* 원본 보기 모달 */}
+      {showDetail && (
+        <div className="fixed inset-0 z-120 flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-xl">
+          <div className="absolute inset-0" onClick={() => setShowDetail(false)} />
+          <div className="relative bg-slate-900 border border-white/20 rounded-[40px] overflow-hidden max-w-3xl w-full shadow-2xl animate-in zoom-in-95">
+            <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/5">
+              <span className="text-sm font-bold text-slate-200">{fileName}</span>
+              <div className="flex gap-2">
+                 <a href={imgUrl} download={fileName} className="p-2 text-slate-400 hover:text-white transition-colors">
+                    <Download className="w-5 h-5" />
+                 </a>
+                 <button onClick={() => setShowDetail(false)} className="p-2 text-slate-400 hover:text-white">
+                    <X className="w-5 h-5" />
+                 </button>
               </div>
             </div>
-            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-              <button className="p-2 bg-emerald-500/20 text-emerald-500 rounded-lg hover:bg-emerald-500 hover:text-white transition-colors">
-                <CheckCircle2 className="w-5 h-5" />
-              </button>
-              <button className="p-2 bg-red-500/20 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors">
-                <Trash2 className="w-5 h-5" />
-              </button>
+            <div className="p-4 flex justify-center bg-black/20 relative min-h-75">
+              <Image 
+                src={imgUrl} 
+                alt="원본" 
+                width={800} 
+                height={600} 
+                className="max-h-[65vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+                unoptimized
+                priority // 모달 이미지는 우선순위 로드
+              />
             </div>
           </div>
-        ))
+        </div>
+      )}
+    </>
+  );
+}
+
+// --- 메인 패널 ---
+export default function Row4ActionPanel() {
+  const [listType, setListType] = useState<"pending" | "completed" | null>(null);
+  const [memos, setMemos] = useState<MemoItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState("");
+
+  const fetchMemos = useCallback(async (type: "pending" | "completed") => {
+  setLoading(true);
+  setMemos([]);
+  try {
+    const endpoint = type === "pending" ? "/api/board/memo/list" : "/api/board/memo/oldList";
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}?page=0&count=20`, {
+      headers: { "Authorization": `Bearer ${localStorage.getItem("accessToken")}` }
+    });
+
+      const result: ApiResponse<MemoListData> = await res.json();
+      
+      if (result.success && result.dataList && result.dataList.length > 0) {
+      // result.dataList[0]은 이제 MemoListData 타입이므로 .items 접근이 가능합니다.
+      const listData = result.dataList[0];
+      const fetchedItems = listData.items || [];
+      
+      // 원본 배열을 보존하며 정렬하기 위해 스프레드 연산자 사용을 권장합니다.
+      const sortedItems = [...fetchedItems].sort((a, b) => 
+        new Date(b.createTime).getTime() - new Date(a.createTime).getTime()
+      );
+      
+      setMemos(sortedItems);
+    }
+  } catch (e) {
+    console.error("Fetch Error:", e);
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
+  useEffect(() => {
+    if (listType) fetchMemos(listType);
+  }, [listType, fetchMemos]);
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      if (listType === "pending") fetchMemos("pending");
+    };
+    window.addEventListener("refreshMemoList", handleRefresh);
+    return () => window.removeEventListener("refreshMemoList", handleRefresh);
+  }, [listType, fetchMemos]);
+
+  const handleAction = async (action: 'disable' | 'delete' | 'modify', id: number, content?: string) => {
+    if (!confirm("진행하시겠습니까?")) return;
+    
+    const isModify = action === 'modify';
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/board/memo/${action}`;
+    const token = localStorage.getItem("accessToken");
+    
+    let body: BodyInit;
+    if (isModify) {
+      const formData = new FormData();
+      formData.append("memoNo", String(id));
+      formData.append("content", content || "");
+      body = formData;
+    } else {
+      body = JSON.stringify({ memoNo: id });
+    }
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: isModify 
+          ? { "Authorization": `Bearer ${token}` } 
+          : { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body
+      });
+      const result: ApiResponse<MemoListData> = await res.json();
+      if (result.success) {
+        setEditingId(null);
+        if (listType) fetchMemos(listType);
+      }
+    } catch (e) { 
+      console.error(e); 
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-2 gap-4 h-full">
+      <button 
+        onClick={() => setListType("pending")} 
+        className="bg-blue-600/10 border border-blue-500/20 rounded-4xl flex flex-col items-center justify-center gap-3 hover:bg-blue-600/20 transition-all group"
+      >
+        <div className="p-4 bg-blue-500/20 rounded-2xl group-hover:scale-110 transition-transform">
+          <ListChecks className="w-10 h-10 text-blue-400" />
+        </div>
+        <span className="text-sm font-black text-blue-100">조치 예정 목록</span>
+      </button>
+
+      <button 
+        onClick={() => setListType("completed")} 
+        className="bg-emerald-600/10 border border-emerald-500/20 rounded-4xl flex flex-col items-center justify-center gap-3 hover:bg-emerald-600/20 transition-all group"
+      >
+        <div className="p-4 bg-emerald-500/20 rounded-2xl group-hover:scale-110 transition-transform">
+          <History className="w-10 h-10 text-emerald-400" />
+        </div>
+        <span className="text-sm font-black text-emerald-100">조치 완료 기록</span>
+      </button>
+
+      {listType && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-white/10 rounded-[48px] w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-12 duration-300">
+            {/* 헤더 */}
+            <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/2">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-2xl ${listType === 'pending' ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                  {listType === 'pending' ? <ListChecks className="w-6 h-6"/> : <History className="w-6 h-6"/>}
+                </div>
+                <h2 className="text-xl font-black text-white">{listType === 'pending' ? '조치 예정 목록' : '조치 완료 기록'}</h2>
+              </div>
+              <button onClick={() => setListType(null)} className="p-3 hover:bg-white/10 rounded-full text-slate-400">
+                <X className="w-7 h-7"/>
+              </button>
+            </div>
+
+            {/* 리스트 영역 */}
+            <div className="flex-1 overflow-y-auto p-8 space-y-5 custom-scrollbar bg-slate-900/50">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center h-full gap-4 text-slate-500">
+                  <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
+                  <p>데이터를 불러오는 중입니다...</p>
+                </div>
+              ) : memos.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-slate-700">
+                  <p className="text-sm font-medium">표시할 데이터가 없습니다.</p>
+                </div>
+              ) : (
+                memos.map((item) => (
+                  <div key={item.memoNo} className="bg-white/3 border border-white/5 rounded-4xl p-6 group">
+                    {editingId === item.memoNo ? (
+                      <div className="space-y-4">
+                        <textarea 
+                          className="w-full bg-slate-950 border border-white/10 rounded-2xl p-4 text-sm text-white min-h-30" 
+                          value={editContent} 
+                          onChange={(e) => setEditContent(e.target.value)} 
+                        />
+                        <div className="flex justify-end gap-3">
+                          <button onClick={() => setEditingId(null)} className="px-5 py-2 text-xs text-slate-500">취소</button>
+                          <button 
+                            onClick={() => handleAction('modify', item.memoNo, editContent)} 
+                            className="px-8 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black"
+                          >
+                            저장
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-start gap-8">
+                        <div className="flex-1">
+                          <p className="text-slate-200 text-base leading-relaxed whitespace-pre-wrap">{item.content}</p>
+                          {item.fileName && <MemoImage memoNo={item.memoNo} fileName={item.fileName} />}
+                          <div className="flex items-center gap-6 mt-6 pt-4 border-t border-white/5 text-xs text-slate-500 font-bold">
+                            <span className="flex items-center gap-2"><User className="w-3.5 h-3.5"/> {item.createMember.userName}</span>
+                            <span className="flex items-center gap-2"><Clock className="w-3.5 h-3.5"/> {new Date(item.createTime).toLocaleString()}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                          {listType === "pending" && (
+                            <>
+                              <button onClick={() => handleAction('disable', item.memoNo)} className="p-3 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-2xl transition-all">
+                                <CheckCircle2 className="w-6 h-6" />
+                              </button>
+                              <button 
+                                onClick={() => { setEditingId(item.memoNo); setEditContent(item.content); }} 
+                                className="p-3 bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white rounded-2xl transition-all"
+                              >
+                                <PencilLine className="w-6 h-6" />
+                              </button>
+                            </>
+                          )}
+                          <button onClick={() => handleAction('delete', item.memoNo)} className="p-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl transition-all">
+                            <Trash2 className="w-6 h-6" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
-  );
-}
-
-// --- 2. [조치 완료 이력] 컴포넌트 (테이블 형태) ---
-function CompletedHistoryTable() {
-  const [memos, setMemos] = useState<Memo[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchMemos = useCallback(async () => {
-    try {
-      const token = localStorage.getItem("accessToken");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/board/memo/oldList?page=0&count=50`, {
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token?.replace("Bearer ", "")}`,
-        },
-      });
-      const result = await res.json();
-      if (result.success && result.dataList?.[0]?.items) {
-        const sorted = [...result.dataList[0].items].sort((a, b) => 
-          new Date(b.createTime).getTime() - new Date(a.createTime).getTime()
-        );
-        setMemos(sorted);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchMemos(); }, [fetchMemos]);
-
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center py-32 gap-4">
-      <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-      <p className="text-slate-500 font-medium">기록 데이터를 불러오는 중...</p>
-    </div>
-  );
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left border-separate border-spacing-y-2">
-        <thead>
-          <tr className="text-slate-500 text-[10px] uppercase tracking-widest px-6">
-            <th className="px-6 py-3 font-bold">No.</th>
-            <th className="px-6 py-3 font-bold">완료된 조치 내용</th>
-            <th className="px-6 py-3 font-bold">작성자</th>
-            <th className="px-6 py-3 font-bold text-right">기록 시간</th>
-          </tr>
-        </thead>
-        <tbody>
-          {memos.map((memo) => (
-            <tr key={memo.memoNo} className="bg-white/2 hover:bg-white/5 transition-all group">
-              <td className="px-6 py-4 first:rounded-l-2xl text-xs font-mono text-slate-500">#{memo.memoNo}</td>
-              <td className="px-6 py-4">
-                <div className="flex items-start gap-3">
-                  <FileText className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                  <p className="text-sm text-slate-200 leading-relaxed">{memo.content}</p>
-                </div>
-              </td>
-              <td className="px-6 py-4 text-sm text-slate-300">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center text-[10px] font-bold">
-                    {memo.createMember.userName.substring(0, 1)}
-                  </div>
-                  {memo.createMember.userName}
-                </div>
-              </td>
-              <td className="px-6 py-4 last:rounded-r-2xl text-xs text-slate-500 font-mono text-right">
-                {new Date(memo.createTime).toLocaleString()}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// --- 하단 액션 버튼 컴포넌트 ---
-function ActionButton({ title, icon, onClick, active }: { title: string, icon: React.ReactNode, onClick: () => void, active: boolean }) {
-  return (
-    <button 
-      onClick={onClick}
-      className={`flex flex-col items-center justify-center gap-2 rounded-2xl transition-all border
-      ${active ? 'bg-blue-600/20 border-blue-500/50 text-blue-400 shadow-lg' 
-               : 'bg-slate-800/60 border-white/5 text-slate-400 hover:bg-slate-700 hover:border-white/10'}`}
-    >
-      <div className={`${active ? 'text-blue-400' : 'text-slate-500'}`}>{icon}</div>
-      <span className="font-bold text-[12px] tracking-tight">{title}</span>
-    </button>
   );
 }
