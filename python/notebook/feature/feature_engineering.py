@@ -355,7 +355,7 @@ def add_temporal_features(df):
 
     # 30분 리샘플링: 1시간 = 2 steps
     roll_windows = [6, 12, 24, 72]      # 3h, 6h, 12h, 36h
-    lags = [2, 4, 6, 12, 24, 48, 72]    # 1h, 2h, 3h, 6h, 12h, 24h, 36h
+    lags = [2, 4, 6, 12, 24, 36, 48, 72]    # 1h, 2h, 3h, 6h, 12h, 18h, 24h, 36h
     slope_windows = [12, 24, 48]        # 6h, 12h, 24h
 
     df_out = df.copy()
@@ -370,8 +370,13 @@ def add_temporal_features(df):
     )
     roll_targets = [c for c in roll_targets if c in df_out.columns]
 
+    influent_cols = [
+        "BOD_in", "COD_in", "PH_in", "SS_in", "TN_in", "TOC_in", "TP_in", "WATER_TEMP_in"
+    ]
+
     lag_targets = (
         list(process_cols)
+        + list(influent_cols)
         + [f"{col}_{sid}" for sid in station_ids for col in (["RN_15m", "RN_60m", "RN_12H"] + weather_cols)]
     )
     lag_targets = [c for c in lag_targets if c in df_out.columns]
@@ -772,7 +777,7 @@ def add_target_lag_features(df, target_cols, min_lag=1):
     new_cols = {}
 
     # 30분 리샘플링 기준
-    lags = [2, 4, 6, 12, 24, 48, 72]   # 1h, 2h, 3h, 6h, 12h, 24h, 36h
+    lags = [2, 4, 6, 12, 24, 36, 48, 72]   # 1h, 2h, 3h, 6h, 12h, 18h, 24h, 36h
     roll_windows = [6, 12, 24, 72]         # 3h, 6h, 12h, 36h
     ewma_spans = [6, 12, 24]               # 3h, 6h, 12h
 

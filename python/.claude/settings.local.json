@@ -25,7 +25,13 @@
       "Bash(PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \"C:/Users/kimuc/miniconda3/envs/AIproject/python.exe\" -c:*)",
       "Bash(PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \"C:\\\\Users\\\\kimuc\\\\miniconda3\\\\envs\\\\AIproject\\\\python.exe\":*)",
       "Bash(git -C c:/project_WWTP log --oneline -10)",
-      "Bash(git -C c:/project_WWTP show --stat ecb2dc8)"
+      "Bash(git -C c:/project_WWTP show --stat ecb2dc8)",
+      "Bash(C:Userskimucminiconda3python.exe -c \"import json; nb=json.load\\(open\\(''c:/project_WWTP/python/notebook/training/LSTM_TMS_extend.ipynb'',''r'',encoding=''utf-8''\\)\\); print\\(''cells:'', len\\(nb[''cells'']\\)\\)\")",
+      "Bash(\"/c/Users/kimuc/miniconda3/python.exe\" -c \"import json; nb=json.load\\(open\\(''c:/project_WWTP/python/notebook/training/LSTM_TMS_extend.ipynb'',''r'',encoding=''utf-8''\\)\\); print\\(''cells:'', len\\(nb[''cells'']\\)\\)\")",
+      "Bash(\"/c/Users/kimuc/miniconda3/python.exe\" -c \":*)",
+      "Bash(\"/c/Users/kimuc/miniconda3/python.exe\" -c:*)",
+      "Bash(\"/c/Users/kimuc/AppData/Local/Programs/Python/Python312/python.exe\" -c:*)",
+      "Bash(\"/c/Users/kimuc/AppData/Local/Programs/Python/Python312/python.exe\" -c \":*)"
     ]
   }
 }
