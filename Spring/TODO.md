@@ -42,6 +42,9 @@ sudo certbot certonly -d *.projectwwtp.kro.kr --manual --preferred-challenges dn
 -사용중인 포트 확인-
 sudo ss -tunlp
 
+-남은 용량 확인-
+df -h
+
 http://www.projectwwtp.kro.kr/api/swagger-ui/index.html
 
 http://10.125.121.173:3000/

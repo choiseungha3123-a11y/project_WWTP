@@ -4,11 +4,11 @@ Amazon Linux 2023(AL2023) 인스턴스 생성후 인바운드 규칙(80:http, 44
 
 1\. 가상메모리 (Swap File) 설정
 
-RAM 부족으로 인한 프로세스 다운을 방지하기 위해 2GB 스왑 공간을 할당합니다.
+RAM 부족으로 인한 프로세스 다운을 방지하기 위해 4GB 스왑 공간을 할당합니다.
 
 \#가상 메모리 할당
 
-sudo dd if=/dev/zero of=/swapfile bs=128M count=16
+sudo dd if=/dev/zero of=/swapfile bs=128M count=32
 
 \#권한 설정
 
