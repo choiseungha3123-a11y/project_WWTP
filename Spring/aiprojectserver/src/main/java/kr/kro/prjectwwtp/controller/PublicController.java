@@ -112,7 +112,8 @@ public class PublicController {
 	@Operation(summary="OAuth2 이용자들의 글 등록")
 	public ResponseEntity<Object> put(
 			HttpServletRequest request,
-			@CookieValue(name="jwtToken", required = true) String jwtToken,
+			//@CookieValue(name="jwtToken", required = true) String jwtToken,
+			@CookieValue String jwtToken,
 			@ModelAttribute insertDTO insert) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
@@ -167,7 +168,8 @@ public class PublicController {
 	@Operation(summary="OAuth2 이용자들의 글 수정")
 	public ResponseEntity<Object> patch(
 			HttpServletRequest request,
-			@CookieValue(name="jwtToken", required = true) String jwtToken,
+			//@CookieValue(name="jwtToken", required = true) String jwtToken,
+			@CookieValue String jwtToken,
 			@ModelAttribute modifyDTO modify) {
 		responseDTO res = responseDTO.builder()
 				.success(true)
@@ -238,7 +240,8 @@ public class PublicController {
 	@Operation(summary="OAuth2 이용자들의 글 삭제")
 	public ResponseEntity<Object> delete(
 			HttpServletRequest request,
-			@CookieValue(name="jwtToken", required = true) String jwtToken,
+			//@CookieValue(name="jwtToken", required = true) String jwtToken,
+			@CookieValue String jwtToken,
 			@RequestBody deleteDTO delete) {
 		responseDTO res = responseDTO.builder()
 				.success(true)

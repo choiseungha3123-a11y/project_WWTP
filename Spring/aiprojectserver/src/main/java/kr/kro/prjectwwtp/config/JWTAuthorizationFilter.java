@@ -98,6 +98,7 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 			//e.printStackTrace();
 		}finally {
 			if(!requestPath.endsWith("/health")
+					&& !requestPath.endsWith("/boardView")
 					&&  (errorMsg != null && !errorMsg.startsWith("The Token has expired")))
 				logService.addAccessLog(member, userAgent, remoteInfo, method, requestPath, errorMsg);
 		}

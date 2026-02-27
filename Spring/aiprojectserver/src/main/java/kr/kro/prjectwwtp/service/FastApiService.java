@@ -38,7 +38,6 @@ public class FastApiService {
 				.baseUrl(fastAPIURI)
 				.clientConnector(new ReactorClientHttpConnector(httpClient))
 				.build();
-		System.out.println("initWebClient Complete");
 	}
 	
 	public fastApiResponseDTO getPredict(String uri, Object obj) {

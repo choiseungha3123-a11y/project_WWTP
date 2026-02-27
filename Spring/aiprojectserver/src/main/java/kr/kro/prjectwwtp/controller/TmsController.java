@@ -201,12 +201,12 @@ public class TmsController {
 	//@GetMapping("/makeFakeNow")
 	public void makeFakeDate() {
 		try {
-			System.out.println("makeFakeDate");
+			//System.out.println("makeFakeDate");
 			LocalDateTime now = LocalDateTime.now();
 			LocalDateTime fakeTmeNow = tmsService.getFakeNow()
 										.withHour(now.getHour())
 										.withMinute(now.getMinute());
-			System.out.println("fakeTmeNow : " + fakeTmeNow);
+			//System.out.println("fakeTmeNow : " + fakeTmeNow);
 			
 			// 조회할 날짜(fakeTmeNow를 기준으로 이전 날짜와 해당 날짜의 보간 데이터 구성
 			if(!tmsService.existsByTmsTime(fakeTmeNow)) {
@@ -221,7 +221,7 @@ public class TmsController {
 			LocalDateTime fakeFlowNow = flowService.getFakeNow()
 					.withHour(now.getHour())
 					.withMinute(now.getMinute());
-			System.out.println("fakeFlowNow : " + fakeFlowNow);
+			//System.out.println("fakeFlowNow : " + fakeFlowNow);
 					
 			// 조회할 날짜(fakeTmeNow를 기준으로 이전 날짜와 해당 날짜의 보간 데이터 구성
 			if(!flowService.existsByFlowTime(fakeFlowNow)) {

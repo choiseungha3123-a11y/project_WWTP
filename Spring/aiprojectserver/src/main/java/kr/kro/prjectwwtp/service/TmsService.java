@@ -553,7 +553,7 @@ public class TmsService {
 		// 등록된 값이 오늘 생성한 날짜면 그냥 사용
 		if(fakeDate != null
 				&& fakeDate.getToday().isAfter(LocalDateTime.now().withHour(0).withMinute(0))) {
-			System.out.println("fakeDate.getFakeDate() : " + fakeDate.getTmsDate());
+			//System.out.println("fakeDate.getFakeDate() : " + fakeDate.getTmsDate());
 			return fakeDate.getTmsDate();
 		}
 		
