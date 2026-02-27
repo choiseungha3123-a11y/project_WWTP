@@ -1,6 +1,7 @@
 package kr.kro.prjectwwtp.controller;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
@@ -41,6 +42,8 @@ import kr.kro.prjectwwtp.domain.WeatherDTO;
 import kr.kro.prjectwwtp.domain.responseDTO;
 import kr.kro.prjectwwtp.service.FlowService;
 import kr.kro.prjectwwtp.service.LogService;
+import kr.kro.prjectwwtp.service.MailService;
+import kr.kro.prjectwwtp.service.MemberService;
 import kr.kro.prjectwwtp.service.MemoService;
 import kr.kro.prjectwwtp.service.TmsService;
 import kr.kro.prjectwwtp.service.WeatherService;
@@ -61,6 +64,8 @@ public class DashBoardController {
 	private final FlowService flowService;
 	private final WeatherService weatherService;
 	private final LogService logService;
+	private final MemberService memberService;
+	private final MailService mailService;
 	
 	@ExceptionHandler(MissingServletRequestParameterException.class)
 	public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex) {
@@ -455,6 +460,8 @@ public class DashBoardController {
 									.withHour(now.getHour())
 									.withMinute(now.getMinute());
 			List<TmsImputate> tmsImputateList = tmsService.getTmsImputateListByDateForDashBoard(fakeTmsNow);
+			//for(TmsImputate t : tmsImputateList)
+			//	t.setSs(9.0);
 			List<TmsPredict> tmsPredictList = tmsService.findPredictList(start, end);
 			List<FlowImputate> flowImputateList = flowService.getFlowImputateListByDateForDashBoard(fakeFlowNow);
 			List<FlowPredict> flowPredictList = flowService.findPredictList(start, end);
@@ -471,6 +478,83 @@ public class DashBoardController {
 			res.setErrorMsg(e.getMessage());
 			logService.addErrorLog("DashBoardController.java", "getBoardView()", e.getMessage());
 		}
+		
+		return ResponseEntity.ok().body(res);
+	}
+	
+
+	
+	@Getter
+	@Setter
+	@ToString
+	static public class SendToDTO {
+		@Schema(name = "userNo", description = "메일을 받을 사원의 고유번호", example = "1~")
+		private long userNo;
+	}
+	
+	@PostMapping("/sendReportTo")
+	@Operation(summary="보고서 메일 발송", description = "현재 시점 이후 12시간의 예측 보고서를 등록한 메일로 발송.")
+	@Parameter(name = "Authorization", description= "{jwtToken}", example = "Bearer ey~~~")
+	public ResponseEntity<Object> postSendReportTo(
+			HttpServletRequest request,
+			@RequestBody SendToDTO req) {
+		String errorMsg = null;
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		// 토큰 추출 및 검증
+		if(JWTUtil.isExpired(request))
+		{
+			res.setSuccess(false);
+			res.setErrorMsg("토큰이 만료되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		Member member = JWTUtil.parseToken(request);
+		if(member == null){
+			res.setSuccess(false);
+			errorMsg = "로그인이 필요합니다.";
+			res.setErrorMsg(errorMsg);
+			return ResponseEntity.ok().body(res);
+		}
+		if(member.getRole() == Role.ROLE_VIEWER) {
+			res.setSuccess(false);
+			errorMsg = "권한이 올바르지 않습니다.";
+			res.setErrorMsg(errorMsg);
+			return ResponseEntity.ok().body(res);
+		}
+		Member recvMember = memberService.findByNo(req.userNo);
+		if(recvMember.getUserEmail() == null || !recvMember.isValidateEmail()) {
+			res.setSuccess(false);
+			errorMsg = "인증된 메일 정보가 없습니다.";
+			res.setErrorMsg(errorMsg);
+			return ResponseEntity.ok().body(res);
+		}
+		try {
+			try {
+				LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
+				LocalDateTime end = now.plusDays(1).minusMinutes(1);
+				List<TmsPredict> tmsList = tmsService.findPredictList(now, end);
+				List<FlowPredict> flowList = flowService.findPredictList(now, end);
+
+				String html = mailService.reportChart(tmsList, flowList);
+				String fileName = "chart" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".html";
+				
+				String subject = "Report From FlowWater";
+				String body = mailService.reportBody(recvMember);
+				
+				mailService.sendEmailWithAttachment(recvMember, subject, body, html, fileName);
+			}catch(Exception e) {
+				e.printStackTrace();
+				logService.addErrorLog("MemberController.java", "makeReportMessage()", e.getMessage());
+			}
+		}
+		catch(Exception e) {
+			res.setSuccess(false);
+			res.setErrorMsg(e.getMessage());
+			logService.addErrorLog("DashBoardController.java", "postMemoModify()", e.getMessage());
+		}
+		
 		
 		return ResponseEntity.ok().body(res);
 	}

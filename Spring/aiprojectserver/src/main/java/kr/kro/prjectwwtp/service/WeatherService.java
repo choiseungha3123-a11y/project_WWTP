@@ -13,7 +13,10 @@ import org.springframework.stereotype.Service;
 
 import kr.kro.prjectwwtp.domain.Weather;
 import kr.kro.prjectwwtp.domain.WeatherDTO;
+import kr.kro.prjectwwtp.domain.WeatherSummary;
+import kr.kro.prjectwwtp.domain.WeatherSummaryId;
 import kr.kro.prjectwwtp.persistence.WeatherRepository;
+import kr.kro.prjectwwtp.persistence.WeatherSummaryRepository;
 import kr.kro.prjectwwtp.util.ImputateUtil;
 import kr.kro.prjectwwtp.util.ImputateUtil.ImputationConfig;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class WeatherService {
 	private final WeatherRepository weatherRepo;
+	private final WeatherSummaryRepository summaryRepo;
 	
 	public Weather findById(long id) {
 		Optional<Weather> opt = weatherRepo.findById(id);
@@ -69,6 +73,17 @@ public class WeatherService {
 			ret = imputate(start, ret);
 		}
 		return ret;
+	}
+	
+	public int getWeatherCountByStnAndTimeBetween(int stn, LocalDateTime date) {
+		int cnt = 0;
+		Optional<WeatherSummary> opt = summaryRepo.findById(WeatherSummaryId.builder().stn(stn).time(date.minusDays(1)).build());
+		if(opt.isPresent())
+			cnt += opt.get().getCount();
+		opt = summaryRepo.findById(WeatherSummaryId.builder().stn(stn).time(date).build());
+		if(opt.isPresent())
+			cnt += opt.get().getCount();
+		return cnt;
 	}
 	
 	private List<WeatherDTO> imputate(LocalDateTime start, List<WeatherDTO> origin) {

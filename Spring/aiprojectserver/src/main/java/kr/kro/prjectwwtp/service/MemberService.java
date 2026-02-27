@@ -1,5 +1,6 @@
 package kr.kro.prjectwwtp.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,6 +25,9 @@ public class MemberService {
 		}
 		Member member = opt.get();
 		if(!encoder.matches(password, member.getPassword())) {
+			return null;
+		}
+		if(member.getDeleteTime() != null) {
 			return null;
 		}
 		return member;
@@ -54,7 +58,8 @@ public class MemberService {
 	}
 	
 	public List<Member> getMemberList() {
-		return memberRepo.findAll();
+		return memberRepo.findAllByDeleteTimeIsNull();
+		//return memberRepo.findAll();
 	}
 	
 	public void saveAll(List<Member> list) {
@@ -108,7 +113,9 @@ public class MemberService {
 	}
 	
 	public void deleteMember(Member member) {
-		memberRepo.delete(member);
+		// 블라인드 처리
+		member.setDeleteTime(LocalDateTime.now());
+		memberRepo.save(member);
 	}
 	
 	public void addEmailKey(Long userNo, String key) {
@@ -133,8 +140,7 @@ public class MemberService {
 	}
 	
 	public List<Member> getValidateEmailMember() {
-		List<Member> list =  memberRepo.findByUserEmailIsNotNullAndValidateKeyIsNullAndValidateEmailTrue();
-		return list;
+		return memberRepo.findByUserEmailIsNotNullAndValidateKeyIsNullAndValidateEmailTrue();
 	}
 
 }

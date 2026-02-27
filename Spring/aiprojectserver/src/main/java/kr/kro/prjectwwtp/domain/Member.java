@@ -70,4 +70,6 @@ public class Member {
 	@Convert(converter = CryptoStringConverter.class)
 	@Schema(description = "소셜 로그인 정보", example = "")
 	private String socialAuth;
+	@Schema(description = "삭제 여부", example = "false")
+	private LocalDateTime deleteTime;
 }

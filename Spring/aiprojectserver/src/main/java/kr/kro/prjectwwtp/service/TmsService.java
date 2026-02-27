@@ -8,12 +8,10 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,15 +36,16 @@ import kr.kro.prjectwwtp.persistence.TmsOriginRepository;
 import kr.kro.prjectwwtp.persistence.TmsPredictRepository;
 import kr.kro.prjectwwtp.persistence.TmsSummaryRepository;
 import kr.kro.prjectwwtp.util.ImputateUtil;
-import kr.kro.prjectwwtp.util.Util;
 import kr.kro.prjectwwtp.util.ImputateUtil.ImputationConfig;
 import kr.kro.prjectwwtp.util.ImputateUtil.OutlierConfig;
+import kr.kro.prjectwwtp.util.Util;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class TmsService {
 	private final LogService logService;
+	private final WeatherService weatherService;
 	private final TmsOriginRepository tmsOriginRepo;
 	private final TmsImputateRepository tmsImputateRepo;
 	private final TmsInsertRepository tmsInsertRepo;
@@ -507,9 +506,8 @@ public class TmsService {
 		tmsInsertRepo.TmsImputateInsert(addList);
 	}
 
-	int checkNum = 2600;
-	public List<Date> getFakeTmsDatesList() {
-		List<Date> retList = new ArrayList<Date>();
+	public List<LocalDateTime> getFakeTmsDatesList(int checkNum) {
+		List<LocalDateTime> retList = new ArrayList<LocalDateTime>();
 		List<TmsSummary> summaries = tmsSummaryRepo.findAll();
 		
 		TmsSummary pre = null;
@@ -519,17 +517,17 @@ public class TmsService {
 				continue;
 			}
 			if( pre.getCount() + summary.getCount() >= checkNum &&
-					ChronoUnit.DAYS.between(pre.getTime().toInstant(), summary.getTime().toInstant()) == 1) {
+					ChronoUnit.DAYS.between(pre.getTime(), summary.getTime()) == 1) {
 				// 하루전 날짜와의 합계가 checkNum 이상인 경우
 				retList.add(summary.getTime());
-				}
+			}
 			pre = summary;
 		}
 		return retList;
 	}
 	
-	public List<Date> getFakeFlowDatesList() {
-		List<Date> retList = new ArrayList<Date>();
+	public List<LocalDateTime> getFakeFlowDatesList(int checkNum) {
+		List<LocalDateTime> retList = new ArrayList<LocalDateTime>();
 		List<FlowSummary> summaries = flowSummaryRepo.findAll();
 		
 		FlowSummary pre = null;
@@ -539,7 +537,8 @@ public class TmsService {
 				continue;
 			}
 			if( pre.getCount() + summary.getCount() >= checkNum &&
-					ChronoUnit.DAYS.between(pre.getTime().toInstant(), summary.getTime().toInstant()) == 1) {
+					ChronoUnit.DAYS.between(pre.getTime(), summary.getTime()) == 1) {
+				// 날씨 데이터도 같이 체크하도록 추가
 				// 하루전 날짜와의 합계가 checkNum 이상인 경우
 				retList.add(summary.getTime());
 				}
@@ -548,6 +547,7 @@ public class TmsService {
 		return retList;
 	}
 	
+	int checkNum = 2600;
 	public LocalDateTime getFakeNow() {
 		FakeDate fakeDate = fakeDateRepo.findFirstByOrderByTodayDesc();
 		// 등록된 값이 오늘 생성한 날짜면 그냥 사용
@@ -557,20 +557,31 @@ public class TmsService {
 			return fakeDate.getTmsDate();
 		}
 		
-		List<Date> fakeDates = getFakeTmsDatesList();
 		Random rand = new Random();
-		int idx = rand.nextInt(fakeDates.size());
-		Date retDate = fakeDates.get(idx);
-		LocalDateTime tmsTime = retDate.toInstant() 
-								.atZone(ZoneId.systemDefault())
-								.toLocalDateTime();
+		LocalDateTime tmsTime, flowTime;
+		int idx;
+		int awsCount368 = 0;
+		int awsCount541 = 0;
+		int awsCount569 = 0;
 		
-		fakeDates = getFakeFlowDatesList();
-		idx = rand.nextInt(fakeDates.size());
-		retDate = fakeDates.get(idx);
-		LocalDateTime flowTime = retDate.toInstant() 
-				.atZone(ZoneId.systemDefault())
-				.toLocalDateTime();
+		List<LocalDateTime> fakeDates = getFakeTmsDatesList(checkNum);
+		do {
+			idx = rand.nextInt(fakeDates.size());
+			tmsTime = fakeDates.get(idx);
+			awsCount368 = weatherService.getWeatherCountByStnAndTimeBetween(368, tmsTime);
+			awsCount541 = weatherService.getWeatherCountByStnAndTimeBetween(541, tmsTime);
+			awsCount569 = weatherService.getWeatherCountByStnAndTimeBetween(569, tmsTime);
+		} while (awsCount368 < checkNum || awsCount541 < checkNum || awsCount569 < checkNum);
+		
+		fakeDates = getFakeFlowDatesList(checkNum);
+		do {
+		
+			idx = rand.nextInt(fakeDates.size());
+			flowTime = fakeDates.get(idx);
+			awsCount368 = weatherService.getWeatherCountByStnAndTimeBetween(368, flowTime);
+			awsCount541 = weatherService.getWeatherCountByStnAndTimeBetween(541, flowTime);
+			awsCount569 = weatherService.getWeatherCountByStnAndTimeBetween(569, flowTime);
+		} while (awsCount368 < checkNum || awsCount541 < checkNum || awsCount569 < checkNum);
 		
 		fakeDateRepo.save(FakeDate.builder()
 				.today(LocalDateTime.now())

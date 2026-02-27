@@ -9,10 +9,8 @@ import java.io.OutputStreamWriter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,17 +23,15 @@ import kr.kro.prjectwwtp.domain.FakeDate;
 import kr.kro.prjectwwtp.domain.FlowImputate;
 import kr.kro.prjectwwtp.domain.FlowOrigin;
 import kr.kro.prjectwwtp.domain.FlowPredict;
-import kr.kro.prjectwwtp.domain.FlowSummary;
 import kr.kro.prjectwwtp.persistence.FakeDateRepository;
 import kr.kro.prjectwwtp.persistence.FlowImputateRepository;
 import kr.kro.prjectwwtp.persistence.FlowInsertRepository;
 import kr.kro.prjectwwtp.persistence.FlowOriginRepository;
 import kr.kro.prjectwwtp.persistence.FlowPredictRepository;
-import kr.kro.prjectwwtp.persistence.FlowSummaryRepository;
 import kr.kro.prjectwwtp.util.ImputateUtil;
-import kr.kro.prjectwwtp.util.Util;
 import kr.kro.prjectwwtp.util.ImputateUtil.ImputationConfig;
 import kr.kro.prjectwwtp.util.ImputateUtil.OutlierConfig;
+import kr.kro.prjectwwtp.util.Util;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -45,7 +41,6 @@ public class FlowService {
 	private final FlowOriginRepository flowOriginRepo;
 	private final FlowImputateRepository flowImputateRepo;
 	private final FlowInsertRepository insertRepo;
-	private final FlowSummaryRepository flowSummaryrepo;
 	private final FlowPredictRepository flowPredictRepo;
 	private final FakeDateRepository fakeDateRepo;
 
@@ -468,27 +463,6 @@ public class FlowService {
 			}
 		}
 		insertRepo.FlowImputateInsert(addList);
-	}
-	
-	public List<Date> getFakeDatesList() {
-		List<Date> retList = new ArrayList<Date>();
-		List<FlowSummary> summaries = flowSummaryrepo.findAll();
-		int checkNum = 2600;
-		
-		FlowSummary pre = null;
-		for(FlowSummary summary : summaries) {
-			if(pre == null) {
-				pre = summary;
-				continue;
-			}
-			if( pre.getCount() + summary.getCount() >= checkNum &&
-					ChronoUnit.DAYS.between(pre.getTime().toInstant(), summary.getTime().toInstant()) == 1) {
-				// 하루전 날짜와의 합계가 checkNum 이상인 경우
-				retList.add(summary.getTime());
-				}
-			pre = summary;
-		}
-		return retList;
 	}
 	
 	public LocalDateTime getFakeNow() {

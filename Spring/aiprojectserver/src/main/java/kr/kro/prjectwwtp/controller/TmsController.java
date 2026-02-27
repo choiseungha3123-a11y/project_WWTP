@@ -238,7 +238,7 @@ public class TmsController {
 		}
 	}
 	
-	@GetMapping("/test")
+	//@GetMapping("/test")
 	@Scheduled(cron = "${scheduler.predict.cron}", zone="${spring.timezone}")
 	public void getTmsPredict() {
 		if(!enablePredict) return;
@@ -261,7 +261,8 @@ public class TmsController {
 			
 			// 데이터 확인을 위해 데이터를 임시로 cvs로 저장
 			// tmsList, aws368, aws541, asw569, predictions, 실제 이 기간의 tms 실측값
-			saveToCsv(tmsList, aws368, aws541, aws569, predictions, tmsListReal);
+			if(predictions != null)
+				saveToCsv(tmsList, aws368, aws541, aws569, predictions, tmsListReal, fakeNow);
 								
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -275,23 +276,23 @@ public class TmsController {
 			List<WeatherDTO> aws541, 
 			List<WeatherDTO> aws569, 
 			TmsPredict[] predictions, 
-			List<TmsImputate> tmsListReal) {
+			List<TmsImputate> tmsListReal,
+			LocalDateTime fakeNow) {
 		try {
 			String fileName = "요청내용" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".csv";
 			File file = Util.resolveFilePath(fileName);
 			
 			String data = "";
-			data += "tmsNo, SYS_TIME, TOC_VU, PH_VU, SS_VU, FLUX_VU, TN_VU, TP_VU, ASW368, TA, RN_15m, RN_60m, RN_12H, RN_DAY, HM, TD, distance, ASW541, TA, RN_15m, RN_60m, RN_12H, RN_DAY, HM, TD, distance, ASW569, TA, RN_15m, RN_60m, RN_12H, RN_DAY, HM, TD, distance";
+			data += "SYS_TIME, TOC_VU, PH_VU, SS_VU, FLUX_VU, TN_VU, TP_VU, ASW368, TA, RN_15m, RN_60m, RN_12H, RN_DAY, HM, TD, distance, ASW541, TA, RN_15m, RN_60m, RN_12H, RN_DAY, HM, TD, distance, ASW569, TA, RN_15m, RN_60m, RN_12H, RN_DAY, HM, TD, distance\r\n";
 			for(TmsImputate tms : tmsList) {
 				LocalDateTime time = tms.getTmsTime();
-				data += tms.getTmsNo() + ", ";
-				data += tms.getStrtime() + ", ";
+				data += "'" + tms.getStrtime() + "', ";
 				data += tms.getToc() + ", ";
 				data += tms.getPh() + ", ";
 				data += tms.getSs() + ", ";
 				data += tms.getFlux() + ", ";
 				data += tms.getTn() + ", ";
-				data += tms.getTp() + "\r\n";
+				data += tms.getTp() + ", ";
 				
 				WeatherDTO weather368 = getWeatherDto(time, aws569);
 				if(weather368 != null) {
@@ -333,9 +334,9 @@ public class TmsController {
 					data += weather569.getRnday() + ", ";
 					data += weather569.getHm() + ", ";
 					data += weather569.getTd() + ", ";
-					data += weather569.getDistance() + ", ";
+					data += weather569.getDistance() + ", \r\n";
 				} else {
-					data += ", , , , , , , , , ";
+					data += ", , , , , , , , , \r\n";
 				}
 			}
 			
@@ -351,23 +352,20 @@ public class TmsController {
 			File file2 = Util.resolveFilePath(fileName2);
 			
 			String data2 = "";
-			data2 += "tmsNo, SYS_TIME, TOC_VU, PH_VU, SS_VU, FLUX_VU, TN_VU, TP_VU, 실제 데이터, TOC_VU, PH_VU, SS_VU, FLUX_VU, TN_VU, TP_VU";
+			data2 += "SYS_TIME, TOC_VU, PH_VU, SS_VU, FLUX_VU, TN_VU, TP_VU, Origin Data, TOC_VU, PH_VU, SS_VU, FLUX_VU, TN_VU, TP_VU \r\n";
 			for(TmsPredict tms : predictions) {
 				LocalDateTime time = tms.getTmsTime();
-				data2 += tms.getTmsNo() + ", ";
-				data2 += tms.getTmsTime() + ", ";
+				data2 += "'" + tms.getTmsTime() + "', ";
 				data2 += tms.getToc() + ", ";
 				data2 += tms.getPh() + ", ";
 				data2 += tms.getSs() + ", ";
 				data2 += tms.getFlux() + ", ";
 				data2 += tms.getTn() + ", ";
-				data2 += tms.getTp() + "\r\n";
+				data2 += tms.getTp() + ", ";
 				
 				TmsImputate tmsReal =  getTmsReal(time, tmsListReal);
 				if(tmsReal != null) {
 					data2 += ", ";
-					data2 += tmsReal.getTmsNo() + ", ";
-					data2 += tmsReal.getTmsTime() + ", ";
 					data2 += tmsReal.getToc() + ", ";
 					data2 += tmsReal.getPh() + ", ";
 					data2 += tmsReal.getSs() + ", ";
@@ -375,7 +373,7 @@ public class TmsController {
 					data2 += tmsReal.getTn() + ", ";
 					data2 += tmsReal.getTp() + "\r\n";
 				} else  {
-					data2 += ", , , , , , , , ";
+					data2 += ", , , , , , , , \r\n";
 				}
 			}
 				
@@ -395,8 +393,9 @@ public class TmsController {
 		if(list == null || time == null) {
 			return null;
 		}
+		String strTime = time.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
 		for(WeatherDTO weather : list) {
-			if(weather.getTime().equals(time)) {
+			if(weather.getTime().equals(strTime)) {
 				return weather;
 			}
 		}
@@ -407,8 +406,9 @@ public class TmsController {
 		if(list == null || time == null) {
 			return null;
 		}
+		DateTimeFormatter pattern = DateTimeFormatter.ofPattern("HHmmss");
 		for(TmsImputate tms : list) {
-			if(tms.getTmsTime().equals(time)) {
+			if(tms.getTmsTime().format(pattern).equals(time.format(pattern))) {
 				return tms;
 			}
 		}
