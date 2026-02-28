@@ -198,6 +198,12 @@ pm2 delete (name or id)
 
 pm2 restart (name or id) --update-env
 
+\# 프로세스별 로그 확인
+# 각 서버 로그 확인
+pm2 logs FlowWater-Fastapi
+pm2 logs FlowWater-server
+pm2 logs FlowWater-app
+
 \# NextJS 배포
 
 pm2 start npm --name "FlowWater-app" -- start
@@ -211,6 +217,11 @@ pm2 start "java -Xmx1G -jar aiprojectserver-0.0.1.jar" --name "FlowWater-server"
 \# FastApi 배포
 
 pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" --name "FlowWater-Fastapi" --output "./FlowWater-Fastapi-out.log" --error "./FlowWater-Fastapi-error.log"
+
+
+\#서버 실행시 프로세스 자동 실행
+.sh 파일 구성
+service로 등록
 
 
 

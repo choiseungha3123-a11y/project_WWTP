@@ -501,6 +501,7 @@ public class FlowService {
 	}
 	
 	public void savePredictList(FlowPredict[] array) {
+		System.out.println("savePredictList : " + array.length);
 		flowPredictRepo.saveAll(Arrays.asList(array));
 	}
 }

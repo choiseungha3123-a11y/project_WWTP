@@ -645,6 +645,7 @@ public class TmsService {
 	}
 	
 	public void savePredictList(TmsPredict[] array) {
+		System.out.println("savePredictList : " + array.length);
 		tmsPredictRepo.saveAll(Arrays.asList(array));
 	}
 }

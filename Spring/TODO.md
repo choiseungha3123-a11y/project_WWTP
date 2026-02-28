@@ -21,9 +21,13 @@ pm2 start npm --name "FlowWater-app-dev" -- run dev
 pm2 restart 6 --update-env
 pm2 restart all
 pm2 list
--pm2에 등록된 내용을 서버 재시작 시에도 자동으로 실행-
-pm2 startup
-pm2 unstartup
+
+# 각 서버 로그 확인
+pm2 logs FlowWater-Fastapi
+pm2 logs FlowWater-server
+pm2 logs FlowWater-app
+
+
 
 -NGINX(포트 포워딩용) 관련-
 sudo systemctl enable nginx
@@ -44,6 +48,9 @@ sudo ss -tunlp
 
 -남은 용량 확인-
 df -h
+
+-서버 재실행
+
 
 http://www.projectwwtp.kro.kr/api/swagger-ui/index.html
 

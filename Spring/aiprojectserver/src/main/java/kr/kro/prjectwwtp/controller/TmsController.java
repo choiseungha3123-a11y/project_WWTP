@@ -238,15 +238,25 @@ public class TmsController {
 		}
 	}
 	
-	//@GetMapping("/test")
+	@GetMapping("/test")
 	@Scheduled(cron = "${scheduler.predict.cron}", zone="${spring.timezone}")
-	public void getTmsPredict() {
-		if(!enablePredict) return;
+	public ResponseEntity<Object>   getTmsPredict() {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		if(!enablePredict) {
+			res.setSuccess(false);
+			res.setErrorMsg("예측 서비스가 비활성화 되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
 		try {
-			LocalDateTime now = LocalDateTime.now();
+			LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
 			LocalDateTime fakeNow = tmsService.getFakeNow()
 									.withHour(now.getHour())
-									.withMinute(now.getMinute());
+									.withMinute(now.getMinute())
+									.withSecond(0)
+									.withNano(0);
 			List<TmsImputate> tmsList = tmsService.getTmsImputateListByDate(fakeNow);
 			System.out.println("tmsList : " + tmsList.size());
 			List<WeatherDTO> aws368 = weatherService.findWeatherDTOByStnAndLogTimeBetween(368, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
@@ -256,21 +266,55 @@ public class TmsController {
 			List<WeatherDTO> aws569 = weatherService.findWeatherDTOByStnAndLogTimeBetween(569, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
 			System.out.println("aws569 : " + aws569.size());
 			
-			TmsPredict[] predictions = requestTms(aws368, aws541, aws569, tmsList);
-			List<TmsImputate> tmsListReal = tmsService.getTmsImputateListBetwwen(fakeNow.withSecond(0).withNano(0), fakeNow.plusHours(12).withSecond(0).withNano(0));
+			TmsPredict[] predictions = requestTms(now, aws368, aws541, aws569, tmsList);
+			List<TmsImputate> tmsListReal = tmsService.getTmsImputateListBetwwen(fakeNow, fakeNow.plusHours(12));
 			
 			// 데이터 확인을 위해 데이터를 임시로 cvs로 저장
 			// tmsList, aws368, aws541, asw569, predictions, 실제 이 기간의 tms 실측값
 			if(predictions != null)
-				saveToCsv(tmsList, aws368, aws541, aws569, predictions, tmsListReal, fakeNow);
+				saveToCsv(now, tmsList, aws368, aws541, aws569, predictions, tmsListReal, fakeNow);
 								
 		} catch (Exception e) {
 			e.printStackTrace();
 			logService.addErrorLog("TmsController.java", "getTmsPredict()", e.getMessage());
+			res.setErrorMsg(e.getMessage());
 		}
+		return ResponseEntity.ok().body(res);
+	}
+	
+	public TmsPredict[] requestTms(LocalDateTime now, List<WeatherDTO> aws368, List<WeatherDTO> aws541, List<WeatherDTO> aws569, List<TmsImputate>tmsList) {
+		String errorMsg = null;
+		int predictSize = 0;
+		try {
+			Input<TmsImputate> input = new Input<>(aws368, aws541, aws569, tmsList);
+			predictIn<TmsImputate> pIn = new predictIn<>(input);
+			System.out.println("requestTms start");
+			fastApiResponseDTO response = apiService.getPredict("/predict/tms", pIn);
+			System.out.println("response = " + response.isOk());
+			if(response.isOk()) {
+				TmsPredict[] predictions = extractPredictions(now, response);
+				predictSize = predictions.length;
+				//System.out.println("예측값 (0.5h~12.0h): " + java.util.Arrays.toString(predictions));
+				tmsService.savePredictList(predictions);
+				return predictions;
+			}
+			else {
+				errorMsg = response.getError();
+				System.out.println("getPredict fail : " + errorMsg);
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+			errorMsg = e.getMessage();
+			logService.addErrorLog("TmsController.java", "requestTms()", e.getMessage());
+		}
+		finally {
+			logService.addTmsLog(null, "predict", predictSize, errorMsg);
+		}
+		return null;
 	}
 	
 	private void saveToCsv(
+			LocalDateTime now,
 			List<TmsImputate> tmsList, 
 			List<WeatherDTO> aws368, 
 			List<WeatherDTO> aws541, 
@@ -279,7 +323,7 @@ public class TmsController {
 			List<TmsImputate> tmsListReal,
 			LocalDateTime fakeNow) {
 		try {
-			String fileName = "요청내용" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".csv";
+			String fileName = "요청내용" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm00")) + ".csv";
 			File file = Util.resolveFilePath(fileName);
 			
 			String data = "";
@@ -348,7 +392,7 @@ public class TmsController {
 				bw.close();
 			}
 			
-			String fileName2 = "예측내용" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".csv";
+			String fileName2 = "예측내용" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm00")) + ".csv";
 			File file2 = Util.resolveFilePath(fileName2);
 			
 			String data2 = "";
@@ -429,37 +473,12 @@ public class TmsController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	public TmsPredict[] requestTms(List<WeatherDTO> aws368, List<WeatherDTO> aws541, List<WeatherDTO> aws569, List<TmsImputate>tmsList) {
-		String errorMsg = null;
-		int predictSize = 0;
-		try {
-			Input<TmsImputate> input = new Input<>(aws368, aws541, aws569, tmsList);
-			predictIn<TmsImputate> pIn = new predictIn<>(input);
-			
-			fastApiResponseDTO response = apiService.getPredict("/predict/tms", pIn);
-			if(response.isOk()) {
-				TmsPredict[] predictions = extractPredictions(response);
-				predictSize = predictions.length;
-				System.out.println("예측값 (0.5h~12.0h): " + java.util.Arrays.toString(predictions));
-				tmsService.savePredictList(predictions);
-				return predictions;
-			}
-		}catch(Exception e) {
-			errorMsg = e.getMessage();
-			logService.addErrorLog("TmsController.java", "requestTms()", e.getMessage());
-		}
-		finally {
-			logService.addTmsLog(null, "predict", predictSize, errorMsg);
-		}
-		return null;
-	}
-	
 	/**
 	 * FastAPI 응답에서 predictions 값을 1h~12h 순으로 double 배열로 추출
 	 * @param response FastAPI 응답 DTO
 	 * @return predictions 배열 (크기: 12), 추출 실패 시 null
 	 */
-	private TmsPredict[] extractPredictions(fastApiResponseDTO response) {
+	private TmsPredict[] extractPredictions(LocalDateTime now, fastApiResponseDTO response) {
 		int predictSize = 24;
 		boolean checkOutLierToc = false;
 		boolean checkOutLierSs = false;
@@ -484,7 +503,6 @@ public class TmsController {
 			Map<String, Object> mapTp = mapper.convertValue(mapPredictions.get("tp"),new TypeReference<>() {});
 			Map<String, Object> mapFlux = mapper.convertValue(mapPredictions.get("flux"),new TypeReference<>() {});
 			Map<String, Object> mapPh = mapper.convertValue(mapPredictions.get("ph"),new TypeReference<>() {});
-			LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
 			
 			// output에서 predictions 데이터 추출
 			for(int index = 1; index <= predictSize; index++) {
@@ -510,6 +528,7 @@ public class TmsController {
 						.flux(((Number) valueFlux).doubleValue())
 						.ph(((Number) valuePh).doubleValue())
 						.tmsTime(now.plusMinutes(index * 30))
+						.createTime(now)
 						.build();
 					if(predictions[index - 1].getToc() > 15.0)
 						checkOutLierToc = true;

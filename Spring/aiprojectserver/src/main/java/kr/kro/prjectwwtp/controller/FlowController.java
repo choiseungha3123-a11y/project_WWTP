@@ -189,15 +189,25 @@ public class FlowController {
 		return ResponseEntity.ok().body(res);
 	}
 	
-	//@GetMapping("/test")
+	@GetMapping("/test")
 	@Scheduled(cron = "${scheduler.predict.cron}", zone="${spring.timezone}")
-	public void getFlowPredict() {
-		if(!enablePredict) return;
+	public ResponseEntity<Object>  getFlowPredict() {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		if(!enablePredict) {
+			res.setSuccess(false);
+			res.setErrorMsg("예측 서비스가 비활성화 되었습니다.");
+			return ResponseEntity.ok().body(res);
+		}
 		try {
-			LocalDateTime now = LocalDateTime.now();
+			LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
 			LocalDateTime fakeNow = flowService.getFakeNow()
 									.withHour(now.getHour())
-									.withMinute(now.getMinute());
+									.withMinute(now.getMinute())
+									.withSecond(0)
+									.withNano(0);
 			List<FlowImputate> flowList = flowService.getFlowImputateListByDate(fakeNow);
 			System.out.println("flowList : " + flowList.size());
 			List<WeatherDTO> aws368 = weatherService.findWeatherDTOByStnAndLogTimeBetween(368, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
@@ -206,11 +216,42 @@ public class FlowController {
 			System.out.println("aws541 : " + aws541.size());
 			List<WeatherDTO> aws569 = weatherService.findWeatherDTOByStnAndLogTimeBetween(569, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
 			System.out.println("aws569 : " + aws569.size());
-			requestFlow(aws368, aws541, aws569, flowList);
+			requestFlow(now, aws368, aws541, aws569, flowList);
 		} catch (Exception e) {
-			e.printStackTrace();
 			logService.addErrorLog("FlowController.java", "getFlowPredict()", e.getMessage());
-		}		 	
+			res.setSuccess(false);
+			res.setErrorMsg(e.getMessage());;
+		}
+		return ResponseEntity.ok().body(res);
+	}
+
+	public void requestFlow(LocalDateTime now, List<WeatherDTO> aws368, List<WeatherDTO> aws541, List<WeatherDTO> aws569, List<FlowImputate>flowList) {
+		String errorMsg = null;
+		int predictSize = 0;
+		try {
+			Input<FlowImputate> input = new Input<>(aws368, aws541, aws569, flowList);
+			predictIn<FlowImputate> pIn = new predictIn<>(input);
+			System.out.println("requestFlow start");
+			fastApiResponseDTO response = apiService.getPredict("/predict/flow", pIn);
+			System.out.println("response = " + response.isOk());
+			if(response.isOk()) {
+				FlowPredict[] predictions = extractPredictions(now, response);
+				predictSize = predictions.length;
+				//System.out.println("예측값 (0.5h~12.0h): " + java.util.Arrays.toString(predictions));
+				flowService.savePredictList(predictions);
+			}
+			else {
+				errorMsg = response.getError();
+				System.out.println("getPredict fail : " + errorMsg);
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+			errorMsg = e.getMessage();
+			logService.addErrorLog("FlowController.java", "requestFlow()", e.getMessage());
+		}
+		finally {
+			logService.addFlowLog(null, "predict", predictSize, errorMsg);
+		}
 	}
 
 	@GetMapping("/flowList")
@@ -228,39 +269,13 @@ public class FlowController {
 		
 		return ResponseEntity.ok().body(res);
 	}
-
-	public void requestFlow(List<WeatherDTO> aws368, List<WeatherDTO> aws541, List<WeatherDTO> aws569, List<FlowImputate>flowList) {
-		String errorMsg = null;
-		int predictSize = 0;
-		try {
-			Input<FlowImputate> input = new Input<>(aws368, aws541, aws569, flowList);
-			predictIn<FlowImputate> pIn = new predictIn<>(input);
-			
-			fastApiResponseDTO response = apiService.getPredict("/predict/flow", pIn);
-			if(response.isOk()) {
-				FlowPredict[] predictions = extractPredictions(response);
-				predictSize = predictions.length;
-				System.out.println("예측값 (0.5h~12.0h): " + java.util.Arrays.toString(predictions));
-				flowService.savePredictList(predictions);
-			}
-			else {
-				errorMsg = response.getError();
-			}
-		}catch(Exception e) {
-			errorMsg = e.getMessage();
-			logService.addErrorLog("FlowController.java", "requestFlow()", e.getMessage());
-		}
-		finally {
-			logService.addFlowLog(null, "predict", predictSize, errorMsg);
-		}
-	}
 	
 	/**
 	 * FastAPI 응답에서 predictions 값을 1h~12h 순으로 double 배열로 추출
 	 * @param response FastAPI 응답 DTO
 	 * @return predictions 배열 (크기: 12), 추출 실패 시 null
 	 */
-	private FlowPredict[] extractPredictions(fastApiResponseDTO response) {
+	private FlowPredict[] extractPredictions(LocalDateTime now, fastApiResponseDTO response) {
 		int predictSize = 24;
 		FlowPredict[] predictions = new FlowPredict[predictSize];
 		ObjectMapper mapper = new ObjectMapper();
@@ -273,7 +288,6 @@ public class FlowController {
 			
 			Map<String, Object> mapOutput = response.getOutput();
 			Map<String, Object> mapPredictions = mapper.convertValue(mapOutput.get("predictions"),new TypeReference<>() {});
-			LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
 			// output에서 predictions 데이터 추출
 			for(int index = 1; index <= predictSize; index++) {
 				String key = index/2 + (index % 2 == 0 ? ".0h" : ".5h");
@@ -283,6 +297,7 @@ public class FlowController {
 					predictions[index - 1] = FlowPredict.builder()
 							.flowValue(((Number) value).doubleValue())
 							.flowTime(now.plusMinutes(index * 30))
+							.createTime(now)
 							.build();
 				} else {
 					System.out.println(response);
