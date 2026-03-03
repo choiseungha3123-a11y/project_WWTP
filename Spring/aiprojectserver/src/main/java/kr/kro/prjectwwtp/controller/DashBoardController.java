@@ -463,9 +463,23 @@ public class DashBoardController {
 			//for(TmsImputate t : tmsImputateList)
 			//	t.setSs(9.0);
 			List<TmsPredict> tmsPredictList = tmsService.findPredictList(start, end);
+			if(test.visible) {
+				tmsPredictList.add(TmsPredict.builder()
+						.ph(test.ph)
+						.ss(test.ss)
+						.toc(test.toc)
+						.tn(test.tn)
+						.tp(test.tp)
+						.build());
+			}
 			List<FlowImputate> flowImputateList = flowService.getFlowImputateListByDateForDashBoard(fakeFlowNow);
 			List<FlowPredict> flowPredictList = flowService.findPredictList(start, end);
 			List<WeatherDTO> aws368 = weatherService.findWeatherDTOByStnAndLogTimeBetween(368, start, now);
+			if(test.visible) {	
+				aws368.add(WeatherDTO.builder()
+						.rn15m(test.rain)
+						.build());
+			}
 			
 			res.addData(tmsImputateList);
 			res.addData(tmsPredictList);
@@ -555,6 +569,36 @@ public class DashBoardController {
 			logService.addErrorLog("DashBoardController.java", "postMemoModify()", e.getMessage());
 		}
 		
+		
+		return ResponseEntity.ok().body(res);
+	}
+	
+	
+	@Getter
+	@Setter
+	@ToString
+	public static class TestDTO {
+		boolean visible = false;
+		double rain = 0.0;
+		double ph = 0.0;
+		double ss = 0.0;
+		double toc = 0.0;
+		double tn = 0.0;
+		double tp = 0.0;
+	}
+	
+	public static TestDTO test = new TestDTO();
+	
+	@PostMapping("/testValue")
+	public ResponseEntity<Object> postTestValue(
+			@RequestBody TestDTO req) {
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		
+		test = req;
+		System.out.println("test : " + test);
 		
 		return ResponseEntity.ok().body(res);
 	}
