@@ -37,7 +37,6 @@ public class Member {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Schema(description = "고유번호", example = "1~")
 	private long userNo;
-	@Convert(converter = CryptoStringConverter.class)
 	@Schema(description = "ID", example = "user123")
 	private String userId;
 	@Convert(converter = CryptoStringConverter.class)

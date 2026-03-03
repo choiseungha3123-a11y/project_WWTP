@@ -5,20 +5,36 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import kr.kro.prjectwwtp.config.CryptoStringConverter;
 import kr.kro.prjectwwtp.config.PasswordEncoder;
 import kr.kro.prjectwwtp.domain.Member;
 import kr.kro.prjectwwtp.domain.Role;
+import kr.kro.prjectwwtp.persistence.AccessLogRepository;
+import kr.kro.prjectwwtp.persistence.LoginLogRepository;
+import kr.kro.prjectwwtp.persistence.MailLogRepository;
 import kr.kro.prjectwwtp.persistence.MemberRepository;
+import kr.kro.prjectwwtp.persistence.MemoLogRepository;
+import kr.kro.prjectwwtp.persistence.MemoRepository;
+import kr.kro.prjectwwtp.persistence.PublicRepository;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class MemberService {
+    private final CryptoStringConverter converter;
 	private final MemberRepository memberRepo;
+	private final AccessLogRepository accessLog;
+	private final LoginLogRepository loginLog;
+	private final MailLogRepository mailLog;
+	private final MemoLogRepository memoLog;
+	private final MemoRepository memoRepo;
+	private final PublicRepository publicRepo;
 	private PasswordEncoder encoder = new PasswordEncoder();
 	
 	public Member getByIdAndPassword(String userId, String password) {
+		List<Member> list = memberRepo.findAll();
 		Optional<Member> opt =  memberRepo.findByUserId(userId);
 		if(opt.isEmpty()) {
 			return null;
@@ -42,7 +58,8 @@ public class MemberService {
 	}
 	
 	public Member findById(String userId) {
-		Optional<Member> opt = memberRepo.findByUserId(userId);
+		String encryptedUserId = converter.convertToDatabaseColumn(userId);
+		Optional<Member> opt = memberRepo.findByUserId(encryptedUserId);
 		if(opt.isEmpty()) {
 			return null;
 		}
@@ -116,6 +133,21 @@ public class MemberService {
 		// 블라인드 처리
 		member.setDeleteTime(LocalDateTime.now());
 		memberRepo.save(member);
+	}
+	
+	@Transactional
+	public void deleteFromDB(Member member) {
+		// DB에서 완전 삭제
+		accessLog.deleteByMember(member);
+		loginLog.deleteByMember(member);
+		mailLog.deleteByMember(member);
+		memoLog.deleteByMember(member);	
+		memoRepo.deleteByCreateMember(member);
+		memoRepo.deleteByModifyMember(member);
+		memoRepo.deleteByDisableMember(member);
+		publicRepo.deleteByMember(member);
+		
+		memberRepo.deleteById(member.getUserNo());
 	}
 	
 	public void addEmailKey(Long userNo, String key) {

@@ -11,6 +11,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -695,6 +696,27 @@ public class MemberController {
 			return ResponseEntity.ok().body(res);
 		}
 		memberService.deleteMember(deleteMember);
+		//System.out.println("delete success");
+		
+		return ResponseEntity.ok().body(res);
+	}
+	
+	@DeleteMapping("/deleteFromDB")
+	public ResponseEntity<Object> deleteFromDB(
+			HttpServletRequest request,
+			@RequestBody memberDeleteDTO req) {
+		//System.out.println("req : " + req);
+		responseDTO res = responseDTO.builder()
+				.success(true)
+				.errorMsg(null)
+				.build();
+		Member deleteMember = memberService.findByNo(req.userNo);
+		if(deleteMember == null) {
+			res.setSuccess(false);
+			res.setErrorMsg("존재하지 않는 회원정보입니다.");
+			return ResponseEntity.ok().body(res);
+		}
+		memberService.deleteFromDB(deleteMember);
 		//System.out.println("delete success");
 		
 		return ResponseEntity.ok().body(res);
