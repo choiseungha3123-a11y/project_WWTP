@@ -20,9 +20,9 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
   });
   
   const [loading, setLoading] = useState(false);
-  const [emailError, setEmailError] = useState(""); // 이메일 중복/형식 에러 메시지
+  const [emailError, setEmailError] = useState("");
 
-  // 아이디 입력 시 자동으로 초기 비밀번호 세팅 (사용자 편의 기능)
+  // 1. 아이디 입력 시 자동으로 초기 비밀번호 세팅
   useEffect(() => {
     if (formData.userId) {
       const defaultPw = `${formData.userId}1234`;
@@ -40,7 +40,7 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
     }
   }, [formData.userId]);
 
-  // 모달이 열릴 때 상태 초기화
+  // 2. 모달이 열릴 때 상태 초기화
   useEffect(() => {
     if (isOpen) {
       setFormData({
@@ -55,7 +55,7 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
     }
   }, [isOpen]);
 
-  // 백엔드 API를 이용한 이메일 중복 체크 (선택 사항)
+  // 3. 이메일 중복 체크
   const checkEmailDuplicate = async (email: string) => {
     if (!email || !email.includes('@')) return;
     try {
@@ -70,8 +70,6 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
       console.error("이메일 중복 체크 실패", err);
     }
   };
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,7 +96,8 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
           userId: formData.userId,
           password: formData.password,
           userName: formData.userName,
-          userEmail: formData.email, // 백엔드 DTO 필드명인 'userEmail'에 매칭
+          userEmail: formData.email,
+          role: formData.role
         }),
       });
 
@@ -119,6 +118,8 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-110 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <motion.div 
@@ -132,7 +133,6 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* 아이디 영역 */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">아이디 (ID)</label>
             <input 
@@ -145,7 +145,6 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
             />
           </div>
 
-          {/* 이름 영역 */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">사용자 이름</label>
             <input 
@@ -158,7 +157,6 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
             />
           </div>
 
-          {/* 이메일 영역 (추가됨) */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">사용자 이메일</label>
             <input 
@@ -166,14 +164,13 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
               required
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
-              onBlur={() => checkEmailDuplicate(formData.email)} // 입력 후 중복 체크 수행
+              onBlur={() => checkEmailDuplicate(formData.email)}
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 outline-none transition-all ${emailError ? 'border-red-500 focus:ring-red-200' : 'focus:ring-blue-500'}`}
               placeholder="example@email.com"
             />
             {emailError && <p className="text-[10px] text-red-500 mt-1 ml-1">{emailError}</p>}
           </div>
 
-          {/* 비밀번호 영역 */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1">비밀번호</label>
@@ -197,7 +194,6 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
             </div>
           </div>
 
-          {/* 권한 설정 영역 */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">권한 설정</label>
             <select 
@@ -211,7 +207,6 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
             </select>
           </div>
 
-          {/* 하단 버튼 영역 */}
           <div className="flex gap-3 mt-6">
             <button 
               type="button" 

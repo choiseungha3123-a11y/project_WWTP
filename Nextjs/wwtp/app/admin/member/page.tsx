@@ -52,9 +52,7 @@ export default function MemberManagementPage() {
 
   const handleSendReport = async (userNo: number, userId: string) => {
     if (!confirm(`${userId}님에게 12시간 예측 보고서를 발송하시겠습니까?`)) return;
-
     setIsReporting(userNo);
-
     try {
       const res = await fetch("/api/board/sendReportTo", {
         method: "POST",
@@ -64,9 +62,7 @@ export default function MemberManagementPage() {
         },
         body: JSON.stringify({userNo : userNo }) 
       });
-
       const result = await res.json();
-
       if (result.success) {
         alert("보고서가 메일로 성공적으로 발송되었습니다.");
       } else {
@@ -82,7 +78,6 @@ export default function MemberManagementPage() {
 
   const handleSendAuthEmail = async (userNo: number, userEmail: string) => {
     if (!confirm(`${userEmail} 주소로 인증 메일을 발송하시겠습니까?`)) return;
-
     try {
       const res = await fetch("/api/member/validateEmail", {
         method: "POST",
@@ -92,9 +87,7 @@ export default function MemberManagementPage() {
         },
         body: JSON.stringify({ userNo: userNo })
       });
-
       const result = await res.json();
-
       if (result.success) {
         alert("인증 메일이 성공적으로 발송되었습니다.");
       } else {
@@ -109,7 +102,6 @@ export default function MemberManagementPage() {
   const handleResetPassword = async (userNo: number, userId: string) => {
     const newPassword = `${userId}1234`;
     if (!confirm(`${userId}님의 비밀번호를 '${newPassword}'로 초기화하시겠습니까?`)) return;
-
     try {
       const res = await fetch("/api/member/modify", {
         method: "PATCH", 
@@ -119,7 +111,6 @@ export default function MemberManagementPage() {
         },
         body: JSON.stringify({ userNo: userNo, password: newPassword })
       });
-
       const result = await res.json();
       if (result.success) {
         alert(`비밀번호가 성공적으로 초기화되었습니다.\n새 비밀번호: ${newPassword}`);
@@ -134,7 +125,6 @@ export default function MemberManagementPage() {
 
   const handleDelete = async (userNo: number, userId: string) => {
     if (!confirm(`${userId}(${userNo}) 사원을 삭제하시겠습니까?`)) return;
-    
     try {
       const res = await fetch("/api/member/delete", {
         method: "DELETE",
@@ -157,7 +147,6 @@ export default function MemberManagementPage() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-white p-8 font-sans">
-      {/* 상단 섹션 */}
       <div className="max-w-7xl mx-auto flex justify-between items-end mb-10">
         <div>
           <button 
@@ -179,17 +168,22 @@ export default function MemberManagementPage() {
         </button>
       </div>
 
-      {/* 테이블 섹션 */}
       <div className="max-w-7xl mx-auto bg-slate-800/40 rounded-3xl border border-white/10 overflow-hidden backdrop-blur-md shadow-2xl overflow-x-auto">
-        <table className="w-full text-sm sm:text-base min-w-275"> 
+        <table className="w-full text-sm sm:text-base"> 
           <thead>
             <tr className="border-b border-white/5 bg-white/5 text-slate-400 text-xs uppercase tracking-wider">
-              <th className="p-6 text-center font-semibold w-20">No</th>
-              <th className="p-6 text-center font-semibold w-40">아이디</th>
-              <th className="p-6 text-center font-semibold w-1/4">이메일</th> 
-              <th className="p-6 text-center font-semibold w-32">이름</th>
-              <th className="p-6 text-center font-semibold w-32">권한</th>
-              <th className="p-6 text-right font-semibold pr-10">관리 액션</th>
+              {/* No: 고정 너비 줄임 */}
+              <th className="p-6 text-center font-semibold w-16">No</th>
+              {/* 아이디: 비율 축소 */}
+              <th className="p-6 text-center font-semibold w-32">아이디</th>
+              {/* 이메일: 상대적으로 넓게 설정 */}
+              <th className="p-6 text-center font-semibold">이메일</th> 
+              {/* 이름: 과감하게 확대 */}
+              <th className="p-6 text-center font-semibold w-48">이름</th>
+              {/* 권한: 고정 너비 */}
+              <th className="p-6 text-center font-semibold w-36">권한</th>
+              {/* 관리 액션: 너비 확보 및 우측 여백 */}
+              <th className="p-6 text-right font-semibold pr-12 w-95">관리 액션</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -206,11 +200,11 @@ export default function MemberManagementPage() {
                   className="hover:bg-white/5 transition-colors group"
                 >
                   <td className="p-6 text-center text-slate-500 text-sm">{mem.userNo}</td>
-                  <td className="p-6 text-center font-bold text-blue-100">{mem.userId}</td>
+                  <td className="p-6 text-center font-bold text-blue-100 truncate max-w-30">{mem.userId}</td>
                   
                   <td className="p-6 text-center">
                     <div className="flex flex-col items-center justify-center gap-1.5">
-                      <div className="max-w-xs text-slate-400 text-sm italic truncate" title={mem.userEmail}>
+                      <div className="max-w-50 text-slate-400 text-sm italic truncate" title={mem.userEmail}>
                         {mem.userEmail || "-"}
                       </div>
                       {mem.userEmail && (
@@ -230,28 +224,35 @@ export default function MemberManagementPage() {
                     </div>
                   </td>
                   
-                  <td className="p-6 text-center text-slate-300 font-medium">{mem.userName}</td>
+                  {/* 이름: 과감한 너비 확보 및 줄바꿈 방지 */}
+                  <td className="p-6 text-center text-slate-300 font-medium whitespace-nowrap overflow-hidden">
+                    {mem.userName}
+                  </td>
+
                   <td className="p-6 text-center text-sm">
                     <span className={`inline-block px-3 py-1 rounded-full text-xs ${mem.role === 'ROLE_ADMIN' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
                       {mem.role}
                     </span>
                   </td>
-                  <td className="p-6 text-right pr-10">
-                    <div className="flex justify-end items-center gap-2">
-                      {/* [보고서 발송] 인증된 계정일 때만 초기화 버튼 왼쪽에 노출 */}
-                      {mem.validateEmail && (
-                        <button 
-                          onClick={() => handleSendReport(mem.userNo, mem.userId)}
-                          disabled={isReporting === mem.userNo}
-                          className={`${
-                            isReporting === mem.userNo ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                          } px-3 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap font-medium`}
-                        >
-                          {isReporting === mem.userNo ? "발송 중..." : "보고서 발송"}
-                        </button>
-                      )}
 
-                      {/* [비밀번호 초기화] 오른쪽에서 두 번째 고정 */}
+                  <td className="p-6 text-right pr-12">
+                    <div className="flex justify-end items-center gap-2">
+                      {/* [보고서 발송] 위치 고정을 위한 전용 박스 (w-24) */}
+                      <div className="w-24 flex justify-end">
+                        {mem.validateEmail && (
+                          <button 
+                            onClick={() => handleSendReport(mem.userNo, mem.userId)}
+                            disabled={isReporting === mem.userNo}
+                            className={`${
+                              isReporting === mem.userNo ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                            } px-3 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap font-medium`}
+                          >
+                            {isReporting === mem.userNo ? "발송 중..." : "보고서 발송"}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* [비밀번호 초기화] 위치 고정 */}
                       <button 
                         onClick={() => handleResetPassword(mem.userNo, mem.userId)}
                         className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap"
@@ -259,7 +260,7 @@ export default function MemberManagementPage() {
                         비밀번호 초기화
                       </button>
 
-                      {/* [삭제] 가장 오른쪽에 고정 */}
+                      {/* [삭제] 위치 고정 */}
                       <button 
                         onClick={() => handleDelete(mem.userNo, mem.userId)}
                         className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-3 py-1.5 rounded-lg text-xs transition-all border border-red-500/20"
