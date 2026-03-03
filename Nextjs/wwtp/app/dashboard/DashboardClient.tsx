@@ -221,7 +221,7 @@ export default function DashboardPage() {
           <div className={`flex-none border rounded-4xl overflow-hidden transition-all duration-500 ${
             isDarkMode ? "bg-white/2 border-white/5" : "bg-white/70 border-white shadow-lg"
           }`}>
-            <Row2RiskDetail isDarkMode={isDarkMode} />
+            <Row2RiskDetail isDarkMode={isDarkMode} latestWeather={latestWeather} />
           </div>
           <div className={`flex-none border rounded-4xl overflow-hidden transition-all duration-500 ${
             isDarkMode ? "bg-white/2 border-white/5" : "bg-white/70 border-white shadow-lg"
