@@ -64,8 +64,10 @@ interface PulsingDotProps {
   lastFullTime: string;
 }
 
+type StatusType = "danger" | "warning" | "normal";
+
 // ----------------------------------------------------------------------
-// 2. 유틸리티 함수 및 스토어 설정
+// 2. 유틸리티 함수 및 상태 판별 로직
 // ----------------------------------------------------------------------
 
 const fetcher = async (url: string): Promise<BoardViewResponse> => {
@@ -92,50 +94,47 @@ const formatFullTime = (timeStr: string): string => {
   return timeStr.replace(/[-T:]/g, "").substring(0, 12);
 };
 
+// 실시간 상태 판별 함수
+const getStatus = (title: string, val: number | undefined): StatusType => {
+  if (val === undefined || val === null) return "normal";
+  
+  // pH 특수 로직
+  if (title === "pH") {
+    if (val <= 5.8 || val >= 8.5) return "danger";
+    if (val <= 6.0 || val >= 8.3) return "warning";
+    return "normal";
+  }
+  
+  // 수질 지표 기준값
+  const limits: Record<string, number> = { 
+    "TOC": 15, 
+    "T-N": 20, 
+    "T-P": 0.5, 
+    "SS": 10 
+  };
+  
+  const limit = limits[title];
+  if (!limit) return "normal";
+
+  if (val >= limit) return "danger";
+  if (val >= limit * 0.9) return "warning";
+  return "normal";
+};
+
 const subscribe = () => () => {}; 
 const getSnapshot = () => true;   
 const getServerSnapshot = () => false;
 
-// ----------------------------------------------------------------------
-// [수정] shadow 오류 해결 및 타입 안전성 확보
-// ----------------------------------------------------------------------
 const PulsingDot = (props: PulsingDotProps) => {
   const { cx, cy, stroke, payload, lastFullTime } = props;
-
   if (!cx || !cy || !payload || payload.fullTime !== lastFullTime) return null;
-
   return (
     <g>
-      {/* 바깥쪽 퍼지는 애니메이션 */}
       <circle cx={cx} cy={cy} r={6} fill={stroke} opacity="0.6">
-        <animate
-          attributeName="r"
-          from="6"
-          to="14"
-          dur="1.8s"
-          begin="0s"
-          repeatCount="indefinite"
-        />
-        <animate
-          attributeName="opacity"
-          from="0.6"
-          to="0"
-          dur="1.8s"
-          begin="0s"
-          repeatCount="indefinite"
-        />
+        <animate attributeName="r" from="6" to="14" dur="1.8s" begin="0s" repeatCount="indefinite" />
+        <animate attributeName="opacity" from="0.6" to="0" dur="1.8s" begin="0s" repeatCount="indefinite" />
       </circle>
-      
-      {/* 중심점: shadow 속성 대신 style의 filter를 사용 */}
-      <circle 
-        cx={cx} 
-        cy={cy} 
-        r={4.5} 
-        fill={stroke} 
-        stroke="#ffffff" 
-        strokeWidth={2} 
-        style={{ filter: "drop-shadow(0px 0px 3px rgba(0,0,0,0.5))" }}
-      />
+      <circle cx={cx} cy={cy} r={4.5} fill={stroke} stroke="#ffffff" strokeWidth={2} style={{ filter: "drop-shadow(0px 0px 3px rgba(0,0,0,0.5))" }} />
     </g>
   );
 };
@@ -194,28 +193,19 @@ export default function Row1Charts({ isDarkMode = true }: Row1Props) {
     processFlowItems(actualFlow, true);
     processFlowItems(predictFlow, false);
 
-    const sortedData = Array.from(mergedMap.values()).sort((a, b) => 
-      a.fullTime.localeCompare(b.fullTime)
-    );
-    
+    const sortedData = Array.from(mergedMap.values()).sort((a, b) => a.fullTime.localeCompare(b.fullTime));
     const lastActualRecord = actualTms.length > 0 ? actualTms[actualTms.length - 1] : null;
     const lastActualTimeStr = lastActualRecord ? formatFullTime(lastActualRecord.SYS_TIME) : "";
     const lastFlow = actualFlow.length > 0 ? actualFlow[actualFlow.length - 1] : null;
 
-    const latest: LatestValues | null = lastActualRecord ? {
-      ...lastActualRecord,
-      Q_in: lastFlow?.Q_in
-    } : null;
-
-    return { chartData: sortedData, latestValues: latest, lastActualTime: lastActualTimeStr };
+    return { 
+      chartData: sortedData, 
+      latestValues: lastActualRecord ? { ...lastActualRecord, Q_in: lastFlow?.Q_in } : null, 
+      lastActualTime: lastActualTimeStr 
+    };
   }, [rawData]);
 
   const themeColors = {
-    cardBg: isDarkMode ? "bg-slate-700/80" : "bg-white",
-    chartBoxBg: isDarkMode ? "bg-slate-800/40" : "bg-slate-50/50",
-    border: isDarkMode ? "border-white/10" : "border-blue-100",
-    label: isDarkMode ? "text-slate-200" : "text-blue-900",
-    unit: isDarkMode ? "text-slate-300" : "text-slate-500",
     grid: isDarkMode ? "#ffffff08" : "#e2e8f0",
     axis: isDarkMode ? "#475569" : "#94a3b8",
     tick: isDarkMode ? "#94a3b8" : "#64748b",
@@ -224,95 +214,116 @@ export default function Row1Charts({ isDarkMode = true }: Row1Props) {
     tooltipText: isDarkMode ? "#f8fafc" : "#1e293b"
   };
 
-  if (isLoading || !isClient) return <div className="p-4 text-slate-500">Loading...</div>;
-  if (error) return <div className="p-4 text-red-400">Error!</div>;
-
   const renderRow = (
     title: string, 
     color: string, 
     keys: { actual: string; predict: string }, 
     latestVal: number | undefined, 
     unit: string = ""
-  ) => (
-    <div className="flex w-full items-stretch mb-5 last:mb-0 h-24">
-      <div 
-        className={`w-32 rounded-l-2xl border-y border-l flex flex-col justify-center items-center p-3 shrink-0 shadow-lg transition-colors duration-500 ${themeColors.cardBg} ${themeColors.border}`}
-        style={{ borderLeft: `4px solid ${color}` }}
-      >
-        <span className={`text-xl font-bold mb-1 uppercase tracking-wider ${themeColors.label}`}>{title}</span>
-        <span className="text-xl font-black tracking-tighter drop-shadow-md" style={{ color }}>
-          {latestVal !== undefined && latestVal !== null ? latestVal.toFixed(2) : "-"}
-        </span>
-        {unit && <span className={`text-[10px] mt-1 font-semibold ${themeColors.unit}`}>{unit}</span>}
-      </div>
+  ) => {
+    const status = getStatus(title, latestVal);
+    
+    // 상태별 동적 스타일 설정
+    const getStatusStyles = () => {
+      if (status === "danger") return {
+        cardBg: isDarkMode ? "bg-red-900/40" : "bg-red-50",
+        border: "border-red-500/50",
+        label: isDarkMode ? "text-red-200" : "text-red-700",
+        valColor: isDarkMode ? "text-red-400" : "text-red-600",
+        chartBg: isDarkMode ? "bg-red-950/20" : "bg-red-50/30",
+        lineColor: "#ef4444"
+      };
+      if (status === "warning") return {
+        cardBg: isDarkMode ? "bg-amber-900/30" : "bg-amber-50",
+        border: "border-amber-500/40",
+        label: isDarkMode ? "text-amber-200" : "text-amber-700",
+        valColor: isDarkMode ? "text-amber-400" : "text-amber-600",
+        chartBg: isDarkMode ? "bg-amber-950/10" : "bg-amber-50/20",
+        lineColor: "#f59e0b"
+      };
+      return {
+        cardBg: isDarkMode ? "bg-slate-700/80" : "bg-white",
+        border: isDarkMode ? "border-white/10" : "border-blue-100",
+        label: isDarkMode ? "text-slate-200" : "text-blue-900",
+        valColor: color, // Normal 상태에선 고유 색상 유지
+        chartBg: isDarkMode ? "bg-slate-800/40" : "bg-slate-50/50",
+        lineColor: color
+      };
+    };
 
-      <div className={`flex-1 ml-1 rounded-r-2xl border p-2 overflow-hidden shadow-sm transition-colors duration-500 ${themeColors.chartBoxBg} ${themeColors.border}`}>
-        <ResponsiveContainer width="100%" height={100}>
-          <LineChart data={chartData} margin={{ top: 5, right: 10, left: -30, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={themeColors.grid} vertical={false} />
-            <XAxis 
-              dataKey="fullTime" 
-              tick={{ fontSize: 9, fill: themeColors.tick }} 
-              stroke={themeColors.axis} 
-              interval={5} 
-              tickFormatter={(value) => {
-                if (value && value.length >= 12) {
-                  return `${value.substring(8, 10)}:${value.substring(10, 12)}`;
-                }
-                return value;
-              }}
-            />
-            <YAxis tick={{ fontSize: 9, fill: themeColors.tick }} stroke={themeColors.axis} domain={['auto', 'auto']} />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: themeColors.tooltipBg, 
-                border: `1px solid ${themeColors.tooltipBorder}`, 
-                fontSize: '11px', 
-                borderRadius: '8px', 
-                color: themeColors.tooltipText 
-              }} 
-              itemStyle={{ fontWeight: 'bold' }}
-              labelFormatter={(value) => {
-                if (value && value.length >= 12) {
-                  return `${value.substring(8, 10)}:${value.substring(10, 12)}`;
-                }
-                return value;
-              }}
-            />
-            <ReferenceLine 
-              x={lastActualTime} 
-              stroke={isDarkMode ? "#ffffff50" : "#00000030"} 
-              strokeDasharray="3 3" 
-            />
-            
-            <Line 
-              type="monotone" 
-              dataKey={keys.actual} 
-              stroke={color} 
-              strokeWidth={3} 
-              dot={<PulsingDot lastFullTime={lastActualTime} />} 
-              connectNulls 
-              isAnimationActive={false} 
-            />
-            
-            <Line 
-              type="monotone" 
-              dataKey={keys.predict} 
-              stroke={color} 
-              strokeWidth={2} 
-              strokeDasharray="4 4" 
-              dot={false} 
-              connectNulls 
-              isAnimationActive={false} 
-            />
-          </LineChart>
-        </ResponsiveContainer>
+    const s = getStatusStyles();
+
+    return (
+      <div className="flex w-full items-stretch mb-5 last:mb-0 h-24">
+        {/* 왼쪽 정보 박스 */}
+        <div 
+          className={`w-32 rounded-l-2xl border-y border-l flex flex-col justify-center items-center p-3 shrink-0 shadow-lg transition-all duration-500 ${s.cardBg} ${s.border}`}
+          style={{ borderLeft: `4px solid ${s.lineColor}` }}
+        >
+          <span className={`text-xl font-bold mb-1 uppercase tracking-wider ${s.label}`}>{title}</span>
+          <span className={`text-xl font-black tracking-tighter drop-shadow-md ${s.valColor}`}>
+            {latestVal !== undefined && latestVal !== null ? latestVal.toFixed(2) : "-"}
+          </span>
+          {unit && <span className={`text-[10px] mt-1 font-semibold ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>{unit}</span>}
+        </div>
+
+        {/* 오른쪽 차트 박스 */}
+        <div className={`flex-1 ml-1 rounded-r-2xl border p-2 overflow-hidden shadow-sm transition-all duration-500 ${s.chartBg} ${s.border}`}>
+          <ResponsiveContainer width="100%" height={100}>
+            <LineChart data={chartData} margin={{ top: 5, right: 10, left: -30, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={themeColors.grid} vertical={false} />
+              <XAxis 
+                dataKey="fullTime" 
+                tick={{ fontSize: 9, fill: themeColors.tick }} 
+                stroke={themeColors.axis} 
+                interval={5} 
+                tickFormatter={(value) => (value && value.length >= 12) ? `${value.substring(8, 10)}:${value.substring(10, 12)}` : value}
+              />
+              <YAxis tick={{ fontSize: 9, fill: themeColors.tick }} stroke={themeColors.axis} domain={['auto', 'auto']} />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: themeColors.tooltipBg, 
+                  border: `1px solid ${themeColors.tooltipBorder}`, 
+                  fontSize: '11px', 
+                  borderRadius: '8px', 
+                  color: themeColors.tooltipText 
+                }} 
+                labelFormatter={(value) => (value && value.length >= 12) ? `${value.substring(8, 10)}:${value.substring(10, 12)}` : value}
+              />
+              <ReferenceLine x={lastActualTime} stroke={isDarkMode ? "#ffffff50" : "#00000030"} strokeDasharray="3 3" />
+              
+              <Line 
+                type="monotone" 
+                dataKey={keys.actual} 
+                stroke={s.lineColor} 
+                strokeWidth={3} 
+                dot={<PulsingDot lastFullTime={lastActualTime} />} 
+                connectNulls 
+                isAnimationActive={false} 
+              />
+              
+              <Line 
+                type="monotone" 
+                dataKey={keys.predict} 
+                stroke={s.lineColor} 
+                strokeWidth={2} 
+                strokeDasharray="4 4" 
+                dot={false} 
+                connectNulls 
+                isAnimationActive={false} 
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  if (isLoading || !isClient) return <div className="p-4 text-slate-500">Loading...</div>;
+  if (error) return <div className="p-4 text-red-400">Error!</div>;
 
   return (
-    <div className="flex flex-col w-full h-full p-4 overflow-y-auto">
+    <div className="flex flex-col w-full h-full p-4 overflow-y-auto custom-scrollbar">
       {renderRow("유입유량", "#ef4444", { actual: "Q_in_A", predict: "Q_in_P" }, latestValues?.Q_in, "m³/hr")}
       {renderRow("FLUX", "#f97316", { actual: "flux_A", predict: "flux_P" }, latestValues?.FLUX_VU, "m³/hr")}
       {renderRow("pH", "#facc15", { actual: "ph_A", predict: "ph_P" }, latestValues?.PH_VU)}
