@@ -95,16 +95,6 @@ def merge_input_data(data_list, aws368, aws541, aws569) -> pd.DataFrame:
     if df.shape[0] == 0:
         raise ValueError("merge_input_data: join 결과가 비어 있습니다. 타임스탬프를 확인하세요.")
 
-    # FLUX_VU: 누적값 → 증분값 변환 (TMS 노트북과 동일, 리샘플링 전에 처리)
-    if "FLUX_VU" in df.columns:
-        flux = df["FLUX_VU"].copy()
-        flux_diff = flux.diff()
-        reset_mask = flux_diff < 0      # 일 초기화 지점
-        flux_diff[reset_mask] = flux[reset_mask]
-        flux_diff.iloc[0] = 0
-        flux_diff = flux_diff.clip(lower=0)
-        df["FLUX_VU"] = flux_diff
-
     # 30분 리샘플링
     df_resampled = resample_to_30min(df)
 

@@ -1,0 +1,12 @@
+index,feature_name
+0,TOC_VU_lag1
+1,TN_VU_lag1
+2,TOC_VU_lag2
+3,TN_VU_lag2
+4,TOC_load
+5,TN_load
+6,TOC_load_per_air
+7,TN_load_per_air
+8,aeration_total
+9,pump_total
+10,WATER_TEMP_in
