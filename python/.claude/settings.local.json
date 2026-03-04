@@ -31,7 +31,8 @@
       "Bash(\"/c/Users/kimuc/miniconda3/python.exe\" -c \":*)",
       "Bash(\"/c/Users/kimuc/miniconda3/python.exe\" -c:*)",
       "Bash(\"/c/Users/kimuc/AppData/Local/Programs/Python/Python312/python.exe\" -c:*)",
-      "Bash(\"/c/Users/kimuc/AppData/Local/Programs/Python/Python312/python.exe\" -c \":*)"
+      "Bash(\"/c/Users/kimuc/AppData/Local/Programs/Python/Python312/python.exe\" -c \":*)",
+      "Bash(tail:*)"
     ]
   }
 }
