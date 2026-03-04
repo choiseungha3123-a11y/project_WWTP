@@ -120,6 +120,8 @@ public class Util {
 		// try several common patterns
 		String[] patterns = new String[] {
 			"yyyy-MM-dd HH:mm:ss",
+			"yyyy-MM-dd HH:mm",
+			"yyyy-MM-dd H:mm",
 			"M/d/yy H:mm",
 			"yyyy-MM-dd'T'HH:mm:ss",
 			"yyyyMMddHHmm",

@@ -67,6 +67,8 @@ public class TmsService {
 		int lineNo = 0;
 		List<TmsOrigin> list = new ArrayList<>();
 		String line;
+		DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyyMMdd");
+		double preFlux = 0;
 		try (BufferedReader br = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"))) {
 			while ((line = br.readLine()) != null) {
 				lineNo++;
@@ -87,6 +89,8 @@ public class TmsService {
 				Double ph = Util.parseDoubleOrNullEmptyOk(cols[2]);
 				Double ss = Util.parseDoubleOrNullEmptyOk(cols[3]);
 				Double flux = Util.parseDoubleOrNullEmptyOk(cols[4]);
+				Double modifyFlux = flux - preFlux;
+				preFlux = flux;
 				Double tn = Util.parseDoubleOrNullEmptyOk(cols[5]);
 				Double tp = Util.parseDoubleOrNullEmptyOk(cols[6]);
 				TmsOrigin t = TmsOrigin.builder()
@@ -94,11 +98,12 @@ public class TmsService {
 					.toc(toc)
 					.ph(ph)
 					.ss(ss)
-					.flux(flux)
+					.flux(modifyFlux)
 					.tn(tn)
 					.tp(tp)
 					.build();
-				list.add(t);		
+				
+				list.add(t);	
 				
 				if(list.size() >= batchSize) {
 					addCount += saveBatch(list);
@@ -165,9 +170,23 @@ public class TmsService {
 	
 	public List<TmsImputate> getTmsImputateListByDateForDashBoard(LocalDateTime end) {
 		LocalDateTime start = end.minusDays(1).plusMinutes(1);
+		LocalDateTime begin = start.withHour(0).withMinute(0).withSecond(0).withNano(0);
 		LocalDateTime now = LocalDateTime.now().minusDays(1);
-		List<TmsImputate> list = tmsImputateRepo.findByTmsTimeBetweenOrderByTmsTime(start, end);
+		List<TmsImputate> list = tmsImputateRepo.findByTmsTimeBetweenOrderByTmsTime(begin, end);
 		List<TmsImputate> ret = new ArrayList<TmsImputate>();
+		// 누적값으로 전환
+		double accFlux = 0;
+		boolean init = false;
+		for(TmsImputate tms : list) {
+			if(!init && tms.getTmsTime().getDayOfMonth() != start.getDayOfMonth()) {
+				accFlux = 0;
+				init = true;
+			}
+			accFlux += tms.getFlux();
+			tms.setFlux(accFlux);
+		}
+		// 이전값 제거
+		list = list.stream().filter(t-> t.getTmsTime().isAfter(start)).collect(Collectors.toList());
 		for(TmsImputate tms : list) {
 			LocalDateTime t = tms.getTmsTime();
 			if(t.getMinute() != 0 && t.getMinute() != 30)
@@ -609,8 +628,10 @@ public class TmsService {
 //	}
 	
 	public List<TmsPredict> findPredictList(LocalDateTime now, LocalDateTime end) {
-		LocalDateTime start = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
-		List<TmsPredict> allList = tmsPredictRepo.findByTmsTimeBetweenOrderByTmsTimeAscTmsNoDesc(start, end);
+		LocalDateTime start = now.minusDays(1).plusMinutes(1);
+		LocalDateTime begin = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
+		List<TmsPredict> allList = tmsPredictRepo.findByTmsTimeBetweenOrderByTmsTimeAscTmsNoDesc(begin, end);
+		
 		// 중복값 제거
 		Map<LocalDateTime, TmsPredict> uniqueMap = new HashMap<>();
 		for(TmsPredict predict : allList) {
@@ -627,15 +648,15 @@ public class TmsService {
 		
 		// 누적값으로 전환
 		double accFlux = 0;
-		boolean init = false;
-		for(TmsPredict predict : result) {
-			if(!init && predict.getTmsTime().getDayOfMonth() != start.getDayOfMonth()) {
+		for(TmsPredict tms : result) {
+			if(tms.getTmsTime().getHour() == 0 && tms.getTmsTime().getMinute() == 0) {
 				accFlux = 0;
-				init = true;
 			}
-			accFlux += predict.getFlux();
-			predict.setFlux(accFlux);
+			accFlux += tms.getFlux();
+			tms.setFlux(accFlux);
 		}
+		// 이전값 제거
+		result = result.stream().filter(t-> t.getTmsTime().isAfter(start)).collect(Collectors.toList());
 		
 		// now 보다 이전은 제거
 		System.out.println("필터 전 : " + result.size());

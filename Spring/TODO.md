@@ -18,6 +18,7 @@ npm run dev -- --port 3001
 pm2 start npm --name "miniproject-app" -- start -- -p 3001
 pm2 start npm --name "FlowWater-app" -- start
 pm2 start npm --name "FlowWater-app-dev" -- run dev
+pm2 start npm --name "FlowWater-Mobile" -- start -- -p 3010
 pm2 restart 6 --update-env
 pm2 restart all
 pm2 list
@@ -69,6 +70,9 @@ http://10.125.121.172:3000/
 	- 탈퇴자의 id, email도 중복이 되지 않게..
 	- 탈퇴 완료 시에 DB에서 지워지는 프로우(외부Key에 맞게..)
 	- 삭제 로그 남기기
+
+내가 작업한 부분의 파트에 대한 설명 정리
+
 	
 완료한 일 :
 -2026-01-22	아마존 리눅스 설정 시작

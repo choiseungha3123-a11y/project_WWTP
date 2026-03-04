@@ -66,7 +66,6 @@ public class Member {
 	@Builder.Default
 	@Schema(description = "마지막 로그인 시간", example = "2026-01-30T15:30:00")
 	private LocalDateTime lastLoginTime = LocalDateTime.now();
-	@Convert(converter = CryptoStringConverter.class)
 	@Schema(description = "소셜 로그인 정보", example = "")
 	private String socialAuth;
 	@Schema(description = "삭제 여부", example = "false")
