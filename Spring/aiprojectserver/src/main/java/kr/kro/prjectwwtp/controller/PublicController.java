@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -87,7 +88,7 @@ public class PublicController {
 		responseDTO res = responseDTO.builder()
 				.success(true)
 				.build();
-		Pageable pageable = PageRequest.of(page, size);
+		Pageable pageable = PageRequest.of(page, size, Sort.by("no").descending());
 		
 		Page<PublicDTO> data = repo.findByDeleteTimeIsNull(pageable);
 		for(PublicDTO dto : data.getContent()) {
