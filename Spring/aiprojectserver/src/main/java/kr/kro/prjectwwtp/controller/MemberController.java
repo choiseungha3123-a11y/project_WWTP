@@ -6,12 +6,12 @@ import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -344,7 +344,7 @@ public class MemberController {
 	
 	boolean bSendEmail = true;
 	@Scheduled(cron = "${scheduler.report.cron}", zone="${spring.timezone}")
-	//@GetMapping("/mailtest")
+	@GetMapping("/mailtest")
 	public void makeReportMessage()
 	{
 		if(!enableReport) return;
@@ -357,15 +357,18 @@ public class MemberController {
 			String html = mailService.reportChart(tmsList, flowList);
 			String fileName = "chart" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".html";
 			
-			
 			if(bSendEmail) {
 				List<Member> emailList = memberService.getValidateEmailMember();
+				List<String> sendMailList = new ArrayList<>();
 				
 				for(Member member : emailList) {
+					if(sendMailList.contains(member.getUserEmail()))
+						continue;
 					String subject = "Report From FlowWater";
 					String body = mailService.reportBody(member);
 					
-					mailService.sendEmailWithAttachment(member, subject, body, html, fileName);
+					//mailService.sendEmailWithAttachment(member, subject, body, html, fileName);
+					sendMailList.add(member.getUserEmail());
 				}
 			}
 			else {
