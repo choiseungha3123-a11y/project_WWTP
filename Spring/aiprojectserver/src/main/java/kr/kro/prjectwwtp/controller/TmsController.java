@@ -1,11 +1,6 @@
 package kr.kro.prjectwwtp.controller;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -52,7 +47,6 @@ import kr.kro.prjectwwtp.service.LogService;
 import kr.kro.prjectwwtp.service.TmsService;
 import kr.kro.prjectwwtp.service.WeatherService;
 import kr.kro.prjectwwtp.util.JWTUtil;
-import kr.kro.prjectwwtp.util.Util;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -266,13 +260,14 @@ public class TmsController {
 			List<WeatherDTO> aws569 = weatherService.findWeatherDTOByStnAndLogTimeBetween(569, fakeNow.minusDays(1).plusMinutes(1), fakeNow);
 			System.out.println("aws569 : " + aws569.size());
 			
-			TmsPredict[] predictions = requestTms(now, aws368, aws541, aws569, tmsList);
-			List<TmsImputate> tmsListReal = tmsService.getTmsImputateListBetwwen(fakeNow, fakeNow.plusHours(12));
+			requestTms(now, aws368, aws541, aws569, tmsList);
+			//TmsPredict[] predictions = requestTms(now, aws368, aws541, aws569, tmsList);
+			//List<TmsImputate> tmsListReal = tmsService.getTmsImputateListBetwwen(fakeNow, fakeNow.plusHours(12));
 			
 			// 데이터 확인을 위해 데이터를 임시로 cvs로 저장
 			// tmsList, aws368, aws541, asw569, predictions, 실제 이 기간의 tms 실측값
-			if(predictions != null)
-				saveToCsv(now, tmsList, aws368, aws541, aws569, predictions, tmsListReal, fakeNow);
+			//if(predictions != null)
+			//	saveToCsv(now, tmsList, aws368, aws541, aws569, predictions, tmsListReal, fakeNow);
 								
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -312,7 +307,7 @@ public class TmsController {
 		}
 		return null;
 	}
-	
+/*	
 	private void saveToCsv(
 			LocalDateTime now,
 			List<TmsImputate> tmsList, 
@@ -458,7 +453,7 @@ public class TmsController {
 		}
 		return null;
 	}
-	
+*/	
 	@GetMapping("/tmsList")
 	@Operation(summary="어제부터의 실시간 정보와 내일까지의 예상 정보를 요청", description = "결측/이상 값을 처리한 데이터를 조회합니다. 데이터가 없으면 보간을 수행합니다.")
 	public ResponseEntity<Object> getTmsList() {

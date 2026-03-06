@@ -367,7 +367,7 @@ public class MemberController {
 					String subject = "Report From FlowWater";
 					String body = mailService.reportBody(member);
 					
-					//mailService.sendEmailWithAttachment(member, subject, body, html, fileName);
+					mailService.sendEmailWithAttachment(member, subject, body, html, fileName);
 					sendMailList.add(member.getUserEmail());
 				}
 			}
